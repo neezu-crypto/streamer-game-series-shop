@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1eb">
+  <meta name="description" content="스트리머 게임 시리즈의 오리지널 스티커를 만나보세요.">
+  <title>게임 시리즈 상점 — 첫 스티커 팩</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="게임 시리즈 상점 홈">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span>
+    </a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a class="active" href="#stickers">스티커</a>
+      <a href="#about">상점 소개</a>
+    </nav>
+    <a class="series-link" href="https://neezu-crypto.github.io/" target="_blank" rel="noopener noreferrer" title="스트리머 게임 시리즈 홈을 새 탭에서 엽니다">
+      게임 시리즈 <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> STREAMER GAME SERIES · VOL. 01</p>
+        <h1 id="hero-title">게임하는 순간을<br><em>스티커로 남겨요.</em></h1>
+        <p class="hero-description">설렘부터 아쉬운 한 수까지. 시리즈에서 마주친 기분을<br class="desktop-break"> 귀여운 다이스 친구와 함께 모아 보세요.</p>
+        <a class="primary-button" href="#stickers">첫 스티커 팩 보기 <span aria-hidden="true">↓</span></a>
+        <div class="hero-note"><span aria-hidden="true">✦</span> 시리즈 오리지널 캐릭터로 준비 중이에요</div>
+      </div>
+      <div class="hero-art" aria-label="헤드셋을 쓴 주사위 마스코트의 여덟 가지 표정">
+        <div class="hero-sticker-frame">
+          <img src="assets/sticker-pack-01.png" alt="헤드셋을 쓴 주사위 캐릭터의 표정 스티커 여덟 종">
+          <span class="art-stamp">8 EXPRESSIONS</span>
+        </div>
+        <span class="hero-spark spark-one" aria-hidden="true">✳</span>
+        <span class="hero-spark spark-two" aria-hidden="true">✦</span>
+        <span class="hero-caption">첫 판부터 마지막 인사까지 <span aria-hidden="true">♡</span></span>
+      </div>
+      <div class="hero-orb orb-one" aria-hidden="true"></div>
+      <div class="hero-orb orb-two" aria-hidden="true"></div>
+    </section>
+
+    <section class="shop-section" id="stickers" aria-labelledby="shop-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow section-eyebrow">COLLECTION 01</p>
+          <h2 id="shop-title">시리즈 스티커</h2>
+          <p class="section-subtitle">게임의 마음을 전하는 첫 번째 오리지널 팩</p>
+        </div>
+        <div class="category-chip"><span class="chip-icon" aria-hidden="true">✿</span> 스티커 <span class="chip-count" id="product-count">—</span></div>
+      </div>
+
+      <div class="product-grid" id="product-grid" aria-live="polite">
+        <div class="loading-card">첫 번째 스티커 팩을 불러오는 중이에요…</div>
+      </div>
+      <p class="catalog-note"><span aria-hidden="true">✦</span> 미리보기 단계예요. 판매 일정과 가격은 준비되는 대로 안내할게요.</p>
+    </section>
+
+    <section class="about-section" id="about" aria-labelledby="about-title">
+      <div class="about-icon" aria-hidden="true">🎮</div>
+      <div>
+        <p class="eyebrow section-eyebrow">MADE FOR THE SERIES</p>
+        <h2 id="about-title">게임 밖에서도 이어지는<br>우리만의 순간.</h2>
+      </div>
+      <p class="about-copy">스트리머 게임 시리즈의 세계에서 태어난 오리지널 굿즈를 한곳에 모아요. 스티커 팩은 각 게임에서 사용할 수 있도록 차근차근 준비하고 있어요.</p>
+      <span class="about-star" aria-hidden="true">✳</span>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand footer-brand" href="./" aria-label="상점 홈으로">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span>
+    </a>
+    <p>스트리머 게임 시리즈 상점 <span>·</span> 첫 번째 컬렉션을 준비하고 있어요.</p>
+    <a href="#hero-title" class="back-top">맨 위로 ↑</a>
+  </footer>
+
+  <dialog class="preview-dialog" id="preview-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-shell">
+      <button class="dialog-close" type="button" aria-label="미리보기 닫기" title="미리보기 닫기">×</button>
+      <div class="dialog-heading">
+        <p class="eyebrow section-eyebrow">STICKER PACK · 8 DESIGNS</p>
+        <h2 id="dialog-title">스티커 미리보기</h2>
+        <p>마음에 드는 표정을 눌러 이름을 확인해 보세요.</p>
+      </div>
+      <div class="sticker-grid" id="sticker-grid"></div>
+      <p class="dialog-footnote">이 화면은 출시 전 시안입니다. 실제 판매와 게임 내 사용은 준비 후 열립니다.</p>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
