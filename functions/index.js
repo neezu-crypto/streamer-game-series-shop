@@ -98,8 +98,19 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
     throw new HttpsError('resource-exhausted', '스티커를 너무 빠르게 보내고 있어요.');
   }
 
-  const eventRef = db.ref(`gameSeriesShop/emoteEvents/${gameId}/${roomKey}/current`);
-  const eventId = eventRef.push().key;
+  const eventsRef = db.ref(`gameSeriesShop/emoteEvents/${gameId}/${roomKey}/events`);
+  const oldEvents = await eventsRef.get();
+  const expiredEvents = {};
+  oldEvents.forEach((child) => {
+    const previous = child.val() || {};
+    const createdAt = Number(previous.createdAt || 0);
+    const durationMs = Number(previous.durationMs || DISPLAY_MS);
+    if (!createdAt || now - createdAt >= durationMs + 1000) expiredEvents[child.key] = null;
+  });
+  if (Object.keys(expiredEvents).length) await eventsRef.update(expiredEvents);
+
+  const eventRef = eventsRef.push();
+  const eventId = eventRef.key;
   const event = {
     eventId,
     stickerId: sticker.id,

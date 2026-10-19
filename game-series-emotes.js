@@ -1,6 +1,6 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
-import { getDatabase, onValue, ref } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
+import { getDatabase, onChildAdded, ref } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
 const FIREBASE_CONFIG = {
@@ -84,11 +84,9 @@ function install() {
   let loadPromise = null;
   let unsubscribe = null;
   let subscriptionVersion = 0;
-  let displayTimer = null;
-  let activePop = null;
+  const activePops = new Map();
   let dragState = null;
   let currentRoom = initialRoomId();
-  let lastEventId = '';
 
   function initialRoomId() {
     const query = moduleUrl.searchParams.get('roomParam');
@@ -107,8 +105,7 @@ function install() {
     const nextRoom = String(roomId || 'public');
     if (nextRoom === currentRoom) return;
     currentRoom = nextRoom;
-    lastEventId = '';
-    clearActivePop();
+    clearActivePops();
     if (catalog) subscribeToCurrentRoom();
     else loadCatalog().then(subscribeToCurrentRoom).catch((error) => {
       console.error('[게임시리즈 감정표현] 카탈로그를 불러오지 못했습니다:', error);
@@ -121,15 +118,14 @@ function install() {
     unsubscribe = null;
     roomPathKey(currentRoom).then((roomKey) => {
       if (version !== subscriptionVersion) return;
-      const path = `gameSeriesShop/emoteEvents/${gameId}/${roomKey}/current`;
-      unsubscribe = onValue(ref(db, path), (snapshot) => {
+      const path = `gameSeriesShop/emoteEvents/${gameId}/${roomKey}/events`;
+      unsubscribe = onChildAdded(ref(db, path), (snapshot) => {
         const event = snapshot.val();
-        if (!event || !event.eventId || event.eventId === lastEventId) return;
-        lastEventId = event.eventId;
+        if (!event || !event.eventId || activePops.has(event.eventId)) return;
         const ageMs = Date.now() - Number(event.createdAt || 0);
         if (ageMs < 0 || ageMs >= Number(event.durationMs || DISPLAY_MS)) return;
         const sticker = findSticker(event.stickerId);
-        if (sticker) showPop(sticker, Number(event.x), Number(event.y), Number(event.durationMs || DISPLAY_MS) - ageMs);
+        if (sticker) showPop(event.eventId, sticker, Number(event.x), Number(event.y), Number(event.durationMs || DISPLAY_MS) - ageMs);
       }, (error) => console.error('[게임시리즈 감정표현] 실시간 구독 실패:', error));
     }).catch((error) => console.error('[게임시리즈 감정표현] 방 식별자 처리 실패:', error));
   }
@@ -318,8 +314,8 @@ function install() {
     }
   }
 
-  function showPop(sticker, x, y, remainingMs) {
-    clearActivePop();
+  function showPop(eventId, sticker, x, y, remainingMs) {
+    if (activePops.has(eventId)) return;
     const pop = document.createElement('span');
     pop.className = 'gs-emote-pop';
     pop.setAttribute('role', 'img');
@@ -328,17 +324,19 @@ function install() {
     pop.style.left = `${Math.min(1, Math.max(0, x)) * 100}%`;
     pop.style.top = `${Math.min(1, Math.max(0, y)) * 100}%`;
     stage.append(pop);
-    activePop = pop;
-    displayTimer = window.setTimeout(() => {
-      if (activePop === pop) clearActivePop();
+    const timer = window.setTimeout(() => {
+      pop.remove();
+      activePops.delete(eventId);
     }, Math.max(0, remainingMs));
+    activePops.set(eventId, { pop, timer });
   }
 
-  function clearActivePop() {
-    window.clearTimeout(displayTimer);
-    displayTimer = null;
-    if (activePop) activePop.remove();
-    activePop = null;
+  function clearActivePops() {
+    for (const { pop, timer } of activePops.values()) {
+      window.clearTimeout(timer);
+      pop.remove();
+    }
+    activePops.clear();
   }
 
   function isTextEntry(event) {
