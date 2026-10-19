@@ -1,8 +1,3 @@
-import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
-import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
-import { getDatabase, onChildAdded, ref } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -12,10 +7,11 @@ const FIREBASE_CONFIG = {
   messagingSenderId: '997788925900',
   appId: '1:997788925900:web:cdddfe20075aa199a3a769'
 };
-const APP_NAME = 'gameSeriesEmotes';
 const DISPLAY_MS = 5000;
 const moduleUrl = new URL(import.meta.url);
 const gameId = moduleUrl.searchParams.get('game') || '';
+const requestedSdkVersion = moduleUrl.searchParams.get('sdk') || '12.16.0';
+const sdkVersion = ['10.7.0', '12.16.0'].includes(requestedSdkVersion) ? requestedSdkVersion : '12.16.0';
 const allowedGames = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
   'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton'
@@ -24,12 +20,31 @@ const allowedGames = new Set([
 if (!allowedGames.has(gameId)) {
   console.error('[게임시리즈 감정표현] 알 수 없는 게임 ID입니다.', gameId);
 } else {
-  install();
+  const sdkRoot = `https://www.gstatic.com/firebasejs/${sdkVersion}`;
+  const [appSdk, authSdk, databaseSdk, functionsSdk] = await Promise.all([
+    import(`${sdkRoot}/firebase-app.js`),
+    import(`${sdkRoot}/firebase-auth.js`),
+    import(`${sdkRoot}/firebase-database.js`),
+    import(`${sdkRoot}/firebase-functions.js`)
+  ]);
+  await install({ appSdk, authSdk, databaseSdk, functionsSdk });
 }
 
-function install() {
-  const app = getApps().find((item) => item.name === APP_NAME)
-    || initializeApp(FIREBASE_CONFIG, APP_NAME);
+async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
+  const { getApps, initializeApp } = appSdk;
+  const { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } = authSdk;
+  const { getDatabase, onChildAdded, ref } = databaseSdk;
+  const { getFunctions, httpsCallable } = functionsSdk;
+  let app = getApps().find((item) => item.name === '[DEFAULT]');
+  if (!app && moduleUrl.searchParams.get('standalone') === '1') app = initializeApp(FIREBASE_CONFIG);
+  for (let attempt = 0; !app && attempt < 60; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+    app = getApps().find((item) => item.name === '[DEFAULT]');
+  }
+  if (!app) {
+    console.error('[게임시리즈 감정표현] 페이지 Firebase 앱이 준비되지 않았습니다.');
+    return;
+  }
   const auth = getAuth(app);
   const db = getDatabase(app);
   const functions = getFunctions(app, 'us-central1');
@@ -37,7 +52,9 @@ function install() {
   const sendEmote = httpsCallable(functions, 'gameSeriesShopSendEmote');
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
-  stylesheet.href = new URL('./game-series-emotes.css', import.meta.url).href;
+  const stylesheetUrl = new URL('./game-series-emotes.css', import.meta.url);
+  stylesheetUrl.searchParams.set('v', moduleUrl.searchParams.get('v') || '20261020-free-dice-login');
+  stylesheet.href = stylesheetUrl.href;
   document.head.append(stylesheet);
 
   const launcher = document.createElement('div');
@@ -74,9 +91,18 @@ function install() {
   const stage = document.createElement('div');
   stage.id = 'game-series-emote-stage';
   stage.setAttribute('aria-hidden', 'true');
-  document.body.append(launcher, picker, stage);
+  const loginGate = document.createElement('div');
+  loginGate.id = 'game-series-emote-login';
+  loginGate.hidden = true;
+  loginGate.setAttribute('role', 'dialog');
+  loginGate.setAttribute('aria-modal', 'true');
+  loginGate.setAttribute('aria-labelledby', 'gs-emote-login-title');
+  loginGate.innerHTML = '<section class="gs-emote-login-card"><button class="gs-emote-close" type="button" aria-label="로그인 안내 닫기">×</button><h2 id="gs-emote-login-title">다이스 스티커 무료 이용</h2><p>로그인 유저와 인증 스트리머는 주사위 스티커를 무료로 사용할 수 있어요. 로그인해 주세요.</p><div class="gs-emote-login-actions"></div></section>';
+  document.body.append(launcher, picker, loginGate, stage);
 
   const launchButton = launcher.querySelector('button');
+  const loginActions = loginGate.querySelector('.gs-emote-login-actions');
+  const loginCloseButton = loginGate.querySelector('.gs-emote-close');
   let owned = [];
   let catalog = null;
   let catalogPromise = null;
@@ -86,6 +112,42 @@ function install() {
   const activePops = new Map();
   let dragState = null;
   let currentRoom = initialRoomId();
+  let currentUser = auth.currentUser || null;
+  let authInitialized = false;
+  let authReadyResolve;
+  let pendingLogin = false;
+  const authReady = new Promise((resolve) => { authReadyResolve = resolve; });
+
+  onAuthStateChanged(auth, (user) => {
+    const wasInitialized = authInitialized;
+    currentUser = user || null;
+    if (!authInitialized) {
+      authInitialized = true;
+      authReadyResolve(user || null);
+    }
+    if (pendingLogin && user && !user.isAnonymous) {
+      pendingLogin = false;
+      closeLoginGate();
+      openPicker();
+      return;
+    }
+    if (wasInitialized && !picker.hidden) {
+      if (!user) {
+        closePicker();
+        showLoginGate();
+        return;
+      }
+      loadPromise = null;
+      owned = [];
+      loadOwned().catch(() => {});
+    }
+  }, (error) => {
+    console.error('[게임시리즈 감정표현] 로그인 상태 확인 실패:', error);
+    if (!authInitialized) {
+      authInitialized = true;
+      authReadyResolve(null);
+    }
+  });
 
   function initialRoomId() {
     const query = moduleUrl.searchParams.get('roomParam');
@@ -171,11 +233,7 @@ function install() {
     if (!owned.length) {
       const empty = document.createElement('p');
       empty.className = 'gs-emote-empty';
-      empty.textContent = '아직 사용할 수 있는 보유 스티커가 없어요. 상점에서 새 스티커 소식을 확인해 주세요.';
-      const link = document.createElement('a');
-      link.href = 'https://neezu-crypto.github.io/streamer-game-series-shop/';
-      link.textContent = ' 상점 보기';
-      empty.append(link);
+      empty.textContent = '현재 사용할 수 있는 스티커가 없어요.';
       grid.append(empty);
       return;
     }
@@ -203,9 +261,14 @@ function install() {
     if (loadPromise) return loadPromise;
     loadPromise = (async () => {
       await loadCatalog();
-      let user = auth.currentUser;
-      if (!user) user = (await signInAnonymously(auth)).user;
+      const user = auth.currentUser || currentUser || (!authInitialized ? await authReady : null);
+      if (!user) throw new Error('로그인이 필요합니다.');
       const result = await getOwnedEmotes();
+      if (!result.data?.eligible && user.isAnonymous) {
+        closePicker();
+        showLoginGate();
+        return;
+      }
       owned = Array.isArray(result.data?.stickers) ? result.data.stickers
         .map((item) => findSticker(item.id))
         .filter(Boolean) : [];
@@ -216,7 +279,9 @@ function install() {
       grid.replaceChildren();
       const message = document.createElement('p');
       message.className = 'gs-emote-error';
-      message.textContent = '스티커 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
+      message.textContent = error?.code === 'functions/unauthenticated'
+        ? '로그인 후 무료로 사용할 수 있어요.'
+        : '스티커 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
       grid.append(message);
       console.error('[게임시리즈 감정표현] 보유 목록 조회 실패:', error);
       throw error;
@@ -238,17 +303,59 @@ function install() {
   }
 
   function openPicker() {
-    if (picker.hidden) {
-      picker.hidden = false;
-      launchButton.setAttribute('aria-expanded', 'true');
-      closeButton.focus();
-      const loading = document.createElement('p');
-      loading.className = 'gs-emote-loading';
-      loading.textContent = '보유한 스티커를 확인하고 있어요…';
-      grid.replaceChildren(loading);
-      loadOwned().catch(() => {});
-    } else {
+    if (!picker.hidden) {
       closePicker();
+      return;
+    }
+    openPickerForCurrentUser().catch((error) => {
+      console.error('[게임시리즈 감정표현] 스티커 창을 열지 못했습니다:', error);
+      showLoginGate();
+    });
+  }
+
+  function showPicker() {
+    picker.hidden = false;
+    loginGate.hidden = true;
+    launchButton.setAttribute('aria-expanded', 'true');
+    closeButton.focus();
+    const loading = document.createElement('p');
+    loading.className = 'gs-emote-loading';
+    loading.textContent = '무료 사용 자격을 확인하고 있어요…';
+    grid.replaceChildren(loading);
+  }
+
+  async function openPickerForCurrentUser() {
+    const user = auth.currentUser || currentUser || (!authInitialized ? await authReady : null);
+    showPicker();
+    if (!user) {
+      closePicker();
+      showLoginGate();
+      return;
+    }
+    try {
+      await loadCatalog();
+      const result = await getOwnedEmotes();
+      if (!result.data?.eligible) {
+        closePicker();
+        showLoginGate();
+        return;
+      }
+      owned = Array.isArray(result.data?.stickers) ? result.data.stickers
+        .map((item) => findSticker(item.id))
+        .filter(Boolean) : [];
+      renderOwned();
+      subscribeToCurrentRoom();
+    } catch (error) {
+      if (error?.code === 'functions/unauthenticated') {
+        closePicker();
+        showLoginGate();
+        return;
+      }
+      const message = document.createElement('p');
+      message.className = 'gs-emote-error';
+      message.textContent = '스티커 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
+      grid.replaceChildren(message);
+      console.error('[게임시리즈 감정표현] 무료 스티커 조회 실패:', error);
     }
   }
 
@@ -256,6 +363,53 @@ function install() {
     picker.hidden = true;
     launchButton.setAttribute('aria-expanded', 'false');
     launchButton.focus({ preventScroll: true });
+  }
+
+  function showLoginGate() {
+    picker.hidden = true;
+    loginGate.hidden = false;
+    loginActions.replaceChildren();
+    const existingLoginModal = window.sbmOpenLoginModal || window.onyuOpenLoginModal;
+    const googleButton = document.createElement('button');
+    googleButton.type = 'button';
+    googleButton.className = 'gs-emote-login-button';
+    googleButton.textContent = existingLoginModal ? '로그인 방법 선택' : 'Google 로그인';
+    googleButton.addEventListener('click', () => {
+      pendingLogin = true;
+      closeLoginGate();
+      if (window.sbmOpenLoginModal) return window.sbmOpenLoginModal();
+      if (window.onyuOpenLoginModal) return window.onyuOpenLoginModal();
+      if (window.__firebaseAuth?.signIn) return window.__firebaseAuth.signIn();
+      if (typeof window.loginWithGoogle === 'function') return window.loginWithGoogle();
+      if (typeof window.sbmSignIn === 'function') return window.sbmSignIn();
+      if (document.getElementById('authBtn')) {
+        document.getElementById('authBtn').click();
+        return;
+      }
+      return signInWithPopup(auth, new GoogleAuthProvider()).catch((error) => {
+        pendingLogin = false;
+        console.error('[게임시리즈 감정표현] Google 로그인 실패:', error);
+        showLoginGate();
+      });
+    });
+    loginActions.append(googleButton);
+    if (typeof window.loginWithKakao === 'function') {
+      const kakaoButton = document.createElement('button');
+      kakaoButton.type = 'button';
+      kakaoButton.className = 'gs-emote-login-button gs-emote-login-secondary';
+      kakaoButton.textContent = '카카오 로그인';
+      kakaoButton.addEventListener('click', () => {
+        pendingLogin = true;
+        closeLoginGate();
+        window.loginWithKakao();
+      });
+      loginActions.append(kakaoButton);
+    }
+    loginCloseButton.focus();
+  }
+
+  function closeLoginGate() {
+    loginGate.hidden = true;
   }
 
   function setGhostPosition(ghost, x, y) {
@@ -306,10 +460,11 @@ function install() {
 
   async function sendAt(sticker, x, y) {
     try {
-      if (!auth.currentUser) await signInAnonymously(auth);
+      if (!auth.currentUser) throw new Error('로그인이 필요합니다.');
       await sendEmote({ gameId, roomId: currentRoom, stickerId: sticker.id, x, y });
     } catch (error) {
       console.error('[게임시리즈 감정표현] 전송 실패:', error);
+      if (error?.code === 'functions/permission-denied' || error?.code === 'functions/unauthenticated') showLoginGate();
     }
   }
 
@@ -349,12 +504,20 @@ function install() {
 
   launchButton.addEventListener('click', openPicker);
   closeButton.addEventListener('click', closePicker);
+  loginCloseButton.addEventListener('click', closeLoginGate);
+  loginGate.addEventListener('click', (event) => {
+    if (event.target === loginGate) closeLoginGate();
+  });
   picker.addEventListener('click', (event) => {
     if (event.target === picker) closePicker();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !picker.hidden) {
       closePicker();
+      return;
+    }
+    if (event.key === 'Escape' && !loginGate.hidden) {
+      closeLoginGate();
       return;
     }
     if (launcher.hidden) return;
@@ -376,6 +539,6 @@ function install() {
   window.gameSeriesEmotes = Object.freeze({
     open: openPicker,
     get currentUid() { return auth.currentUser?.uid || null; },
-    appName: APP_NAME
+    appName: app.name
   });
 }

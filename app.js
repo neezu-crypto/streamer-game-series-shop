@@ -17,21 +17,22 @@ function escapeHtml(value) {
 
 function renderProduct(product) {
   const previewCount = product.preview?.stickers?.length || 0;
+  const freeForAuthenticated = product.freeForAuthenticated === true;
   const card = document.createElement('article');
   card.className = 'product-card';
   card.innerHTML = `
     <div class="product-art">
       <img src="${escapeHtml(product.cover)}" alt="${escapeHtml(product.title)} 스티커 여덟 종 미리보기">
-      <span class="preview-tag"><span aria-hidden="true">✦</span> 미리보기</span>
+      <span class="preview-tag"><span aria-hidden="true">✦</span> ${freeForAuthenticated ? '무료 이용' : '미리보기'}</span>
       <span class="art-count">${previewCount} DESIGNS</span>
     </div>
     <div class="product-info">
-      <div class="product-meta"><span>STICKERS · VOL. 01</span><span class="coming-label">COMING SOON</span></div>
+      <div class="product-meta"><span>STICKERS · VOL. 01</span><span class="coming-label">${freeForAuthenticated ? 'FREE IN GAME' : 'COMING SOON'}</span></div>
       <h3>${escapeHtml(product.title)}</h3>
       <p class="product-subtitle">${escapeHtml(product.subtitle)}</p>
       <div class="product-bottom">
-        <span class="price-label">출시 준비 중</span>
-        <button class="preview-button" type="button" data-preview="${escapeHtml(product.id)}" title="${escapeHtml(product.title)} 스티커 미리보기">미리보기 <span aria-hidden="true">↗</span></button>
+        <span class="price-label">${freeForAuthenticated ? '로그인 유저 · 인증 스트리머 무료' : '출시 준비 중'}</span>
+        <button class="preview-button" type="button" data-preview="${escapeHtml(product.id)}" title="${escapeHtml(product.title)} 스티커 보기">스티커 보기 <span aria-hidden="true">↗</span></button>
       </div>
     </div>
   `;

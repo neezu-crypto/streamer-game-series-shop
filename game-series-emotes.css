@@ -67,6 +67,7 @@
 }
 
 #game-series-emote-picker[hidden] { display: none !important; }
+#game-series-emote-login[hidden] { display: none !important; }
 
 #game-series-emote-picker {
   position: fixed;
@@ -90,6 +91,53 @@
   box-shadow: 0 24px 80px rgba(20, 12, 36, .26);
   padding: 22px;
 }
+
+#game-series-emote-login {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483002;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(26, 20, 36, .48);
+  backdrop-filter: blur(4px);
+}
+
+.gs-emote-login-card {
+  position: relative;
+  width: min(420px, 100%);
+  border: 1px solid rgba(89, 70, 123, .15);
+  border-radius: 20px;
+  background: #fffdfa;
+  color: #282333;
+  box-shadow: 0 24px 80px rgba(20, 12, 36, .28);
+  padding: 28px;
+}
+
+.gs-emote-login-card h2 { margin: 0 42px 9px 0; font-size: 19px; line-height: 1.35; }
+.gs-emote-login-card p { margin: 0 0 19px; color: #716b7c; font-size: 13px; line-height: 1.6; }
+.gs-emote-login-card > .gs-emote-close { position: absolute; top: 17px; right: 17px; }
+.gs-emote-login-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+
+.gs-emote-login-button {
+  min-height: 42px;
+  flex: 1 1 145px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  background: #7250ae;
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gs-emote-login-button:hover,
+.gs-emote-login-button:focus-visible { background: #5f4098; outline: 2px solid #aa8be5; outline-offset: 2px; }
+.gs-emote-login-secondary { border: 1px solid #ded7e9; background: white; color: #51485d; }
+.gs-emote-login-secondary:hover,
+.gs-emote-login-secondary:focus-visible { background: #faf7ff; color: #352653; }
 
 .gs-emote-dialog-head {
   display: flex;
@@ -223,6 +271,7 @@
   #game-series-emote-launcher { right: 12px; bottom: 12px; }
   #game-series-emote-button { min-height: 42px; padding: 0 13px; }
   .gs-emote-dialog { padding: 16px; border-radius: 18px; }
+  .gs-emote-login-card { padding: 22px 18px; border-radius: 18px; }
   .gs-emote-grid { gap: 7px; }
   .gs-emote-tile { padding: 5px 4px 7px; }
   .gs-emote-label { font-size: 10px; }
@@ -232,5 +281,6 @@
   .gs-emote-pop { animation: none; }
   #game-series-emote-button,
   .gs-emote-tile,
+  .gs-emote-login-button,
   #game-series-emote-tooltip { transition: none; }
 }

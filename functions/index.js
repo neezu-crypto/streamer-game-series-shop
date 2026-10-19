@@ -22,6 +22,7 @@ for (const product of catalog.products || []) {
     stickerIndex.set(sticker.id, {
       id: sticker.id,
       productId: product.id,
+      freeForAuthenticated: product.freeForAuthenticated === true,
       label: sticker.label,
       alt: sticker.alt,
       index,
@@ -43,6 +44,14 @@ function ownedRecordIsActive(value) {
   return value === true || (!!value && typeof value === 'object' && value.active !== false);
 }
 
+async function canUseFreeEmotes(request, uid) {
+  const provider = request.auth && request.auth.token && request.auth.token.firebase
+    ? request.auth.token.firebase.sign_in_provider : null;
+  if (provider && provider !== 'anonymous') return true;
+  const verified = await db.ref(`users/${uid}/streamerVerified`).get();
+  return verified.val() === true;
+}
+
 function normalizeRoomId(value) {
   const raw = String(value || 'public').trim();
   if (!raw || raw.length > 200) throw new HttpsError('invalid-argument', '방 식별자가 올바르지 않습니다.');
@@ -58,6 +67,7 @@ function boundedCoordinate(value, name) {
 
 exports.gameSeriesShopGetOwnedEmotes = onCall({ region: REGION, maxInstances: 20 }, async (request) => {
   const uid = requireUser(request);
+  const eligible = await canUseFreeEmotes(request, uid);
   const snapshot = await db.ref(`gameSeriesShop/ownership/${uid}`).get();
   const ownership = snapshot.val() || {};
   const ownedProductIds = new Set(Object.entries(ownership)
@@ -65,9 +75,11 @@ exports.gameSeriesShopGetOwnedEmotes = onCall({ region: REGION, maxInstances: 20
     .map(([productId]) => productId));
   const stickers = [];
   for (const sticker of stickerIndex.values()) {
-    if (ownedProductIds.has(sticker.productId)) stickers.push({ id: sticker.id });
+    if ((sticker.freeForAuthenticated && eligible) || ownedProductIds.has(sticker.productId)) {
+      stickers.push({ id: sticker.id });
+    }
   }
-  return { stickers };
+  return { eligible, stickers };
 });
 
 exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, async (request) => {
@@ -81,9 +93,11 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
   const y = boundedCoordinate(data.y, 'y');
   const roomKey = normalizeRoomId(data.roomId);
 
-  const ownership = await db.ref(`gameSeriesShop/ownership/${uid}/${sticker.productId}`).get();
-  if (!ownedRecordIsActive(ownership.val())) {
-    throw new HttpsError('permission-denied', '보유한 스티커만 사용할 수 있습니다.');
+  if (!(sticker.freeForAuthenticated && await canUseFreeEmotes(request, uid))) {
+    const ownership = await db.ref(`gameSeriesShop/ownership/${uid}/${sticker.productId}`).get();
+    if (!ownedRecordIsActive(ownership.val())) {
+      throw new HttpsError('permission-denied', '로그인 유저 또는 인증 스트리머만 무료로 사용할 수 있습니다.');
+    }
   }
 
   const now = Date.now();
