@@ -360,6 +360,7 @@ function install() {
       closePicker();
       return;
     }
+    if (launcher.hidden) return;
     if (event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || isTextEntry(event)) return;
     const key = String(event.key || '').toLowerCase();
     if (event.code === 'KeyE' || key === 'e' || key === 'ㄷ') {

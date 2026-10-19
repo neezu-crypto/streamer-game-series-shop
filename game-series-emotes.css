@@ -184,7 +184,7 @@
 #game-series-emote-stage {
   position: fixed;
   inset: 0;
-  z-index: 2147483002;
+  z-index: 2147482999;
   overflow: hidden;
   pointer-events: none;
 }
