@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const catalog = require('../catalog/stickers.json');
+const catalog = require('./catalog/stickers.json');
 
 initializeApp();
 const db = getDatabase();

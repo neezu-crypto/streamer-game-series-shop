@@ -36,4 +36,4 @@ python3 -m http.server 8080
 
 현재 카탈로그는 출시 전 시안이고 구매/결제 흐름은 아직 연결하지 않았습니다. 따라서 서버 소유권 기록이 없는 계정의 팝업은 빈 상태를 안내합니다. 실제 구매 기능을 추가할 때 결제 확인이 끝난 서버 코드만 `ownership`에 기록해야 합니다.
 
-Cloud Functions codebase는 `gameseriesshop`입니다. RTDB 공개 읽기 규칙을 바꾸면 상위 지침의 여섯 사본 동기화 절차를 따라야 합니다.
+Cloud Functions codebase는 `gameseriesshop`입니다. Functions 배포 전 훅은 공개 카탈로그를 함수 패키지 안으로 동기화합니다. RTDB 공개 읽기 규칙을 바꾸면 상위 지침의 여섯 사본 동기화 절차를 따라야 합니다.
