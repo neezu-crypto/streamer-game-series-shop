@@ -1,10 +1,11 @@
 const crypto = require('node:crypto');
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+const { getDatabase } = require('firebase-admin/database');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const catalog = require('../catalog/stickers.json');
 
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.database();
+initializeApp();
+const db = getDatabase();
 const REGION = 'us-central1';
 const DISPLAY_MS = 5000;
 const SEND_COOLDOWN_MS = 900;
