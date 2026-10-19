@@ -1,0 +1,13 @@
+{
+  "name": "streamer-game-series-shop-functions",
+  "private": true,
+  "description": "게임 시리즈 스티커 보유 조회와 실시간 감정표현",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  }
+}

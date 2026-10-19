@@ -26,6 +26,14 @@ python3 -m http.server 8080
 
 ## 배포
 
-`.github/workflows/pages.yml`이 `main`에 push되면 GitHub Pages를 배포합니다. 워크플로는 웹페이지, 카탈로그 JSON, 이미지 에셋만 배포합니다.
+`.github/workflows/pages.yml`이 `main`에 push되면 GitHub Pages를 배포합니다. 워크플로는 웹페이지, 카탈로그 JSON, 이미지 에셋, 공통 감정표현 클라이언트 파일만 배포합니다.
 
-구매·소유권 기능을 연결할 때는 Firebase Authentication의 공통 UID와 Cloud Functions를 사용하고, 가격·결제 검증과 소유권 기록을 서버에서 처리합니다. 이 프로토타입에는 결제나 소유권 기록 기능이 포함되어 있지 않습니다.
+## 게임 내 감정표현
+
+게임 페이지는 `game-series-emotes.js`를 정적으로 포함해 `감정표현` 버튼과 `E`/`ㄷ` 단축키를 제공합니다. 텍스트 입력 중에는 단축키를 무시합니다. 보유 스티커를 끌어 놓으면 게임별 공개 화면 또는 같은 멀티플레이 방의 접속자에게 화면의 같은 비율 위치로 5초 동안 표시합니다.
+
+각 게임은 Firebase Authentication의 공통 `gameSeriesEmotes` 앱을 사용합니다. Cloud Functions는 `gameSeriesShop/ownership/{uid}/{productId}`의 서버 구매 기록을 확인하고, 사용 자격·좌표·전송 간격을 검증한 뒤 RTDB의 `gameSeriesShop/emoteEvents`에 표시 이벤트를 기록합니다. 클라이언트는 해당 이벤트만 실시간으로 읽으며 소유권·구매 데이터에는 직접 접근하지 않습니다.
+
+현재 카탈로그는 출시 전 시안이고 구매/결제 흐름은 아직 연결하지 않았습니다. 따라서 서버 소유권 기록이 없는 계정의 팝업은 빈 상태를 안내합니다. 실제 구매 기능을 추가할 때 결제 확인이 끝난 서버 코드만 `ownership`에 기록해야 합니다.
+
+Cloud Functions codebase는 `gameseriesshop`입니다. RTDB 공개 읽기 규칙을 바꾸면 상위 지침의 여섯 사본 동기화 절차를 따라야 합니다.

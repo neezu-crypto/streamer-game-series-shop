@@ -1,0 +1,236 @@
+#game-series-emote-launcher,
+#game-series-emote-picker,
+#game-series-emote-stage {
+  box-sizing: border-box;
+  font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#game-series-emote-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483000;
+}
+
+#game-series-emote-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(75, 55, 110, .16);
+  border-radius: 999px;
+  background: #fffdfb;
+  color: #352653;
+  box-shadow: 0 8px 28px rgba(30, 18, 48, .18);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+#game-series-emote-button:hover,
+#game-series-emote-button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(30, 18, 48, .24);
+  outline: 2px solid #aa8be5;
+  outline-offset: 2px;
+}
+
+#game-series-emote-button::before {
+  content: "✦";
+  margin-right: 7px;
+  color: #9070d4;
+}
+
+#game-series-emote-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 9px);
+  width: max-content;
+  max-width: 220px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: #292333;
+  color: white;
+  box-shadow: 0 5px 18px rgba(0,0,0,.18);
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity .14s ease, transform .14s ease;
+}
+
+#game-series-emote-launcher:hover #game-series-emote-tooltip,
+#game-series-emote-launcher:focus-within #game-series-emote-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#game-series-emote-picker[hidden] { display: none !important; }
+
+#game-series-emote-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483001;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(26, 20, 36, .38);
+  backdrop-filter: blur(4px);
+}
+
+.gs-emote-dialog {
+  width: min(480px, 100%);
+  max-height: min(680px, calc(100dvh - 36px));
+  overflow: auto;
+  border: 1px solid rgba(89, 70, 123, .15);
+  border-radius: 22px;
+  background: #fffdfa;
+  color: #282333;
+  box-shadow: 0 24px 80px rgba(20, 12, 36, .26);
+  padding: 22px;
+}
+
+.gs-emote-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 7px;
+}
+
+.gs-emote-dialog-title { margin: 0; font-size: 19px; line-height: 1.3; }
+.gs-emote-dialog-hint { margin: 0 0 16px; color: #716b7c; font-size: 13px; line-height: 1.5; }
+
+.gs-emote-close {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e8e3ed;
+  border-radius: 50%;
+  background: #fff;
+  color: #51485d;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.gs-emote-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.gs-emote-tile {
+  min-width: 0;
+  padding: 7px 6px 8px;
+  border: 1px solid #e9e5ec;
+  border-radius: 13px;
+  background: #fff;
+  color: #373142;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: border-color .14s ease, background .14s ease, transform .14s ease;
+}
+
+.gs-emote-tile:hover,
+.gs-emote-tile:focus-visible {
+  border-color: #a78ad8;
+  background: #faf7ff;
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.gs-emote-tile:active { cursor: grabbing; }
+
+.gs-emote-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 9px;
+  background-color: #f4effc;
+  background-repeat: no-repeat;
+}
+
+.gs-emote-label {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-emote-empty,
+.gs-emote-loading,
+.gs-emote-error {
+  grid-column: 1 / -1;
+  margin: 5px 0 2px;
+  padding: 18px 12px;
+  border-radius: 13px;
+  background: #f7f4fa;
+  color: #6e6878;
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.gs-emote-empty a { color: #7250ae; font-weight: 700; }
+.gs-emote-error { color: #a33e50; }
+
+#game-series-emote-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483002;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gs-emote-pop {
+  position: absolute;
+  width: clamp(66px, 9vw, 112px);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,.82);
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 8px 14px rgba(41, 27, 60, .22));
+  transform: translate(-50%, -50%);
+  animation: gs-emote-arrive .2s cubic-bezier(.2,.8,.3,1.2) both;
+}
+
+.gs-emote-ghost {
+  position: fixed;
+  z-index: 2147483003;
+  width: 84px;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,.9);
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 8px 16px rgba(41, 27, 60, .3));
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+@keyframes gs-emote-arrive {
+  from { opacity: 0; scale: .72; }
+  to { opacity: 1; scale: 1; }
+}
+
+@media (max-width: 520px) {
+  #game-series-emote-launcher { right: 12px; bottom: 12px; }
+  #game-series-emote-button { min-height: 42px; padding: 0 13px; }
+  .gs-emote-dialog { padding: 16px; border-radius: 18px; }
+  .gs-emote-grid { gap: 7px; }
+  .gs-emote-tile { padding: 5px 4px 7px; }
+  .gs-emote-label { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-emote-pop { animation: none; }
+  #game-series-emote-button,
+  .gs-emote-tile,
+  #game-series-emote-tooltip { transition: none; }
+}
