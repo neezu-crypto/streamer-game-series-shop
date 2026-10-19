@@ -11,8 +11,7 @@ const DISPLAY_MS = 5000;
 const SEND_COOLDOWN_MS = 900;
 const GAME_IDS = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
-  'interior3dViewer', 'dontClickAds', 'midnightMartRun',
-  'streamerJurumable', 'onyuVn', 'dontPressButton'
+  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton'
 ]);
 
 const stickerIndex = new Map();

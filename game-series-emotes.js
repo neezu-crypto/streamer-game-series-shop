@@ -18,8 +18,7 @@ const moduleUrl = new URL(import.meta.url);
 const gameId = moduleUrl.searchParams.get('game') || '';
 const allowedGames = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
-  'interior3dViewer', 'dontClickAds', 'midnightMartRun',
-  'streamerJurumable', 'onyuVn', 'dontPressButton'
+  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton'
 ]);
 
 if (!allowedGames.has(gameId)) {
