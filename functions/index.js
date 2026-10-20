@@ -160,41 +160,62 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(decorationId)) {
       throw new HttpsError('invalid-argument', '스티커 항목이 올바르지 않습니다.');
     }
-    const decorationRef = decorationsRef.child(decorationId);
-    const snapshot = await decorationRef.get();
-    const previous = snapshot.val();
-    if (!previous || typeof previous !== 'object') {
-      throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
-    }
     if (action === 'delete') {
-      decoration = { id: decorationId };
-      const transaction = await decorationRef.transaction((current) => {
-        if (!current || typeof current !== 'object') return;
-        return null;
+      const transaction = await decorationsRef.transaction((current) => {
+        // Admin SDK transactions can first invoke the callback with a null local
+        // cache before retrying with the server value. Returning null here lets
+        // the ETag check fetch and retry against any existing decoration list.
+        if (current === null) return null;
+        const items = current && typeof current === 'object' ? current : {};
+        if (!items[decorationId] || typeof items[decorationId] !== 'object') {
+          return items;
+        }
+        const nextItems = { ...items };
+        delete nextItems[decorationId];
+        decoration = { id: decorationId };
+        return Object.keys(nextItems).length ? nextItems : null;
       });
-      if (!transaction.committed) throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      if (!transaction.committed) {
+        throw new HttpsError('aborted', '스티커를 삭제하지 못했습니다. 다시 시도해 주세요.');
+      }
+      if (transaction.snapshot.child(decorationId).exists()) {
+        throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      }
       await publishFanpageDecorationEvent(streamerId, 'delete', decoration);
     } else {
       const x = boundedCoordinate(data.x, 'x');
       const y = boundedCoordinate(data.y, 'y');
-      const stickerId = String(previous.stickerId || '');
-      if (!stickerIndex.has(stickerId)) {
-        throw new HttpsError('failed-precondition', '스티커 정보를 확인할 수 없습니다.');
-      }
-      const transaction = await decorationRef.transaction((current) => {
-        if (!current || typeof current !== 'object') return;
+      let invalidSticker = false;
+      const transaction = await decorationsRef.transaction((current) => {
+        invalidSticker = false;
+        if (current === null) return null;
+        const items = current && typeof current === 'object' ? current : {};
+        const previous = items[decorationId];
+        if (!previous || typeof previous !== 'object') {
+          return items;
+        }
+        const stickerId = String(previous.stickerId || '');
+        if (!stickerIndex.has(stickerId)) {
+          invalidSticker = true;
+          return;
+        }
         decoration = {
           id: decorationId,
-          stickerId: String(current.stickerId || ''),
+          stickerId,
           x,
           y,
-          createdAt: Number(current.createdAt) || now,
+          createdAt: Number(previous.createdAt) || now,
           updatedAt: now,
         };
-        if (!stickerIndex.has(decoration.stickerId)) return;
-        return decoration;
+        return { ...items, [decorationId]: decoration };
       });
-      if (!transaction.committed || !decoration) throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      if (!transaction.committed) {
+        if (invalidSticker) throw new HttpsError('failed-precondition', '스티커 정보를 확인할 수 없습니다.');
+        throw new HttpsError('aborted', '스티커를 이동하지 못했습니다. 다시 시도해 주세요.');
+      }
+      if (!transaction.snapshot.child(decorationId).exists()) {
+        throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      }
       await publishFanpageDecorationEvent(streamerId, 'upsert', decoration);
     }
   }
