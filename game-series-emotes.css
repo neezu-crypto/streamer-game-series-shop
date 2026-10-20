@@ -237,6 +237,78 @@
   pointer-events: none;
 }
 
+#game-series-fanpage-decoration-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482998;
+  overflow: visible;
+  pointer-events: none;
+}
+
+#game-series-fanpage-decoration-stage[hidden] { display: none !important; }
+
+.gs-fanpage-decoration {
+  position: absolute;
+  width: clamp(72px, 8vw, 104px);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.gs-fanpage-decoration[data-owner="true"] {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.gs-fanpage-decoration[data-owner="true"]:active { cursor: grabbing; }
+
+.gs-fanpage-decoration-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,.88);
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 8px 14px rgba(41, 27, 60, .24));
+}
+
+.gs-fanpage-decoration-remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  padding: 0 0 2px;
+  border: 1px solid rgba(71, 54, 84, .2);
+  border-radius: 50%;
+  background: #fff;
+  color: #4a3c55;
+  box-shadow: 0 3px 10px rgba(25, 17, 39, .2);
+  font: 700 20px/1 Inter, Pretendard, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+.gs-fanpage-decoration[data-owner="true"]:hover .gs-fanpage-decoration-remove,
+.gs-fanpage-decoration[data-owner="true"]:focus-within .gs-fanpage-decoration-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gs-fanpage-decoration-remove:hover,
+.gs-fanpage-decoration-remove:focus-visible {
+  transform: scale(1.08);
+  outline: 2px solid #aa8be5;
+  outline-offset: 2px;
+}
+
 .gs-emote-pop {
   position: absolute;
   width: clamp(66px, 9vw, 112px);
@@ -275,6 +347,8 @@
   .gs-emote-grid { gap: 7px; }
   .gs-emote-tile { padding: 5px 4px 7px; }
   .gs-emote-label { font-size: 10px; }
+  .gs-fanpage-decoration { width: 72px; }
+  .gs-fanpage-decoration-remove { opacity: 1; pointer-events: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -282,5 +356,6 @@
   #game-series-emote-button,
   .gs-emote-tile,
   .gs-emote-login-button,
+  .gs-fanpage-decoration-remove,
   #game-series-emote-tooltip { transition: none; }
 }

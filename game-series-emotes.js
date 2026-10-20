@@ -14,7 +14,7 @@ const requestedSdkVersion = moduleUrl.searchParams.get('sdk') || '12.16.0';
 const sdkVersion = ['10.7.0', '12.16.0'].includes(requestedSdkVersion) ? requestedSdkVersion : '12.16.0';
 const allowedGames = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
-  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton'
+  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton', 'streamerFanPage'
 ]);
 
 if (!allowedGames.has(gameId)) {
@@ -50,6 +50,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   const functions = getFunctions(app, 'us-central1');
   const getOwnedEmotes = httpsCallable(functions, 'gameSeriesShopGetOwnedEmotes');
   const sendEmote = httpsCallable(functions, 'gameSeriesShopSendEmote');
+  const mutateFanpageDecoration = httpsCallable(functions, 'gameSeriesFanPageDecoration');
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
   const stylesheetUrl = new URL('./game-series-emotes.css', import.meta.url);
@@ -91,6 +92,10 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   const stage = document.createElement('div');
   stage.id = 'game-series-emote-stage';
   stage.setAttribute('aria-hidden', 'true');
+  const decorationStage = document.createElement('div');
+  decorationStage.id = 'game-series-fanpage-decoration-stage';
+  decorationStage.setAttribute('aria-label', '팬페이지 장식 스티커');
+  decorationStage.hidden = true;
   const loginGate = document.createElement('div');
   loginGate.id = 'game-series-emote-login';
   loginGate.hidden = true;
@@ -98,7 +103,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   loginGate.setAttribute('aria-modal', 'true');
   loginGate.setAttribute('aria-labelledby', 'gs-emote-login-title');
   loginGate.innerHTML = '<section class="gs-emote-login-card"><button class="gs-emote-close" type="button" aria-label="로그인 안내 닫기">×</button><h2 id="gs-emote-login-title">다이스 스티커 무료 이용</h2><p>로그인 유저와 인증 스트리머는 주사위 스티커를 무료로 사용할 수 있어요. 로그인해 주세요.</p><div class="gs-emote-login-actions"></div></section>';
-  document.body.append(launcher, picker, loginGate, stage);
+  document.body.append(launcher, picker, loginGate, stage, decorationStage);
 
   const launchButton = launcher.querySelector('button');
   const loginActions = loginGate.querySelector('.gs-emote-login-actions');
@@ -116,6 +121,9 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   let authInitialized = false;
   let authReadyResolve;
   let pendingLogin = false;
+  let fanpageContext = readFanpageContext();
+  const fanpageDecorations = new Map();
+  let decorationDragState = null;
   const authReady = new Promise((resolve) => { authReadyResolve = resolve; });
 
   onAuthStateChanged(auth, (user) => {
@@ -162,6 +170,52 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     return String(candidate || 'public');
   }
 
+  function readFanpageContext(value = window.__streamerFanPageEmotes) {
+    if (gameId !== 'streamerFanPage' || !value || typeof value !== 'object') {
+      return { streamerId: '', isStreamerOwner: false, decorations: [] };
+    }
+    return {
+      streamerId: String(value.streamerId || '').trim().toLowerCase(),
+      isStreamerOwner: value.isStreamerOwner === true,
+      decorations: Array.isArray(value.decorations) ? value.decorations : []
+    };
+  }
+
+  function setFanpageContext(value) {
+    if (gameId !== 'streamerFanPage') return;
+    const next = readFanpageContext(value);
+    fanpageContext = next;
+    fanpageDecorations.clear();
+    clearDecorationDrag();
+    for (const item of next.decorations) {
+      if (item && typeof item.id === 'string' && typeof item.stickerId === 'string') {
+        fanpageDecorations.set(item.id, {
+          id: item.id,
+          stickerId: item.stickerId,
+          x: clampUnit(item.x),
+          y: clampUnit(item.y),
+          updatedAt: Number(item.updatedAt) || 0
+        });
+      }
+    }
+    launcher.hidden = !next.streamerId || !!window.obsstudio || new URLSearchParams(location.search).get('view') === '1';
+    decorationStage.hidden = !next.streamerId;
+    updatePickerHint();
+    renderFanpageDecorations();
+    setRoom(next.streamerId || 'public');
+  }
+
+  function updatePickerHint() {
+    hint.textContent = gameId === 'streamerFanPage' && fanpageContext.isStreamerOwner
+      ? '스티커를 끌어 놓으면 내 팬페이지에 계속 붙어 있어요. 다시 끌어 이동할 수 있어요.'
+      : '사용할 스티커를 끌어 원하는 곳에 놓아 주세요.';
+  }
+
+  function clampUnit(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : 0.5;
+  }
+
   function setRoom(roomId) {
     const nextRoom = String(roomId || 'public');
     if (nextRoom === currentRoom) return;
@@ -182,9 +236,14 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       const path = `gameSeriesShop/emoteEvents/${gameId}/${roomKey}/events`;
       unsubscribe = onChildAdded(ref(db, path), (snapshot) => {
         const event = snapshot.val();
-        if (!event || !event.eventId || activePops.has(event.eventId)) return;
+        if (!event || !event.eventId) return;
         const ageMs = Date.now() - Number(event.createdAt || 0);
         if (ageMs < 0 || ageMs >= Number(event.durationMs || DISPLAY_MS)) return;
+        if (event.type === 'fanpage-decoration') {
+          if (gameId === 'streamerFanPage') applyFanpageDecorationEvent(event);
+          return;
+        }
+        if (activePops.has(event.eventId)) return;
         const sticker = findSticker(event.stickerId);
         if (sticker) showPop(event.eventId, sticker, Number(event.x), Number(event.y), Number(event.durationMs || DISPLAY_MS) - ageMs);
       }, (error) => console.error('[게임시리즈 감정표현] 실시간 구독 실패:', error));
@@ -369,7 +428,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     picker.hidden = true;
     loginGate.hidden = false;
     loginActions.replaceChildren();
-    const existingLoginModal = window.sbmOpenLoginModal || window.onyuOpenLoginModal;
+    const existingLoginModal = window.streamerFanPageOpenLoginModal || window.sbmOpenLoginModal || window.onyuOpenLoginModal;
     const googleButton = document.createElement('button');
     googleButton.type = 'button';
     googleButton.className = 'gs-emote-login-button';
@@ -377,6 +436,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     googleButton.addEventListener('click', () => {
       pendingLogin = true;
       closeLoginGate();
+      if (window.streamerFanPageOpenLoginModal) return window.streamerFanPageOpenLoginModal();
       if (window.sbmOpenLoginModal) return window.sbmOpenLoginModal();
       if (window.onyuOpenLoginModal) return window.onyuOpenLoginModal();
       if (window.__firebaseAuth?.signIn) return window.__firebaseAuth.signIn();
@@ -450,6 +510,11 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     if (cancel) return;
     if (!current.moved) return;
     closePicker();
+    if (gameId === 'streamerFanPage' && fanpageContext.isStreamerOwner && fanpageContext.streamerId) {
+      const position = fanpagePosition(event.clientX, event.clientY);
+      mutateDecoration('add', { stickerId: current.sticker.id, ...position }).catch(showDecorationError);
+      return;
+    }
     const x = Math.min(1, Math.max(0, event.clientX / Math.max(1, window.innerWidth)));
     const y = Math.min(1, Math.max(0, event.clientY / Math.max(1, window.innerHeight)));
     sendAt(current.sticker, x, y).catch(() => {});
@@ -493,6 +558,190 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     activePops.clear();
   }
 
+  function pageDimensions() {
+    return {
+      width: Math.max(1, window.innerWidth),
+      height: Math.max(1, document.documentElement.scrollHeight, document.body.scrollHeight)
+    };
+  }
+
+  function fanpagePosition(clientX, clientY) {
+    const dimensions = pageDimensions();
+    return {
+      x: clampUnit(clientX / dimensions.width),
+      y: clampUnit((clientY + window.scrollY) / dimensions.height)
+    };
+  }
+
+  function setDecorationPosition(element, decoration) {
+    const dimensions = pageDimensions();
+    element.style.left = `${clampUnit(decoration.x) * dimensions.width}px`;
+    element.style.top = `${clampUnit(decoration.y) * dimensions.height - window.scrollY}px`;
+  }
+
+  function renderFanpageDecorations() {
+    if (gameId !== 'streamerFanPage') return;
+    decorationStage.replaceChildren();
+    if (decorationStage.hidden) return;
+    for (const decoration of fanpageDecorations.values()) {
+      const sticker = findSticker(decoration.stickerId);
+      if (!sticker) continue;
+      const item = document.createElement('div');
+      item.className = 'gs-fanpage-decoration';
+      item.dataset.decorationId = decoration.id;
+      item.setAttribute('role', 'img');
+      item.setAttribute('aria-label', sticker.alt || sticker.label);
+      item.title = sticker.label;
+      item.dataset.owner = fanpageContext.isStreamerOwner ? 'true' : 'false';
+      const art = document.createElement('span');
+      art.className = 'gs-fanpage-decoration-art';
+      styleArt(art, sticker);
+      item.append(art);
+      if (fanpageContext.isStreamerOwner) {
+        item.setAttribute('role', 'group');
+        item.setAttribute('aria-label', `${sticker.label} 스티커, 끌어 이동하거나 삭제할 수 있어요`);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'gs-fanpage-decoration-remove';
+        remove.setAttribute('aria-label', `${sticker.label} 스티커 삭제`);
+        remove.title = '스티커 삭제';
+        remove.textContent = '×';
+        remove.addEventListener('pointerdown', (event) => event.stopPropagation());
+        remove.addEventListener('click', (event) => {
+          event.stopPropagation();
+          mutateDecoration('delete', { decorationId: decoration.id }).catch(showDecorationError);
+        });
+        item.append(remove);
+        item.addEventListener('pointerdown', (event) => startDecorationDrag(event, decoration, item));
+      }
+      setDecorationPosition(item, decoration);
+      decorationStage.append(item);
+    }
+  }
+
+  function updateFanpageDecorationPositions() {
+    if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
+    for (const item of decorationStage.children) {
+      const decoration = fanpageDecorations.get(item.dataset.decorationId);
+      if (decoration) setDecorationPosition(item, decoration);
+    }
+  }
+
+  function applyFanpageDecorationEvent(event) {
+    if (!fanpageContext.streamerId) return;
+    if (event.action === 'delete' && typeof event.decorationId === 'string') {
+      fanpageDecorations.delete(event.decorationId);
+    } else if (event.action === 'upsert' && event.decoration && typeof event.decoration.id === 'string') {
+      const item = event.decoration;
+      fanpageDecorations.set(item.id, {
+        id: item.id,
+        stickerId: String(item.stickerId || ''),
+        x: clampUnit(item.x),
+        y: clampUnit(item.y),
+        updatedAt: Number(item.updatedAt) || 0
+      });
+    } else return;
+    const decorations = [...fanpageDecorations.values()];
+    if (window.__streamerFanPageEmotes?.streamerId === fanpageContext.streamerId) {
+      window.__streamerFanPageEmotes.decorations = decorations;
+    }
+    window.dispatchEvent(new CustomEvent('streamer-fanpage-emotes-updated', {
+      detail: { streamerId: fanpageContext.streamerId, decorations }
+    }));
+    renderFanpageDecorations();
+  }
+
+  async function mutateDecoration(action, values) {
+    if (!fanpageContext.isStreamerOwner || !fanpageContext.streamerId) {
+      throw new Error('본인 인증 팬페이지에서만 스티커를 붙일 수 있어요.');
+    }
+    const result = await mutateFanpageDecoration({
+      action,
+      streamerId: fanpageContext.streamerId,
+      ...values
+    });
+    const data = result.data || {};
+    if (action === 'delete') {
+      applyFanpageDecorationEvent({ action: 'delete', decorationId: values.decorationId });
+    } else if (data.decoration) {
+      applyFanpageDecorationEvent({ action: 'upsert', decoration: data.decoration });
+    }
+    return data;
+  }
+
+  function startDecorationDrag(event, decoration, element) {
+    if (!fanpageContext.isStreamerOwner || event.button !== 0 || event.target.closest('.gs-fanpage-decoration-remove')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    decorationDragState = {
+      pointerId: event.pointerId,
+      id: decoration.id,
+      element,
+      original: { ...decoration },
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false
+    };
+    try { element.setPointerCapture(event.pointerId); } catch (_) { /* Pointer capture can be unavailable in older browsers. */ }
+    document.addEventListener('pointermove', onDecorationDragMove, true);
+    document.addEventListener('pointerup', onDecorationDragEnd, true);
+    document.addEventListener('pointercancel', onDecorationDragCancel, true);
+  }
+
+  function onDecorationDragMove(event) {
+    if (!decorationDragState || event.pointerId !== decorationDragState.pointerId) return;
+    if (Math.hypot(event.clientX - decorationDragState.startX, event.clientY - decorationDragState.startY) > 4) {
+      decorationDragState.moved = true;
+    }
+    if (!decorationDragState.moved) return;
+    const position = fanpagePosition(event.clientX, event.clientY);
+    const updated = { ...fanpageDecorations.get(decorationDragState.id), ...position };
+    fanpageDecorations.set(updated.id, updated);
+    setDecorationPosition(decorationDragState.element, updated);
+  }
+
+  function finishDecorationDrag(event, cancel) {
+    if (!decorationDragState || event.pointerId !== decorationDragState.pointerId) return;
+    const current = decorationDragState;
+    decorationDragState = null;
+    document.removeEventListener('pointermove', onDecorationDragMove, true);
+    document.removeEventListener('pointerup', onDecorationDragEnd, true);
+    document.removeEventListener('pointercancel', onDecorationDragCancel, true);
+    if (cancel) {
+      if (current.moved) {
+        fanpageDecorations.set(current.id, current.original);
+        setDecorationPosition(current.element, current.original);
+      }
+      return;
+    }
+    if (!current.moved) return;
+    const updated = fanpageDecorations.get(current.id);
+    mutateDecoration('move', { decorationId: current.id, x: updated.x, y: updated.y })
+      .catch((error) => {
+        fanpageDecorations.set(current.id, current.original);
+        renderFanpageDecorations();
+        showDecorationError(error);
+      });
+  }
+
+  function onDecorationDragEnd(event) { finishDecorationDrag(event, false); }
+  function onDecorationDragCancel(event) { finishDecorationDrag(event, true); }
+
+  function clearDecorationDrag() {
+    if (!decorationDragState) return;
+    document.removeEventListener('pointermove', onDecorationDragMove, true);
+    document.removeEventListener('pointerup', onDecorationDragEnd, true);
+    document.removeEventListener('pointercancel', onDecorationDragCancel, true);
+    decorationDragState = null;
+  }
+
+  function showDecorationError(error) {
+    console.error('[게임시리즈 감정표현] 팬페이지 스티커 저장 실패:', error);
+    window.dispatchEvent(new CustomEvent('streamer-fanpage-emotes-error', {
+      detail: { message: error?.message || '스티커를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+    }));
+  }
+
   function isTextEntry(event) {
     const candidates = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
     return candidates.some((node) => {
@@ -530,11 +779,18 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     }
   }, true);
   window.addEventListener('game-series-emote-room-change', (event) => setRoom(event.detail?.roomId));
-  if (window.__gameSeriesEmoteRoomId) setRoom(window.__gameSeriesEmoteRoomId);
-  loadCatalog().then(subscribeToCurrentRoom).catch((error) => {
+  window.addEventListener('streamer-fanpage-emotes-context-change', (event) => setFanpageContext(event.detail));
+  window.addEventListener('scroll', updateFanpageDecorationPositions, { passive: true });
+  window.addEventListener('resize', updateFanpageDecorationPositions);
+  if (gameId === 'streamerFanPage') setFanpageContext(window.__streamerFanPageEmotes);
+  else if (window.__gameSeriesEmoteRoomId) setRoom(window.__gameSeriesEmoteRoomId);
+  loadCatalog().then(() => {
+    renderFanpageDecorations();
+    subscribeToCurrentRoom();
+  }).catch((error) => {
     console.error('[게임시리즈 감정표현] 카탈로그를 불러오지 못했습니다:', error);
   });
-  if (window.obsstudio || new URLSearchParams(location.search).get('view') === '1') launcher.hidden = true;
+  if (gameId !== 'streamerFanPage' && (window.obsstudio || new URLSearchParams(location.search).get('view') === '1')) launcher.hidden = true;
 
   window.gameSeriesEmotes = Object.freeze({
     open: openPicker,

@@ -9,9 +9,11 @@ const db = getDatabase();
 const REGION = 'us-central1';
 const DISPLAY_MS = 5000;
 const SEND_COOLDOWN_MS = 900;
+const FANPAGE_DECORATION_EVENT_MS = 60000;
+const FANPAGE_DECORATION_MAX_ITEMS = 100;
 const GAME_IDS = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
-  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton'
+  'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton', 'streamerFanPage'
 ]);
 
 const stickerIndex = new Map();
@@ -64,6 +66,140 @@ function boundedCoordinate(value, name) {
   }
   return Math.round(value * 10000) / 10000;
 }
+
+async function verifiedStreamerForUid(uid) {
+  const snapshot = await db.ref('streamerVerifications')
+    .orderByChild('uid').equalTo(uid).limitToFirst(1).get();
+  if (!snapshot.exists()) throw new HttpsError('permission-denied', '인증된 스트리머만 본인 팬페이지를 꾸밀 수 있습니다.');
+  const record = Object.values(snapshot.val() || {})[0];
+  const soopId = String(record && record.soopId || '').trim().toLowerCase();
+  if (!/^[a-z0-9]{2,20}$/.test(soopId)) {
+    throw new HttpsError('permission-denied', '인증된 스트리머 정보를 확인할 수 없습니다.');
+  }
+  return soopId;
+}
+
+function activeOwnership(value) {
+  return value === true || (!!value && typeof value === 'object' && value.active !== false);
+}
+
+async function publishFanpageDecorationEvent(streamerId, action, decoration) {
+  const now = Date.now();
+  const roomKey = crypto.createHash('sha256').update(streamerId).digest('hex');
+  const eventsRef = db.ref(`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events`);
+  const oldEvents = await eventsRef.get();
+  const updates = {};
+  oldEvents.forEach((child) => {
+    const previous = child.val() || {};
+    const createdAt = Number(previous.createdAt || 0);
+    const durationMs = Number(previous.durationMs || DISPLAY_MS);
+    if (!createdAt || now - createdAt >= durationMs + 1000) {
+      updates[`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events/${child.key}`] = null;
+    }
+  });
+  const eventRef = eventsRef.push();
+  const event = {
+    eventId: eventRef.key,
+    type: 'fanpage-decoration',
+    action,
+    createdAt: now,
+    durationMs: FANPAGE_DECORATION_EVENT_MS,
+  };
+  if (action === 'delete') event.decorationId = decoration.id;
+  else event.decoration = decoration;
+  updates[`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events/${eventRef.key}`] = event;
+  await db.ref().update(updates);
+}
+
+exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 }, async (request) => {
+  const uid = requireUser(request);
+  const data = request.data || {};
+  const action = String(data.action || '');
+  const requestedStreamerId = String(data.streamerId || '').trim().toLowerCase();
+  const streamerId = await verifiedStreamerForUid(uid);
+  if (requestedStreamerId !== streamerId) {
+    throw new HttpsError('permission-denied', '본인 팬페이지에서만 스티커를 관리할 수 있습니다.');
+  }
+  if (!['add', 'move', 'delete'].includes(action)) {
+    throw new HttpsError('invalid-argument', '지원하지 않는 스티커 작업입니다.');
+  }
+
+  const decorationsRef = db.ref(`streamerFanPageEmotes/${streamerId}`);
+  const now = Date.now();
+  let decoration;
+  if (action === 'add') {
+    const sticker = stickerIndex.get(String(data.stickerId || ''));
+    if (!sticker) throw new HttpsError('invalid-argument', '알 수 없는 스티커입니다.');
+    if (!sticker.freeForAuthenticated) {
+      const ownership = await db.ref(`gameSeriesShop/ownership/${uid}/${sticker.productId}`).get();
+      if (!activeOwnership(ownership.val())) {
+        throw new HttpsError('permission-denied', '보유한 스티커만 팬페이지에 붙일 수 있습니다.');
+      }
+    }
+    const x = boundedCoordinate(data.x, 'x');
+    const y = boundedCoordinate(data.y, 'y');
+    const decorationRef = decorationsRef.push();
+    decoration = { id: decorationRef.key, stickerId: sticker.id, x, y, createdAt: now, updatedAt: now };
+    let overLimit = false;
+    const transaction = await decorationsRef.transaction((current) => {
+      overLimit = false;
+      const items = current && typeof current === 'object' ? current : {};
+      if (Object.keys(items).length >= FANPAGE_DECORATION_MAX_ITEMS) {
+        overLimit = true;
+        return;
+      }
+      return { ...items, [decoration.id]: decoration };
+    });
+    if (!transaction.committed) {
+      if (overLimit) throw new HttpsError('resource-exhausted', '팬페이지에 붙일 수 있는 스티커는 최대 100개입니다.');
+      throw new HttpsError('aborted', '스티커를 저장하지 못했습니다. 다시 시도해 주세요.');
+    }
+    await publishFanpageDecorationEvent(streamerId, 'upsert', decoration);
+  } else {
+    const decorationId = String(data.decorationId || '');
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(decorationId)) {
+      throw new HttpsError('invalid-argument', '스티커 항목이 올바르지 않습니다.');
+    }
+    const decorationRef = decorationsRef.child(decorationId);
+    const snapshot = await decorationRef.get();
+    const previous = snapshot.val();
+    if (!previous || typeof previous !== 'object') {
+      throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+    }
+    if (action === 'delete') {
+      decoration = { id: decorationId };
+      const transaction = await decorationRef.transaction((current) => {
+        if (!current || typeof current !== 'object') return;
+        return null;
+      });
+      if (!transaction.committed) throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      await publishFanpageDecorationEvent(streamerId, 'delete', decoration);
+    } else {
+      const x = boundedCoordinate(data.x, 'x');
+      const y = boundedCoordinate(data.y, 'y');
+      const stickerId = String(previous.stickerId || '');
+      if (!stickerIndex.has(stickerId)) {
+        throw new HttpsError('failed-precondition', '스티커 정보를 확인할 수 없습니다.');
+      }
+      const transaction = await decorationRef.transaction((current) => {
+        if (!current || typeof current !== 'object') return;
+        decoration = {
+          id: decorationId,
+          stickerId: String(current.stickerId || ''),
+          x,
+          y,
+          createdAt: Number(current.createdAt) || now,
+          updatedAt: now,
+        };
+        if (!stickerIndex.has(decoration.stickerId)) return;
+        return decoration;
+      });
+      if (!transaction.committed || !decoration) throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+      await publishFanpageDecorationEvent(streamerId, 'upsert', decoration);
+    }
+  }
+  return { ok: true, decoration };
+});
 
 exports.gameSeriesShopGetOwnedEmotes = onCall({ region: REGION, maxInstances: 20 }, async (request) => {
   const uid = requireUser(request);
