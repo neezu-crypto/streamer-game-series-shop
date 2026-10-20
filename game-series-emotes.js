@@ -218,6 +218,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     decorationStage.hidden = !next.streamerId;
     updatePickerHint();
     renderFanpageDecorations();
+    window.requestAnimationFrame(updateFanpageDecorationPositions);
     setRoom(next.streamerId || 'public');
   }
 
@@ -656,7 +657,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
 
   function pageDimensions() {
     return {
-      width: Math.max(1, window.innerWidth),
+      width: Math.max(1, document.documentElement.clientWidth || window.innerWidth),
       height: Math.max(1, document.documentElement.scrollHeight, document.body.scrollHeight)
     };
   }
@@ -672,7 +673,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function setDecorationPosition(element, decoration) {
     const dimensions = pageDimensions();
     element.style.left = `${clampUnit(decoration.x) * dimensions.width}px`;
-    element.style.top = `${clampUnit(decoration.y) * dimensions.height - window.scrollY}px`;
+    element.style.top = `${clampUnit(decoration.y) * dimensions.height}px`;
   }
 
   function renderFanpageDecorations() {
@@ -919,7 +920,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   }, true);
   window.addEventListener('game-series-emote-room-change', (event) => setRoom(event.detail?.roomId));
   window.addEventListener('streamer-fanpage-emotes-context-change', (event) => setFanpageContext(event.detail));
-  window.addEventListener('scroll', updateFanpageDecorationPositions, { passive: true });
   window.addEventListener('resize', updateFanpageDecorationPositions);
   if (gameId === 'streamerFanPage') setFanpageContext(window.__streamerFanPageEmotes);
   else if (window.__gameSeriesEmoteRoomId) setRoom(window.__gameSeriesEmoteRoomId);
