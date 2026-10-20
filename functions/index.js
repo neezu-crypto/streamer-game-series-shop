@@ -83,7 +83,7 @@ function activeOwnership(value) {
   return value === true || (!!value && typeof value === 'object' && value.active !== false);
 }
 
-async function publishFanpageDecorationEvent(streamerId, action, decoration) {
+async function publishFanpageDecorationEvent(streamerId, action, decoration, clientMutationId = '') {
   const now = Date.now();
   const roomKey = crypto.createHash('sha256').update(streamerId).digest('hex');
   const eventsRef = db.ref(`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events`);
@@ -105,6 +105,7 @@ async function publishFanpageDecorationEvent(streamerId, action, decoration) {
     createdAt: now,
     durationMs: FANPAGE_DECORATION_EVENT_MS,
   };
+  if (clientMutationId) event.clientMutationId = clientMutationId;
   if (action === 'delete') event.decorationId = decoration.id;
   else event.decoration = decoration;
   updates[`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events/${eventRef.key}`] = event;
@@ -122,6 +123,10 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
   }
   if (!['add', 'move', 'delete'].includes(action)) {
     throw new HttpsError('invalid-argument', '지원하지 않는 스티커 작업입니다.');
+  }
+  const clientMutationId = String(data.clientMutationId || '');
+  if (clientMutationId && !/^[A-Za-z0-9_-]{16,64}$/.test(clientMutationId)) {
+    throw new HttpsError('invalid-argument', '스티커 요청 식별자가 올바르지 않습니다.');
   }
 
   const decorationsRef = db.ref(`streamerFanPageEmotes/${streamerId}`);
@@ -154,7 +159,7 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
       if (overLimit) throw new HttpsError('resource-exhausted', '팬페이지에 붙일 수 있는 스티커는 최대 100개입니다.');
       throw new HttpsError('aborted', '스티커를 저장하지 못했습니다. 다시 시도해 주세요.');
     }
-    await publishFanpageDecorationEvent(streamerId, 'upsert', decoration);
+    await publishFanpageDecorationEvent(streamerId, 'upsert', decoration, clientMutationId);
   } else {
     const decorationId = String(data.decorationId || '');
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(decorationId)) {
@@ -224,8 +229,10 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
 
 exports.gameSeriesShopGetOwnedEmotes = onCall({ region: REGION, maxInstances: 20 }, async (request) => {
   const uid = requireUser(request);
-  const eligible = await canUseFreeEmotes(request, uid);
-  const snapshot = await db.ref(`gameSeriesShop/ownership/${uid}`).get();
+  const [eligible, snapshot] = await Promise.all([
+    canUseFreeEmotes(request, uid),
+    db.ref(`gameSeriesShop/ownership/${uid}`).get()
+  ]);
   const ownership = snapshot.val() || {};
   const ownedProductIds = new Set(Object.entries(ownership)
     .filter(([, value]) => ownedRecordIsActive(value))
@@ -249,8 +256,24 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
   const x = boundedCoordinate(data.x, 'x');
   const y = boundedCoordinate(data.y, 'y');
   const roomKey = normalizeRoomId(data.roomId);
+  const clientEventId = String(data.clientEventId || '');
+  if (clientEventId && !/^[A-Za-z0-9_-]{16,64}$/.test(clientEventId)) {
+    throw new HttpsError('invalid-argument', '스티커 요청 식별자가 올바르지 않습니다.');
+  }
 
-  if (!(sticker.freeForAuthenticated && await canUseFreeEmotes(request, uid))) {
+  const signInProvider = request.auth.token && request.auth.token.firebase
+    ? request.auth.token.firebase.sign_in_provider : null;
+  if (sticker.freeForAuthenticated && signInProvider && signInProvider !== 'anonymous') {
+    // 일반 로그인 계정은 무료 스티커 자격이 바로 확인되므로 추가 DB 읽기가 필요 없습니다.
+  } else if (sticker.freeForAuthenticated) {
+    const [eligible, ownership] = await Promise.all([
+      canUseFreeEmotes(request, uid),
+      db.ref(`gameSeriesShop/ownership/${uid}/${sticker.productId}`).get()
+    ]);
+    if (!eligible && !ownedRecordIsActive(ownership.val())) {
+      throw new HttpsError('permission-denied', '로그인 유저 또는 인증 스트리머만 무료로 사용할 수 있습니다.');
+    }
+  } else {
     const ownership = await db.ref(`gameSeriesShop/ownership/${uid}/${sticker.productId}`).get();
     if (!ownedRecordIsActive(ownership.val())) {
       throw new HttpsError('permission-denied', '로그인 유저 또는 인증 스트리머만 무료로 사용할 수 있습니다.');
@@ -259,26 +282,27 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
 
   const now = Date.now();
   const cooldownRef = db.ref(`gameSeriesShop/emoteRateLimits/${uid}`);
-  const cooldown = await cooldownRef.transaction((previous) => {
-    const lastSentAt = Number(previous || 0);
-    if (now - lastSentAt < SEND_COOLDOWN_MS) return;
-    return now;
-  });
+  const eventsPath = `gameSeriesShop/emoteEvents/${gameId}/${roomKey}/events`;
+  const eventsRef = db.ref(eventsPath);
+  const [cooldown, oldEvents] = await Promise.all([
+    cooldownRef.transaction((previous) => {
+      const lastSentAt = Number(previous || 0);
+      if (now - lastSentAt < SEND_COOLDOWN_MS) return;
+      return now;
+    }),
+    eventsRef.get()
+  ]);
   if (!cooldown.committed) {
     throw new HttpsError('resource-exhausted', '스티커를 너무 빠르게 보내고 있어요.');
   }
 
-  const eventsRef = db.ref(`gameSeriesShop/emoteEvents/${gameId}/${roomKey}/events`);
-  const oldEvents = await eventsRef.get();
   const expiredEvents = {};
   oldEvents.forEach((child) => {
     const previous = child.val() || {};
     const createdAt = Number(previous.createdAt || 0);
     const durationMs = Number(previous.durationMs || DISPLAY_MS);
-    if (!createdAt || now - createdAt >= durationMs + 1000) expiredEvents[child.key] = null;
+    if (!createdAt || now - createdAt >= durationMs + 1000) expiredEvents[`${eventsPath}/${child.key}`] = null;
   });
-  if (Object.keys(expiredEvents).length) await eventsRef.update(expiredEvents);
-
   const eventRef = eventsRef.push();
   const eventId = eventRef.key;
   const event = {
@@ -287,8 +311,10 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
     x,
     y,
     createdAt: now,
-    durationMs: DISPLAY_MS
+    durationMs: DISPLAY_MS,
+    ...(clientEventId ? { clientEventId } : {})
   };
-  await eventRef.set(event);
-  return { ok: true, eventId, durationMs: DISPLAY_MS };
+  expiredEvents[`${eventsPath}/${eventId}`] = event;
+  await db.ref().update(expiredEvents);
+  return { ok: true, eventId, clientEventId, durationMs: DISPLAY_MS };
 });

@@ -8,6 +8,7 @@ const FIREBASE_CONFIG = {
   appId: '1:997788925900:web:cdddfe20075aa199a3a769'
 };
 const DISPLAY_MS = 5000;
+const OWNED_EMOTE_CACHE_TTL_MS = 30000;
 const moduleUrl = new URL(import.meta.url);
 const gameId = moduleUrl.searchParams.get('game') || '';
 const requestedSdkVersion = moduleUrl.searchParams.get('sdk') || '12.16.0';
@@ -109,12 +110,17 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   const loginActions = loginGate.querySelector('.gs-emote-login-actions');
   const loginCloseButton = loginGate.querySelector('.gs-emote-close');
   let owned = [];
+  let ownedCacheUid = '';
+  let ownedLoadedAt = 0;
   let catalog = null;
   let catalogPromise = null;
   let loadPromise = null;
+  let loadPromiseUid = '';
   let unsubscribe = null;
   let subscriptionVersion = 0;
   const activePops = new Map();
+  const pendingClientEvents = new Map();
+  const pendingFanpageAdds = new Map();
   let dragState = null;
   let currentRoom = initialRoomId();
   let currentUser = auth.currentUser || null;
@@ -128,7 +134,15 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
 
   onAuthStateChanged(auth, (user) => {
     const wasInitialized = authInitialized;
+    const previousUid = currentUser?.uid || '';
     currentUser = user || null;
+    if (wasInitialized && previousUid !== (currentUser?.uid || '')) {
+      owned = [];
+      ownedCacheUid = '';
+      ownedLoadedAt = 0;
+      loadPromise = null;
+      loadPromiseUid = '';
+    }
     if (!authInitialized) {
       authInitialized = true;
       authReadyResolve(user || null);
@@ -145,8 +159,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
         showLoginGate();
         return;
       }
-      loadPromise = null;
-      owned = [];
       loadOwned().catch(() => {});
     }
   }, (error) => {
@@ -187,6 +199,10 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     fanpageContext = next;
     fanpageDecorations.clear();
     clearDecorationDrag();
+    for (const pending of pendingFanpageAdds.values()) {
+      if (pending.cleanupTimer) window.clearTimeout(pending.cleanupTimer);
+    }
+    pendingFanpageAdds.clear();
     for (const item of next.decorations) {
       if (item && typeof item.id === 'string' && typeof item.stickerId === 'string') {
         fanpageDecorations.set(item.id, {
@@ -240,12 +256,27 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
         const ageMs = Date.now() - Number(event.createdAt || 0);
         if (ageMs < 0 || ageMs >= Number(event.durationMs || DISPLAY_MS)) return;
         if (event.type === 'fanpage-decoration') {
-          if (gameId === 'streamerFanPage') applyFanpageDecorationEvent(event);
+          if (gameId === 'streamerFanPage') {
+            const pending = pendingFanpageAdds.get(String(event.clientMutationId || ''));
+            if (pending) {
+              pending.serverObserved = true;
+              settlePendingFanpageAdd(String(event.clientMutationId), pending);
+            }
+            applyFanpageDecorationEvent(event);
+          }
           return;
         }
         if (activePops.has(event.eventId)) return;
         const sticker = findSticker(event.stickerId);
-        if (sticker) showPop(event.eventId, sticker, Number(event.x), Number(event.y), Number(event.durationMs || DISPLAY_MS) - ageMs);
+        if (sticker) {
+          const pending = pendingClientEvents.get(String(event.clientEventId || ''));
+          if (pending) {
+            pending.serverObserved = true;
+            settlePendingClientEvent(String(event.clientEventId), pending, event.eventId, sticker, event, Number(event.durationMs || DISPLAY_MS) - ageMs);
+          } else {
+            showPop(event.eventId, sticker, Number(event.x), Number(event.y), Number(event.durationMs || DISPLAY_MS) - ageMs);
+          }
+        }
       }, (error) => console.error('[게임시리즈 감정표현] 실시간 구독 실패:', error));
     }).catch((error) => console.error('[게임시리즈 감정표현] 방 식별자 처리 실패:', error));
   }
@@ -317,24 +348,44 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   }
 
   async function loadOwned() {
-    if (loadPromise) return loadPromise;
+    const user = auth.currentUser || currentUser || (!authInitialized ? await authReady : null);
+    if (!user) throw new Error('로그인이 필요합니다.');
+    if (ownedCacheUid === user.uid && Date.now() - ownedLoadedAt < OWNED_EMOTE_CACHE_TTL_MS) {
+      renderOwned();
+      subscribeToCurrentRoom();
+      return;
+    }
+    if (loadPromise && loadPromiseUid === user.uid) return loadPromise;
+    const requestUid = user.uid;
+    loadPromiseUid = requestUid;
     loadPromise = (async () => {
       await loadCatalog();
-      const user = auth.currentUser || currentUser || (!authInitialized ? await authReady : null);
-      if (!user) throw new Error('로그인이 필요합니다.');
       const result = await getOwnedEmotes();
+      if ((auth.currentUser?.uid || currentUser?.uid || '') !== requestUid) return;
       if (!result.data?.eligible && user.isAnonymous) {
         closePicker();
         showLoginGate();
+        if (loadPromiseUid === requestUid) {
+          loadPromise = null;
+          loadPromiseUid = '';
+        }
         return;
       }
       owned = Array.isArray(result.data?.stickers) ? result.data.stickers
         .map((item) => findSticker(item.id))
         .filter(Boolean) : [];
+      ownedCacheUid = requestUid;
+      ownedLoadedAt = Date.now();
       renderOwned();
       subscribeToCurrentRoom();
     })().catch((error) => {
-      loadPromise = null;
+      if (loadPromiseUid === requestUid) {
+        loadPromise = null;
+        loadPromiseUid = '';
+        ownedCacheUid = '';
+        ownedLoadedAt = 0;
+      }
+      if ((auth.currentUser?.uid || currentUser?.uid || '') !== requestUid) return;
       grid.replaceChildren();
       const message = document.createElement('p');
       message.className = 'gs-emote-error';
@@ -344,6 +395,11 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       grid.append(message);
       console.error('[게임시리즈 감정표현] 보유 목록 조회 실패:', error);
       throw error;
+    }).finally(() => {
+      if (loadPromiseUid === requestUid && ownedCacheUid === requestUid) {
+        loadPromise = null;
+        loadPromiseUid = '';
+      }
     });
     return loadPromise;
   }
@@ -392,18 +448,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       return;
     }
     try {
-      await loadCatalog();
-      const result = await getOwnedEmotes();
-      if (!result.data?.eligible) {
-        closePicker();
-        showLoginGate();
-        return;
-      }
-      owned = Array.isArray(result.data?.stickers) ? result.data.stickers
-        .map((item) => findSticker(item.id))
-        .filter(Boolean) : [];
-      renderOwned();
-      subscribeToCurrentRoom();
+      await loadOwned();
     } catch (error) {
       if (error?.code === 'functions/unauthenticated') {
         closePicker();
@@ -512,7 +557,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     closePicker();
     if (gameId === 'streamerFanPage' && fanpageContext.isStreamerOwner && fanpageContext.streamerId) {
       const position = fanpagePosition(event.clientX, event.clientY);
-      mutateDecoration('add', { stickerId: current.sticker.id, ...position }).catch(showDecorationError);
+      addFanpageDecorationOptimistically(current.sticker, position);
       return;
     }
     const x = Math.min(1, Math.max(0, event.clientX / Math.max(1, window.innerWidth)));
@@ -524,13 +569,63 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function onDragCancel(event) { finishDrag(event, true); }
 
   async function sendAt(sticker, x, y) {
+    const clientEventId = createClientEventId();
+    const pending = { localEventId: `pending-${clientEventId}`, serverObserved: false, cleanupTimer: 0 };
+    pendingClientEvents.set(clientEventId, pending);
+    pending.cleanupTimer = window.setTimeout(() => {
+      if (pendingClientEvents.get(clientEventId) === pending) pendingClientEvents.delete(clientEventId);
+    }, DISPLAY_MS + 10000);
+    showPop(pending.localEventId, sticker, x, y, DISPLAY_MS);
     try {
       if (!auth.currentUser) throw new Error('로그인이 필요합니다.');
-      await sendEmote({ gameId, roomId: currentRoom, stickerId: sticker.id, x, y });
+      const result = await sendEmote({ gameId, roomId: currentRoom, stickerId: sticker.id, x, y, clientEventId });
+      pending.serverEventId = result.data?.eventId || '';
     } catch (error) {
+      if (!pending.serverObserved) {
+        clearPendingClientEvent(clientEventId, pending);
+        removeActivePop(pending.localEventId);
+      }
       console.error('[게임시리즈 감정표현] 전송 실패:', error);
       if (error?.code === 'functions/permission-denied' || error?.code === 'functions/unauthenticated') showLoginGate();
     }
+  }
+
+  function createClientEventId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  function clearPendingClientEvent(clientEventId, pending) {
+    if (pending.cleanupTimer) window.clearTimeout(pending.cleanupTimer);
+    if (pendingClientEvents.get(clientEventId) === pending) pendingClientEvents.delete(clientEventId);
+  }
+
+  function settlePendingClientEvent(clientEventId, pending, eventId, sticker, event, remainingMs) {
+    clearPendingClientEvent(clientEventId, pending);
+    const local = activePops.get(pending.localEventId);
+    if (!local) {
+      showPop(eventId, sticker, Number(event.x), Number(event.y), remainingMs);
+      return;
+    }
+    window.clearTimeout(local.timer);
+    activePops.delete(pending.localEventId);
+    local.pop.style.left = `${Math.min(1, Math.max(0, Number(event.x))) * 100}%`;
+    local.pop.style.top = `${Math.min(1, Math.max(0, Number(event.y))) * 100}%`;
+    local.timer = window.setTimeout(() => {
+      local.pop.remove();
+      activePops.delete(eventId);
+    }, Math.max(0, remainingMs));
+    activePops.set(eventId, local);
+  }
+
+  function removeActivePop(eventId) {
+    const active = activePops.get(eventId);
+    if (!active) return;
+    window.clearTimeout(active.timer);
+    active.pop.remove();
+    activePops.delete(eventId);
   }
 
   function showPop(eventId, sticker, x, y, remainingMs) {
@@ -556,6 +651,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       pop.remove();
     }
     activePops.clear();
+    for (const [clientEventId, pending] of pendingClientEvents) clearPendingClientEvent(clientEventId, pending);
   }
 
   function pageDimensions() {
@@ -667,6 +763,49 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       applyFanpageDecorationEvent({ action: 'upsert', decoration: data.decoration });
     }
     return data;
+  }
+
+  function settlePendingFanpageAdd(clientMutationId, pending, decoration = null) {
+    if (pending.cleanupTimer) window.clearTimeout(pending.cleanupTimer);
+    if (pendingFanpageAdds.get(clientMutationId) === pending) pendingFanpageAdds.delete(clientMutationId);
+    fanpageDecorations.delete(pending.localDecorationId);
+    if (decoration) applyFanpageDecorationEvent({ action: 'upsert', decoration });
+    else renderFanpageDecorations();
+  }
+
+  function addFanpageDecorationOptimistically(sticker, position) {
+    const streamerId = fanpageContext.streamerId;
+    const clientMutationId = createClientEventId();
+    const optimistic = {
+      id: `pending-${clientMutationId}`,
+      stickerId: sticker.id,
+      x: clampUnit(position.x),
+      y: clampUnit(position.y),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const pending = { localDecorationId: optimistic.id, serverObserved: false, cleanupTimer: 0 };
+    pendingFanpageAdds.set(clientMutationId, pending);
+    pending.cleanupTimer = window.setTimeout(() => {
+      if (pendingFanpageAdds.get(clientMutationId) !== pending) return;
+      pendingFanpageAdds.delete(clientMutationId);
+      fanpageDecorations.delete(pending.localDecorationId);
+      renderFanpageDecorations();
+      showDecorationError(new Error('스티커 저장이 늦어지고 있어요. 페이지를 새로고침해 상태를 확인해 주세요.'));
+    }, 15000);
+    fanpageDecorations.set(optimistic.id, optimistic);
+    renderFanpageDecorations();
+    mutateDecoration('add', { stickerId: sticker.id, ...position, clientMutationId })
+      .then((data) => {
+        if (fanpageContext.streamerId !== streamerId || !fanpageContext.isStreamerOwner) return;
+        settlePendingFanpageAdd(clientMutationId, pending, data.decoration || null);
+      })
+      .catch((error) => {
+        if (fanpageContext.streamerId !== streamerId || !fanpageContext.isStreamerOwner) return;
+        if (pending.serverObserved) return;
+        settlePendingFanpageAdd(clientMutationId, pending);
+        showDecorationError(error);
+      });
   }
 
   function startDecorationDrag(event, decoration, element) {
