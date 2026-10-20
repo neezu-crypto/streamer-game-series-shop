@@ -9,7 +9,6 @@ const FIREBASE_CONFIG = {
 };
 const DISPLAY_MS = 5000;
 const OWNED_EMOTE_CACHE_TTL_MS = 30000;
-const FANPAGE_SCROLL_SAVE_DELAY_MS = 350;
 const moduleUrl = new URL(import.meta.url);
 const gameId = moduleUrl.searchParams.get('game') || '';
 const requestedSdkVersion = moduleUrl.searchParams.get('sdk') || '12.16.0';
@@ -131,12 +130,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   let fanpageContext = readFanpageContext();
   const fanpageDecorations = new Map();
   let decorationDragState = null;
-  const pendingDecorationPositions = new Map();
-  let decorationScrollFrame = 0;
-  let decorationScrollTimer = 0;
-  let decorationScrollHeight = 0;
-  let decorationSaveInFlight = false;
-  let decorationSaveQueued = false;
   const authReady = new Promise((resolve) => { authReadyResolve = resolve; });
 
   onAuthStateChanged(auth, (user) => {
@@ -203,20 +196,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function setFanpageContext(value) {
     if (gameId !== 'streamerFanPage') return;
     const next = readFanpageContext(value);
-    if (decorationScrollTimer) {
-      window.clearTimeout(decorationScrollTimer);
-      decorationScrollTimer = 0;
-      if (pendingDecorationPositions.size) {
-        persistFanpageDecorationPositions(fanpageContext.streamerId);
-      }
-    }
-    if (decorationScrollFrame) {
-      window.cancelAnimationFrame(decorationScrollFrame);
-      decorationScrollFrame = 0;
-    }
-    pendingDecorationPositions.clear();
     fanpageContext = next;
-    decorationScrollHeight = pageDimensions().height;
     fanpageDecorations.clear();
     clearDecorationDrag();
     for (const pending of pendingFanpageAdds.values()) {
@@ -700,7 +680,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     decorationStage.replaceChildren();
     if (decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    decorationScrollHeight = dimensions.height;
     decorationStage.style.height = `${dimensions.height}px`;
     for (const decoration of fanpageDecorations.values()) {
       const sticker = findSticker(decoration.stickerId);
@@ -728,7 +707,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
         remove.addEventListener('pointerdown', (event) => event.stopPropagation());
         remove.addEventListener('click', (event) => {
           event.stopPropagation();
-          pendingDecorationPositions.delete(decoration.id);
           mutateDecoration('delete', { decorationId: decoration.id }).catch(showDecorationError);
         });
         item.append(remove);
@@ -742,7 +720,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function updateFanpageDecorationPositions() {
     if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    decorationScrollHeight = dimensions.height;
     decorationStage.style.height = `${dimensions.height}px`;
     for (const item of decorationStage.children) {
       const decoration = fanpageDecorations.get(item.dataset.decorationId);
@@ -750,98 +727,10 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     }
   }
 
-  function scheduleFanpageDecorationScrollUpdate() {
-    if (gameId !== 'streamerFanPage' || decorationStage.hidden || !fanpageDecorations.size) return;
-    if (!decorationScrollFrame) {
-      decorationScrollFrame = window.requestAnimationFrame(updateFanpageDecorationScrollPositions);
-    }
-    if (decorationScrollTimer) window.clearTimeout(decorationScrollTimer);
-    decorationScrollTimer = window.setTimeout(() => {
-      decorationScrollTimer = 0;
-      persistFanpageDecorationPositions(fanpageContext.streamerId);
-    }, FANPAGE_SCROLL_SAVE_DELAY_MS);
-  }
-
-  function updateFanpageDecorationScrollPositions() {
-    decorationScrollFrame = 0;
-    if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
-    const dimensions = pageDimensions();
-    const previousHeight = Math.max(1, decorationScrollHeight || dimensions.height);
-    const changed = [];
-    for (const decoration of fanpageDecorations.values()) {
-      const previousDocumentY = clampUnit(decoration.y) * previousHeight;
-      const nextY = clampUnit(previousDocumentY / dimensions.height);
-      if (Math.abs(nextY - decoration.y) < 0.000001) continue;
-      const updated = { ...decoration, y: nextY };
-      fanpageDecorations.set(updated.id, updated);
-      if (fanpageContext.isStreamerOwner) {
-        pendingDecorationPositions.set(updated.id, {
-          streamerId: fanpageContext.streamerId,
-          id: updated.id,
-          x: updated.x,
-          y: updated.y
-        });
-      }
-      changed.push(updated);
-    }
-    decorationScrollHeight = dimensions.height;
-    if (changed.length) updateFanpageDecorationPositions();
-    if (changed.length && fanpageContext.isStreamerOwner) {
-      const decorations = [...fanpageDecorations.values()];
-      if (window.__streamerFanPageEmotes?.streamerId === fanpageContext.streamerId) {
-        window.__streamerFanPageEmotes.decorations = decorations;
-      }
-      window.dispatchEvent(new CustomEvent('streamer-fanpage-emotes-updated', {
-        detail: { streamerId: fanpageContext.streamerId, decorations }
-      }));
-    }
-  }
-
-  async function persistFanpageDecorationPositions(streamerId) {
-    const decorations = [...pendingDecorationPositions.values()]
-      .filter((item) => item.streamerId === streamerId)
-      .map(({ id, x, y }) => ({ id, x, y }));
-    if (!decorations.length) return;
-    if (decorationSaveInFlight) {
-      decorationSaveQueued = true;
-      return;
-    }
-    const submitted = new Map(decorations.map((item) => [item.id, item]));
-    decorationSaveInFlight = true;
-    try {
-      const result = await mutateFanpageDecoration({
-        action: 'moveMany',
-        streamerId,
-        decorations
-      });
-      const savedDecorations = Array.isArray(result.data?.decorations) ? result.data.decorations : [];
-      for (const saved of savedDecorations) {
-        const pending = pendingDecorationPositions.get(saved.id);
-        const sent = submitted.get(saved.id);
-        if (pending && sent && pending.x === sent.x && pending.y === sent.y) {
-          pendingDecorationPositions.delete(saved.id);
-        }
-      }
-      if (fanpageContext.streamerId === streamerId && savedDecorations.length) {
-        applyFanpageDecorationEvent({ action: 'upsert-many', decorations: savedDecorations });
-      }
-    } catch (error) {
-      console.error('[게임시리즈 감정표현] 스크롤 위치 저장 실패:', error);
-      showDecorationError(error);
-    } finally {
-      decorationSaveInFlight = false;
-      if (decorationSaveQueued) {
-        decorationSaveQueued = false;
-        persistFanpageDecorationPositions(fanpageContext.streamerId);
-      }
-    }
-  }
-
   function applyFanpageDecorationEvent(event) {
     if (!fanpageContext.streamerId) return;
     if (event.action === 'delete' && typeof event.decorationId === 'string') {
       fanpageDecorations.delete(event.decorationId);
-      pendingDecorationPositions.delete(event.decorationId);
     } else if (event.action === 'upsert' && event.decoration && typeof event.decoration.id === 'string') {
       const item = event.decoration;
       fanpageDecorations.set(item.id, {
@@ -854,14 +743,12 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     } else if (event.action === 'upsert-many' && Array.isArray(event.decorations)) {
       for (const item of event.decorations) {
         if (!item || typeof item.id !== 'string') continue;
-        const pending = pendingDecorationPositions.get(item.id);
         const current = fanpageDecorations.get(item.id);
-        const useLocalPosition = pending && current && pending.streamerId === fanpageContext.streamerId;
         fanpageDecorations.set(item.id, {
           id: item.id,
           stickerId: String(item.stickerId || current?.stickerId || ''),
-          x: useLocalPosition ? current.x : clampUnit(item.x),
-          y: useLocalPosition ? current.y : clampUnit(item.y),
+          x: clampUnit(item.x),
+          y: clampUnit(item.y),
           updatedAt: Number(item.updatedAt) || 0
         });
       }
@@ -987,7 +874,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     }
     if (!current.moved) return;
     const updated = fanpageDecorations.get(current.id);
-    pendingDecorationPositions.delete(current.id);
     mutateDecoration('move', { decorationId: current.id, x: updated.x, y: updated.y })
       .catch((error) => {
         fanpageDecorations.set(current.id, current.original);
@@ -1052,7 +938,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   }, true);
   window.addEventListener('game-series-emote-room-change', (event) => setRoom(event.detail?.roomId));
   window.addEventListener('streamer-fanpage-emotes-context-change', (event) => setFanpageContext(event.detail));
-  window.addEventListener('scroll', scheduleFanpageDecorationScrollUpdate, { passive: true });
   window.addEventListener('resize', updateFanpageDecorationPositions);
   if (gameId === 'streamerFanPage') setFanpageContext(window.__streamerFanPageEmotes);
   else if (window.__gameSeriesEmoteRoomId) setRoom(window.__gameSeriesEmoteRoomId);
