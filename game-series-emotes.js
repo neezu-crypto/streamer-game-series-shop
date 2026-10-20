@@ -134,7 +134,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   const pendingDecorationPositions = new Map();
   let decorationScrollFrame = 0;
   let decorationScrollTimer = 0;
-  let decorationScrollY = window.scrollY;
   let decorationScrollHeight = 0;
   let decorationSaveInFlight = false;
   let decorationSaveQueued = false;
@@ -217,7 +216,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     }
     pendingDecorationPositions.clear();
     fanpageContext = next;
-    decorationScrollY = window.scrollY;
     decorationScrollHeight = pageDimensions().height;
     fanpageDecorations.clear();
     clearDecorationDrag();
@@ -692,9 +690,9 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     };
   }
 
-  function setDecorationPosition(element, decoration, dimensions = pageDimensions(), scrollY = window.scrollY) {
+  function setDecorationPosition(element, decoration, dimensions = pageDimensions()) {
     element.style.left = `${clampUnit(decoration.x) * dimensions.width}px`;
-    element.style.top = `${clampUnit(decoration.y) * dimensions.height - scrollY}px`;
+    element.style.top = `${clampUnit(decoration.y) * dimensions.height}px`;
   }
 
   function renderFanpageDecorations() {
@@ -702,7 +700,8 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     decorationStage.replaceChildren();
     if (decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    const scrollY = window.scrollY;
+    decorationScrollHeight = dimensions.height;
+    decorationStage.style.height = `${dimensions.height}px`;
     for (const decoration of fanpageDecorations.values()) {
       const sticker = findSticker(decoration.stickerId);
       if (!sticker) continue;
@@ -735,7 +734,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
         item.append(remove);
         item.addEventListener('pointerdown', (event) => startDecorationDrag(event, decoration, item));
       }
-      setDecorationPosition(item, decoration, dimensions, scrollY);
+      setDecorationPosition(item, decoration, dimensions);
       decorationStage.append(item);
     }
   }
@@ -743,10 +742,11 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function updateFanpageDecorationPositions() {
     if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    const scrollY = window.scrollY;
+    decorationScrollHeight = dimensions.height;
+    decorationStage.style.height = `${dimensions.height}px`;
     for (const item of decorationStage.children) {
       const decoration = fanpageDecorations.get(item.dataset.decorationId);
-      if (decoration) setDecorationPosition(item, decoration, dimensions, scrollY);
+      if (decoration) setDecorationPosition(item, decoration, dimensions);
     }
   }
 
@@ -766,14 +766,11 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     decorationScrollFrame = 0;
     if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    const nextScrollY = window.scrollY;
     const previousHeight = Math.max(1, decorationScrollHeight || dimensions.height);
-    const previousScrollY = decorationScrollY;
     const changed = [];
     for (const decoration of fanpageDecorations.values()) {
       const previousDocumentY = clampUnit(decoration.y) * previousHeight;
-      const viewportY = previousDocumentY - previousScrollY;
-      const nextY = clampUnit((viewportY + nextScrollY) / dimensions.height);
+      const nextY = clampUnit(previousDocumentY / dimensions.height);
       if (Math.abs(nextY - decoration.y) < 0.000001) continue;
       const updated = { ...decoration, y: nextY };
       fanpageDecorations.set(updated.id, updated);
@@ -787,8 +784,8 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
       }
       changed.push(updated);
     }
-    decorationScrollY = nextScrollY;
     decorationScrollHeight = dimensions.height;
+    if (changed.length) updateFanpageDecorationPositions();
     if (changed.length && fanpageContext.isStreamerOwner) {
       const decorations = [...fanpageDecorations.values()];
       if (window.__streamerFanPageEmotes?.streamerId === fanpageContext.streamerId) {

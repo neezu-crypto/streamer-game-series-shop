@@ -238,8 +238,8 @@
 }
 
 #game-series-fanpage-decoration-stage {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  inset: 0 0 auto;
   z-index: 2147482998;
   overflow: visible;
   pointer-events: none;
