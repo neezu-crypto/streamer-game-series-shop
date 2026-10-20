@@ -107,6 +107,7 @@ async function publishFanpageDecorationEvent(streamerId, action, decoration, cli
   };
   if (clientMutationId) event.clientMutationId = clientMutationId;
   if (action === 'delete') event.decorationId = decoration.id;
+  else if (action === 'upsert-many') event.decorations = decoration;
   else event.decoration = decoration;
   updates[`gameSeriesShop/emoteEvents/streamerFanPage/${roomKey}/events/${eventRef.key}`] = event;
   await db.ref().update(updates);
@@ -121,7 +122,7 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
   if (requestedStreamerId !== streamerId) {
     throw new HttpsError('permission-denied', '본인 팬페이지에서만 스티커를 관리할 수 있습니다.');
   }
-  if (!['add', 'move', 'delete'].includes(action)) {
+  if (!['add', 'move', 'moveMany', 'delete'].includes(action)) {
     throw new HttpsError('invalid-argument', '지원하지 않는 스티커 작업입니다.');
   }
   const clientMutationId = String(data.clientMutationId || '');
@@ -160,6 +161,70 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
       throw new HttpsError('aborted', '스티커를 저장하지 못했습니다. 다시 시도해 주세요.');
     }
     await publishFanpageDecorationEvent(streamerId, 'upsert', decoration, clientMutationId);
+  } else if (action === 'moveMany') {
+    if (!Array.isArray(data.decorations) || data.decorations.length < 1 || data.decorations.length > FANPAGE_DECORATION_MAX_ITEMS) {
+      throw new HttpsError('invalid-argument', '이동할 스티커 목록이 올바르지 않습니다.');
+    }
+    const positions = data.decorations.map((item) => {
+      if (!item || typeof item !== 'object') {
+        throw new HttpsError('invalid-argument', '이동할 스티커 정보가 올바르지 않습니다.');
+      }
+      const id = String(item.id || '');
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+        throw new HttpsError('invalid-argument', '스티커 항목이 올바르지 않습니다.');
+      }
+      return { id, x: boundedCoordinate(item.x, 'x'), y: boundedCoordinate(item.y, 'y') };
+    });
+    if (new Set(positions.map((item) => item.id)).size !== positions.length) {
+      throw new HttpsError('invalid-argument', '같은 스티커를 여러 번 이동할 수 없습니다.');
+    }
+
+    let missingDecoration = false;
+    let invalidSticker = false;
+    let updatedDecorations = [];
+    const transaction = await decorationsRef.transaction((current) => {
+      missingDecoration = false;
+      invalidSticker = false;
+      updatedDecorations = [];
+      // A null local cache lets the SDK fetch the server value before retrying.
+      if (current === null) return null;
+      const items = current && typeof current === 'object' ? current : {};
+      for (const position of positions) {
+        const previous = items[position.id];
+        if (!previous || typeof previous !== 'object') {
+          missingDecoration = true;
+          return items;
+        }
+        if (!stickerIndex.has(String(previous.stickerId || ''))) {
+          invalidSticker = true;
+          return;
+        }
+      }
+      const nextItems = { ...items };
+      updatedDecorations = positions.map((position) => {
+        const previous = items[position.id];
+        const updated = {
+          id: position.id,
+          stickerId: String(previous.stickerId || ''),
+          x: position.x,
+          y: position.y,
+          createdAt: Number(previous.createdAt) || now,
+          updatedAt: now,
+        };
+        nextItems[position.id] = updated;
+        return updated;
+      });
+      return nextItems;
+    });
+    if (!transaction.committed) {
+      if (invalidSticker) throw new HttpsError('failed-precondition', '스티커 정보를 확인할 수 없습니다.');
+      throw new HttpsError('aborted', '스티커 위치를 저장하지 못했습니다. 다시 시도해 주세요.');
+    }
+    if (missingDecoration) {
+      throw new HttpsError('not-found', '팬페이지 스티커를 찾을 수 없습니다.');
+    }
+    decoration = updatedDecorations;
+    await publishFanpageDecorationEvent(streamerId, 'upsert-many', decoration);
   } else {
     const decorationId = String(data.decorationId || '');
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(decorationId)) {
@@ -224,7 +289,9 @@ exports.gameSeriesFanPageDecoration = onCall({ region: REGION, maxInstances: 20 
       await publishFanpageDecorationEvent(streamerId, 'upsert', decoration);
     }
   }
-  return { ok: true, decoration };
+  return action === 'moveMany'
+    ? { ok: true, decorations: decoration }
+    : { ok: true, decoration };
 });
 
 exports.gameSeriesShopGetOwnedEmotes = onCall({ region: REGION, maxInstances: 20 }, async (request) => {
