@@ -658,7 +658,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   function pageDimensions() {
     return {
       width: Math.max(1, document.documentElement.clientWidth || window.innerWidth),
-      height: Math.max(1, document.documentElement.scrollHeight, document.body.scrollHeight)
+      height: Math.max(1, document.body.scrollHeight)
     };
   }
 
@@ -671,8 +671,12 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   }
 
   function setDecorationPosition(element, decoration, dimensions = pageDimensions()) {
-    element.style.left = `${clampUnit(decoration.x) * dimensions.width}px`;
-    element.style.top = `${clampUnit(decoration.y) * dimensions.height}px`;
+    const halfWidth = element.offsetWidth / 2;
+    const halfHeight = element.offsetHeight / 2;
+    const x = clampUnit(decoration.x) * dimensions.width;
+    const y = clampUnit(decoration.y) * dimensions.height;
+    element.style.left = `${Math.min(Math.max(halfWidth, x), Math.max(halfWidth, dimensions.width - halfWidth))}px`;
+    element.style.top = `${Math.min(Math.max(halfHeight, y), Math.max(halfHeight, dimensions.height - halfHeight))}px`;
   }
 
   function renderFanpageDecorations() {
@@ -680,7 +684,6 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
     decorationStage.replaceChildren();
     if (decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    decorationStage.style.height = `${dimensions.height}px`;
     for (const decoration of fanpageDecorations.values()) {
       const sticker = findSticker(decoration.stickerId);
       if (!sticker) continue;
@@ -712,15 +715,14 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
         item.append(remove);
         item.addEventListener('pointerdown', (event) => startDecorationDrag(event, decoration, item));
       }
-      setDecorationPosition(item, decoration, dimensions);
       decorationStage.append(item);
+      setDecorationPosition(item, decoration, dimensions);
     }
   }
 
   function updateFanpageDecorationPositions() {
     if (gameId !== 'streamerFanPage' || decorationStage.hidden) return;
     const dimensions = pageDimensions();
-    decorationStage.style.height = `${dimensions.height}px`;
     for (const item of decorationStage.children) {
       const decoration = fanpageDecorations.get(item.dataset.decorationId);
       if (decoration) setDecorationPosition(item, decoration, dimensions);
@@ -939,6 +941,20 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   window.addEventListener('game-series-emote-room-change', (event) => setRoom(event.detail?.roomId));
   window.addEventListener('streamer-fanpage-emotes-context-change', (event) => setFanpageContext(event.detail));
   window.addEventListener('resize', updateFanpageDecorationPositions);
+  if (gameId === 'streamerFanPage' && 'ResizeObserver' in window) {
+    const fanpageView = document.getElementById('fanPageView');
+    if (fanpageView) {
+      let positionFrame = 0;
+      const decorationPositionObserver = new ResizeObserver(() => {
+        if (positionFrame) return;
+        positionFrame = window.requestAnimationFrame(() => {
+          positionFrame = 0;
+          updateFanpageDecorationPositions();
+        });
+      });
+      decorationPositionObserver.observe(fanpageView);
+    }
+  }
   if (gameId === 'streamerFanPage') setFanpageContext(window.__streamerFanPageEmotes);
   else if (window.__gameSeriesEmoteRoomId) setRoom(window.__gameSeriesEmoteRoomId);
   loadCatalog().then(() => {
