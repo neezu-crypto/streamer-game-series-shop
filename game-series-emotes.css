@@ -74,10 +74,12 @@
   inset: 0;
   z-index: 2147483001;
   display: grid;
-  place-items: center;
+  align-items: end;
+  justify-items: end;
   padding: 18px;
-  background: rgba(26, 20, 36, .38);
-  backdrop-filter: blur(4px);
+  padding-right: max(18px, env(safe-area-inset-right));
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+  background: rgba(26, 20, 36, .2);
 }
 
 .gs-emote-dialog {
@@ -97,10 +99,12 @@
   inset: 0;
   z-index: 2147483002;
   display: grid;
-  place-items: center;
+  align-items: end;
+  justify-items: end;
   padding: 18px;
-  background: rgba(26, 20, 36, .48);
-  backdrop-filter: blur(4px);
+  padding-right: max(18px, env(safe-area-inset-right));
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+  background: rgba(26, 20, 36, .24);
 }
 
 .gs-emote-login-card {

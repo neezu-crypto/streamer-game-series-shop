@@ -55,7 +55,7 @@ async function install({ appSdk, authSdk, databaseSdk, functionsSdk }) {
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
   const stylesheetUrl = new URL('./game-series-emotes.css', import.meta.url);
-  stylesheetUrl.searchParams.set('v', moduleUrl.searchParams.get('v') || '20261020-free-dice-login');
+  stylesheetUrl.searchParams.set('v', moduleUrl.searchParams.get('v') || '20261028-emote-modal-bottom-right');
   stylesheet.href = stylesheetUrl.href;
   document.head.append(stylesheet);
 
