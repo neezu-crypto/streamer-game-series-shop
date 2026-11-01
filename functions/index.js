@@ -76,6 +76,30 @@ function walletText(value, maxLength, label, { required = true } = {}) {
   return text;
 }
 
+function walletReservedRefundCash(account, exceptRequestId = '') {
+  const reservations = account && account.refundReservations && typeof account.refundReservations === 'object'
+    ? account.refundReservations : {};
+  return Object.entries(reservations).reduce((sum, [requestId, reservation]) => {
+    if (requestId === exceptRequestId) return sum;
+    return sum + Math.max(0, Math.floor(Number(reservation && reservation.cashAmount) || 0));
+  }, 0);
+}
+
+async function releaseWalletRefundReservation(uid, requestId) {
+  const accountRef = db.ref(`${WALLET_ROOT}/accounts/${uid}`);
+  await accountRef.transaction((value) => {
+    if (!value || typeof value !== 'object') return null;
+    const reservations = value.refundReservations && typeof value.refundReservations === 'object'
+      ? { ...value.refundReservations } : {};
+    if (!Object.prototype.hasOwnProperty.call(reservations, requestId)) return value;
+    delete reservations[requestId];
+    const next = { ...value };
+    if (Object.keys(reservations).length) next.refundReservations = reservations;
+    else delete next.refundReservations;
+    return next;
+  }, undefined, false);
+}
+
 function ownedRecordIsActive(value) {
   return value === true || (!!value && typeof value === 'object' && value.active !== false);
 }
@@ -448,6 +472,9 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
   ledgerSnap.forEach((child) => {
     ledger.push({ entryId: child.key, ...(child.val() || {}) });
   });
+  const account = accountSnap.val() || {};
+  const balanceCash = Number(account.balanceCash) || 0;
+  const refundReservedCash = walletReservedRefundCash(account);
   const daily = dailySnap.val() || {};
   const reservedKrw = Object.values(daily.requests || {}).reduce((sum, item) => {
     if (item && !['cancelled', 'rejected'].includes(item.status)) return sum + (Number(item.amountKrw) || 0);
@@ -455,7 +482,9 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
   }, 0);
   return {
     uid,
-    balanceCash: Number((accountSnap.val() || {}).balanceCash) || 0,
+    balanceCash,
+    refundReservedCash,
+    availableRefundCash: Math.max(0, balanceCash - refundReservedCash),
     depositorName: String((profileSnap.val() || {}).depositorName || ''),
     qrDataUrl: String(qrSnap.val() || ''),
     todayReservedKrw: reservedKrw,
@@ -599,19 +628,86 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
   if (!charge || charge.ownerUid !== uid || charge.status !== 'approved') {
     throw new HttpsError('failed-precondition', '환불 신청은 승인된 본인 충전 건만 가능합니다.');
   }
-  const account = (await db.ref(`${WALLET_ROOT}/accounts/${uid}`).get()).val() || {};
-  const cashAmount = Number(charge.cashAmount) || 0;
-  if (cashAmount <= 0 || Number(account.balanceCash || 0) < cashAmount) {
-    throw new HttpsError('failed-precondition', '충전 캐시가 이미 사용되어 전액 환불 가능 잔액이 부족합니다. 고객센터 문의를 이용해 주세요.');
+  const originalCashAmount = Number(charge.cashAmount) || 0;
+  const alreadyRefundedCash = Number(charge.refundedCashAmount) || 0;
+  const chargeRefundLimit = originalCashAmount - alreadyRefundedCash;
+  if (!Number.isSafeInteger(originalCashAmount) || originalCashAmount <= 0 ||
+      !Number.isSafeInteger(chargeRefundLimit) || chargeRefundLimit <= 0) {
+    throw new HttpsError('failed-precondition', '이 충전 건에 환불 가능한 유료 캐시가 없습니다.');
   }
+
+  const accountRef = db.ref(`${WALLET_ROOT}/accounts/${uid}`);
+  let refundCashAmount = 0;
+  let noAvailableBalance = false;
+  let createdReservation = false;
+  const reservationResult = await accountRef.transaction((value) => {
+    refundCashAmount = 0;
+    noAvailableBalance = false;
+    createdReservation = false;
+    if (!value || typeof value !== 'object') { noAvailableBalance = true; return null; }
+    const account = value;
+    const reservations = account.refundReservations && typeof account.refundReservations === 'object'
+      ? { ...account.refundReservations } : {};
+    const existingReservation = reservations[requestId];
+    if (existingReservation) {
+      const existingCash = Number(existingReservation.cashAmount);
+      if (Number.isSafeInteger(existingCash) && existingCash > 0 && existingCash <= chargeRefundLimit) {
+        refundCashAmount = existingCash;
+        return account;
+      }
+      noAvailableBalance = true;
+      return account;
+    }
+    const balance = Math.max(0, Math.floor(Number(account.balanceCash) || 0));
+    const available = Math.max(0, balance - walletReservedRefundCash(account));
+    refundCashAmount = Math.min(chargeRefundLimit, available);
+    if (!Number.isSafeInteger(refundCashAmount) || refundCashAmount <= 0) {
+      refundCashAmount = 0;
+      noAvailableBalance = true;
+      return account;
+    }
+    reservations[requestId] = {
+      cashAmount: refundCashAmount,
+      amountKrw: refundCashAmount * WALLET_KRW_PER_CASH,
+      reservedAt: Date.now(),
+    };
+    createdReservation = true;
+    return { ...account, refundReservations: reservations };
+  }, undefined, false);
+  if (noAvailableBalance || refundCashAmount <= 0) {
+    throw new HttpsError('failed-precondition', '환불 가능한 미사용 잔액이 없습니다.');
+  }
+  if (!reservationResult.committed) {
+    throw new HttpsError('aborted', '환불 가능 잔액을 확보하지 못했습니다. 새로고침해 주세요.');
+  }
+
   let rejected = false;
   const result = await chargeRef.transaction((current) => {
     rejected = false;
     if (!current || current.ownerUid !== uid || current.status !== 'approved') { rejected = true; return current; }
-    return { ...current, status: 'refundRequested', refundReason: reason, refundRequestedAt: Date.now(), updatedAt: Date.now() };
+    const now = Date.now();
+    const next = {
+      ...current,
+      status: 'refundRequested',
+      refundReason: reason,
+      refundCashAmount,
+      refundAmountKrw: refundCashAmount * WALLET_KRW_PER_CASH,
+      refundRequestedAt: now,
+      updatedAt: now,
+    };
+    delete next.refundDecision;
+    delete next.refundAdminNote;
+    delete next.refundReviewedAt;
+    delete next.refundReviewedByUid;
+    delete next.refundAction;
+    delete next.refundStartedAt;
+    return next;
   }, undefined, false);
-  if (rejected || !result.committed) throw new HttpsError('aborted', '환불 신청 상태가 바뀌었습니다. 새로고침해 주세요.');
-  return { ok: true };
+  if (rejected || !result.committed) {
+    if (createdReservation) await releaseWalletRefundReservation(uid, requestId);
+    throw new HttpsError('aborted', '환불 신청 상태가 바뀌었습니다. 새로고침해 주세요.');
+  }
+  return { ok: true, cashAmount: refundCashAmount, amountKrw: refundCashAmount * WALLET_KRW_PER_CASH };
 });
 
 exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
@@ -767,12 +863,46 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
 
   if (action === 'rejectRefund') {
     let invalid = false;
-    const result = await chargeRef.transaction((value) => {
+    const claim = await chargeRef.transaction((value) => {
       invalid = false;
-      if (!value || value.status !== 'refundRequested') { invalid = true; return value; }
-      return { ...value, status: 'approved', refundDecision: 'rejected', refundAdminNote: note, refundReviewedAt: now, updatedAt: now };
+      if (!value) { invalid = true; return null; }
+      if (value.status === 'refundRequested') {
+        return {
+          ...value,
+          status: 'refundRejecting',
+          refundAction: 'rejectRefund',
+          refundStartedAt: now,
+          refundReviewedByUid: reviewerUid,
+        };
+      }
+      if (value.status === 'refundRejecting' && value.refundAction === 'rejectRefund') return value;
+      invalid = true;
+      return value;
     }, undefined, false);
-    if (invalid || !result.committed) throw new HttpsError('failed-precondition', '접수된 환불 신청만 거절할 수 있습니다.');
+    if (invalid || !claim.committed || !['refundRejecting'].includes((claim.snapshot.val() || {}).status)) {
+      throw new HttpsError('failed-precondition', '접수된 환불 신청만 거절할 수 있습니다.');
+    }
+    await releaseWalletRefundReservation(ownerUid, requestId);
+    let finalizeInvalid = false;
+    const result = await chargeRef.transaction((value) => {
+      finalizeInvalid = false;
+      if (!value || value.status !== 'refundRejecting' || value.refundAction !== 'rejectRefund') {
+        finalizeInvalid = true;
+        return value;
+      }
+      return {
+        ...value,
+        status: 'approved',
+        refundDecision: 'rejected',
+        refundAdminNote: note,
+        refundReviewedAt: now,
+        refundAction: null,
+        updatedAt: now,
+      };
+    }, undefined, false);
+    if (finalizeInvalid || !result.committed) {
+      throw new HttpsError('aborted', '환불 거절을 마무리하지 못했습니다. 같은 작업을 다시 실행해 주세요.');
+    }
     return { ok: true };
   }
 
@@ -790,26 +920,55 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
   if (invalidRefund || !refundClaim.committed || !['refundProcessing', 'refunded'].includes(refundState.status)) {
     throw new HttpsError('failed-precondition', '접수된 환불 신청만 처리할 수 있습니다.');
   }
+  const refundCashAmount = Number(refundState.refundCashAmount) || cashAmount;
+  const refundAmountKrw = Number(refundState.refundAmountKrw) || refundCashAmount * WALLET_KRW_PER_CASH;
+  if (!Number.isSafeInteger(refundCashAmount) || refundCashAmount <= 0 || refundCashAmount > cashAmount ||
+      !Number.isSafeInteger(refundAmountKrw) || refundAmountKrw !== refundCashAmount * WALLET_KRW_PER_CASH) {
+    throw new HttpsError('failed-precondition', '환불 금액 데이터가 올바르지 않습니다. 신청 내역을 다시 확인해 주세요.');
+  }
   const accountRef = base.child(`accounts/${ownerUid}`);
   let insufficientBalance = false;
+  let reservationMismatch = false;
   const refundResult = await accountRef.transaction((value) => {
     insufficientBalance = false;
+    reservationMismatch = false;
     const account = value && typeof value === 'object' ? value : {};
     const processed = account.processedRefunds && typeof account.processedRefunds === 'object' ? { ...account.processedRefunds } : {};
     if (processed[requestId]) return account;
     const balance = Number(account.balanceCash) || 0;
-    if (balance < cashAmount) { insufficientBalance = true; return value == null ? null : value; }
+    const reservations = account.refundReservations && typeof account.refundReservations === 'object'
+      ? { ...account.refundReservations } : {};
+    const reservation = reservations[requestId];
+    if (reservation && Number(reservation.cashAmount) !== refundCashAmount) {
+      reservationMismatch = true;
+      return value == null ? null : value;
+    }
+    if (balance < refundCashAmount || balance - walletReservedRefundCash(account, requestId) < refundCashAmount) {
+      insufficientBalance = true;
+      return value == null ? null : value;
+    }
     processed[requestId] = true;
-    return { ...account, balanceCash: balance - cashAmount, processedRefunds: processed };
+    delete reservations[requestId];
+    const next = {
+      ...account,
+      balanceCash: balance - refundCashAmount,
+      processedRefunds: processed,
+    };
+    if (Object.keys(reservations).length) next.refundReservations = reservations;
+    else delete next.refundReservations;
+    return next;
   }, undefined, false);
+  if (reservationMismatch) throw new HttpsError('failed-precondition', '환불 예약액이 신청 금액과 다릅니다. 신청을 다시 확인해 주세요.');
   if (insufficientBalance) throw new HttpsError('failed-precondition', '잔액이 환불액보다 적어 환불을 완료할 수 없습니다.');
   if (!refundResult.committed) throw new HttpsError('aborted', '환불 처리를 마치지 못했습니다. 다시 검수해 주세요.');
   await base.child(`ledger/${ownerUid}/${requestId}_refund`).set({
-    kind: 'refund', requestId, amountKrw, cashAmount, createdAt: now, createdByUid: reviewerUid,
+    kind: 'refund', requestId, amountKrw: refundAmountKrw, cashAmount: refundCashAmount,
+    originalAmountKrw: amountKrw, originalCashAmount: cashAmount, createdAt: now, createdByUid: reviewerUid,
   });
   await chargeRef.update({
     status: 'refunded', refundDecision: 'completed', refundAdminNote: note,
+    refundCashAmount, refundAmountKrw, refundedCashAmount: refundCashAmount,
     refundReviewedAt: now, refundReviewedByUid: reviewerUid, refundedAt: now, updatedAt: now,
   });
-  return { ok: true, cashAmount };
+  return { ok: true, cashAmount: refundCashAmount, amountKrw: refundAmountKrw };
 });

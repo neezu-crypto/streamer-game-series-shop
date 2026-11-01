@@ -64,7 +64,7 @@ function createRequestId() {
 const STATUS_LABELS = {
   pending: '입금 확인 대기', processing: '지급 처리 중', approved: '승인 · 캐시 지급 완료',
   rejected: '신청 거절', cancelled: '신청 취소', refundRequested: '환불 검수 대기',
-  refundProcessing: '환불 처리 중', refunded: '환불 완료', open: '답변 대기', closed: '처리 완료',
+  refundProcessing: '환불 처리 중', refundRejecting: '환불 거절 처리 중', refunded: '환불 완료', open: '답변 대기', closed: '처리 완료',
 };
 
 function setGate(message, title = '관리자 권한을 확인할 수 없습니다') {
@@ -91,9 +91,14 @@ function renderChargeRequests(items) {
     const action = item.status === 'pending'
       ? `<button class="wallet-small-action" type="button" data-wallet-cancel="${escapeHtml(item.requestId)}">신청 취소</button>`
       : item.status === 'approved'
-        ? `<button class="wallet-small-action" type="button" data-wallet-refund="${escapeHtml(item.requestId)}">환불 신청</button>`
+        ? `<button class="wallet-small-action" type="button" data-wallet-refund="${escapeHtml(item.requestId)}" data-wallet-refund-cash="${Number(item.cashAmount) || 0}">환불 신청</button>`
         : '';
-    return `<article class="wallet-list-row"><div><strong>${formatWon(item.amountKrw)} · ${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>입금자명 ${escapeHtml(item.depositorName || '-')} · ${formatDate(item.createdAt)}</span>${item.reviewNote ? `<small>검수 메모: ${escapeHtml(item.reviewNote)}</small>` : ''}${item.refundAdminNote ? `<small>환불 메모: ${escapeHtml(item.refundAdminNote)}</small>` : ''}</div><div class="wallet-list-trailing"><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b>${action}</div></article>`;
+    const showRefund = ['refundRequested', 'refundProcessing', 'refundRejecting', 'refunded'].includes(item.status);
+    const refundCash = showRefund ? Number(item.refundCashAmount) || (item.status === 'refunded' ? Number(item.cashAmount) || 0 : 0) : 0;
+    const refundAmount = showRefund ? Number(item.refundAmountKrw) || refundCash * 100 : 0;
+    const refundDetail = refundCash > 0
+      ? `<small>환불 ${refundAmount.toLocaleString('ko-KR')}원 · ${refundCash.toLocaleString('ko-KR')}캐시</small>` : '';
+    return `<article class="wallet-list-row"><div><strong>${formatWon(item.amountKrw)} · ${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>입금자명 ${escapeHtml(item.depositorName || '-')} · ${formatDate(item.createdAt)}</span>${refundDetail}${item.reviewNote ? `<small>검수 메모: ${escapeHtml(item.reviewNote)}</small>` : ''}${item.refundAdminNote ? `<small>환불 메모: ${escapeHtml(item.refundAdminNote)}</small>` : ''}</div><div class="wallet-list-trailing"><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b>${action}</div></article>`;
   }).join('');
   host.querySelectorAll('[data-wallet-cancel]').forEach((button) => button.addEventListener('click', async () => {
     if (!window.confirm('대기 중인 충전 신청을 취소할까요? 실제로 입금한 경우 취소만으로 환불되지는 않습니다.')) return;
@@ -101,9 +106,23 @@ function renderChargeRequests(items) {
     catch (error) { window.alert(`취소 실패: ${error.message || error}`); }
   }));
   host.querySelectorAll('[data-wallet-refund]').forEach((button) => button.addEventListener('click', async () => {
-    const reason = window.prompt('환불 사유를 입력해 주세요. 환불은 운영자가 실제 계좌 반환을 확인한 뒤 처리합니다.');
-    if (!reason || !reason.trim()) return;
-    try { await submitRefund({ requestId: button.dataset.walletRefund, reason: reason.trim() }); await refreshWallet(); }
+    try {
+      const latest = await getWalletState();
+      const availableCash = Number(latest.data.availableRefundCash ?? latest.data.balanceCash) || 0;
+      const refundCash = Math.min(Number(button.dataset.walletRefundCash) || 0, availableCash);
+      if (refundCash <= 0) {
+        window.alert('현재 환불할 수 있는 미사용 캐시가 없습니다.');
+        return;
+      }
+      const refundKrw = refundCash * 100;
+      if (!window.confirm(`미사용 잔액 ${refundCash.toLocaleString('ko-KR')}캐시 (${formatWon(refundKrw)})의 환불을 신청할까요? 검수 중에는 신청액을 사용할 수 없습니다.`)) return;
+      const reason = window.prompt('환불 사유를 입력해 주세요. 계좌 반환은 관리자가 실제 송금 후 완료 처리합니다.');
+      if (!reason || !reason.trim()) return;
+      const response = await submitRefund({ requestId: button.dataset.walletRefund, reason: reason.trim() });
+      const result = response.data || {};
+      window.alert(`환불 신청 접수: ${Number(result.cashAmount || refundCash).toLocaleString('ko-KR')}캐시 (${formatWon(result.amountKrw || refundKrw)})`);
+      await refreshWallet();
+    }
     catch (error) { window.alert(`환불 신청 실패: ${error.message || error}`); }
   }));
 }
@@ -133,6 +152,12 @@ function renderLedger(items) {
 function renderWallet(data) {
   walletState = data;
   $('walletBalance').textContent = Number(data.balanceCash || 0).toLocaleString('ko-KR');
+  const reserved = Number(data.refundReservedCash) || 0;
+  const reserveNote = $('walletRefundReserve');
+  reserveNote.hidden = reserved <= 0;
+  reserveNote.textContent = reserved > 0
+    ? `환불 검수 중인 ${reserved.toLocaleString('ko-KR')}캐시는 처리 완료 또는 거절 전까지 사용할 수 없습니다.`
+    : '';
   $('walletRemaining').textContent = Number(data.todayRemainingKrw || 0).toLocaleString('ko-KR');
   $('walletRemainingInline').textContent = formatWon(data.todayRemainingKrw);
   $('walletDepositorName').value = data.depositorName || '';
