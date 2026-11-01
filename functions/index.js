@@ -445,7 +445,9 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
     if (item.ownerUid === uid) supportRequests.push({ requestId: child.key, ...item });
   });
   const ledger = [];
-  ledgerSnap.forEach((child) => ledger.push({ entryId: child.key, ...(child.val() || {}) }));
+  ledgerSnap.forEach((child) => {
+    ledger.push({ entryId: child.key, ...(child.val() || {}) });
+  });
   const daily = dailySnap.val() || {};
   const reservedKrw = Object.values(daily.requests || {}).reduce((sum, item) => {
     if (item && !['cancelled', 'rejected'].includes(item.status)) return sum + (Number(item.amountKrw) || 0);
@@ -658,9 +660,13 @@ exports.gameSeriesWalletAdminList = onCall({ region: REGION, maxInstances: 10 },
     root.child('config').get(),
   ]);
   const chargeRequests = [];
-  charges.forEach((child) => chargeRequests.push({ requestId: child.key, ...(child.val() || {}) }));
+  charges.forEach((child) => {
+    chargeRequests.push({ requestId: child.key, ...(child.val() || {}) });
+  });
   const supportRequests = [];
-  support.forEach((child) => supportRequests.push({ requestId: child.key, ...(child.val() || {}) }));
+  support.forEach((child) => {
+    supportRequests.push({ requestId: child.key, ...(child.val() || {}) });
+  });
   return {
     qrConfigured: !!(config.val() || {}).qrDataUrl,
     chargeRequests: chargeRequests.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)),

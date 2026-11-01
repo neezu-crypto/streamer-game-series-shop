@@ -36,7 +36,7 @@ class Snapshot {
     if (!this.value || typeof this.value !== 'object') return false;
     let keys = Object.keys(this.value).sort();
     if (this.limit) keys = keys.slice(-this.limit);
-    for (const key of keys) if (callback({ key, val: () => structuredClone(this.value[key]) }) === true) return true;
+    for (const key of keys) if (callback({ key, val: () => structuredClone(this.value[key]) })) return true;
     return false;
   }
 }
@@ -141,6 +141,7 @@ async function main() {
   await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'completeRefund', note: '중복 환불 재시도' });
   overview = await call('gameSeriesWalletGetAdminState', admin);
   assert.equal(overview.balanceCash, 0, '중복 환불 재시도도 한 번만 차감되어야 함');
+  assert.equal(overview.ledger.length, 4, '캐시 변동 내역은 충전과 환불 모두 반환되어야 함');
   assert.equal(overview.ledger.filter((entry) => entry.kind === 'refund').length, 2);
 
   await call('gameSeriesWalletSubmitSupport', admin, {
