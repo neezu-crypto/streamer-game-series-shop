@@ -53,9 +53,19 @@ class Reference {
     writePath(this.path, { ...previous, ...structuredClone(value) });
   }
   async transaction(update) {
-    const next = update(readPath(this.path));
-    if (next === undefined) return { committed: false, snapshot: new Snapshot(readPath(this.path)) };
-    writePath(this.path, next);
+    // Firebase Admin's updater may first see its local null before the server
+    // snapshot. Returning undefined aborts immediately; a value causes RTDB to
+    // compare against server state and retry the updater after a conflict.
+    const remote = readPath(this.path);
+    const localNext = update(null);
+    if (localNext === undefined) return { committed: false, snapshot: new Snapshot(remote) };
+    if (JSON.stringify(remote) !== 'null') {
+      const serverNext = update(remote);
+      if (serverNext === undefined) return { committed: false, snapshot: new Snapshot(remote) };
+      writePath(this.path, serverNext);
+    } else {
+      writePath(this.path, localNext);
+    }
     return { committed: true, snapshot: new Snapshot(readPath(this.path)) };
   }
 }
@@ -118,19 +128,27 @@ async function main() {
   assert.equal(overview.todayReservedKrw, 1000, '거절된 신청은 일일 한도에서 제외되어야 함');
   assert.equal(overview.ledger.filter((entry) => entry.kind === 'charge').length, 1);
 
+  await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-refund-0001', amountKrw: 1000, depositorName: '테스트 입금자' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'approve', note: '테스트 승인' });
+  await call('gameSeriesWalletSubmitRefund', admin, { requestId: 'charge-refund-0001', reason: '테스트 환불' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'completeRefund', note: '테스트 회수' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'completeRefund', note: '중복 환불 재시도' });
+  overview = await call('gameSeriesWalletGetAdminState', admin);
+  assert.equal(overview.balanceCash, 10, '두 번째 테스트 승인·환불 후 첫 충전 잔액은 남아 있어야 함');
+
   await call('gameSeriesWalletSubmitRefund', admin, { requestId: 'charge-valid-0001', reason: '테스트 환불' });
   await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'completeRefund', note: '은행 반환 테스트 완료' });
   await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'completeRefund', note: '중복 환불 재시도' });
   overview = await call('gameSeriesWalletGetAdminState', admin);
   assert.equal(overview.balanceCash, 0, '중복 환불 재시도도 한 번만 차감되어야 함');
-  assert.equal(overview.ledger.filter((entry) => entry.kind === 'refund').length, 1);
+  assert.equal(overview.ledger.filter((entry) => entry.kind === 'refund').length, 2);
 
   await call('gameSeriesWalletSubmitSupport', admin, {
     requestId: 'support-uid-0001', category: 'wrong-payer', amountKrw: 1500,
     relatedChargeRequestId: 'charge-valid-0001', message: '테스트 문의',
   });
   const adminList = await call('gameSeriesWalletAdminList', admin);
-  assert.equal(adminList.chargeRequests.length, 3);
+  assert.equal(adminList.chargeRequests.length, 4);
   assert.equal(adminList.supportRequests.length, 1);
   assert.equal(adminList.qrConfigured, true);
   await call('gameSeriesWalletAdminReview', admin, { kind: 'support', requestId: 'support-uid-0001', action: 'close', note: '테스트 답변' });

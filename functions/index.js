@@ -572,7 +572,11 @@ exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10
   let notCancelable = false;
   const result = await chargeRef.transaction((current) => {
     notCancelable = false;
-    if (!current || current.ownerUid !== uid) { notCancelable = true; return; }
+    // Admin SDK transactions may first call the updater with a local null before
+    // loading the server value. Return null to let RTDB compare/retry with the
+    // current server record; undefined aborts immediately and makes existing
+    // requests impossible to cancel.
+    if (!current || current.ownerUid !== uid) { notCancelable = true; return null; }
     if (current.status === 'cancelled') return current;
     if (current.status !== 'pending') { notCancelable = true; return current; }
     return { ...current, status: 'cancelled', updatedAt: Date.now(), cancelledByUid: uid };
@@ -680,7 +684,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     let invalid = false;
     const result = await supportRef.transaction((current) => {
       invalid = false;
-      if (!current) { invalid = true; return; }
+      if (!current) { invalid = true; return null; }
       return {
         ...current,
         status: action === 'close' ? 'closed' : 'open',
@@ -724,7 +728,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     let invalid = false;
     const claim = await chargeRef.transaction((value) => {
       invalid = false;
-      if (!value) { invalid = true; return; }
+      if (!value) { invalid = true; return null; }
       if (value.status === 'pending') return { ...value, status: 'processing', reviewAction: 'approve', reviewStartedAt: now, reviewedByUid: reviewerUid };
       if (value.status === 'processing' && value.reviewAction === 'approve') return value;
       if (value.status === 'approved') return value;
@@ -769,7 +773,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
   let invalidRefund = false;
   const refundClaim = await chargeRef.transaction((value) => {
     invalidRefund = false;
-    if (!value) { invalidRefund = true; return; }
+    if (!value) { invalidRefund = true; return null; }
     if (value.status === 'refundRequested') return { ...value, status: 'refundProcessing', refundAction: 'completeRefund', refundStartedAt: now, refundReviewedByUid: reviewerUid };
     if (value.status === 'refundProcessing' && value.refundAction === 'completeRefund') return value;
     if (value.status === 'refunded') return value;
@@ -788,7 +792,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     const processed = account.processedRefunds && typeof account.processedRefunds === 'object' ? { ...account.processedRefunds } : {};
     if (processed[requestId]) return account;
     const balance = Number(account.balanceCash) || 0;
-    if (balance < cashAmount) { insufficientBalance = true; return; }
+    if (balance < cashAmount) { insufficientBalance = true; return value == null ? null : value; }
     processed[requestId] = true;
     return { ...account, balanceCash: balance - cashAmount, processedRefunds: processed };
   }, undefined, false);
