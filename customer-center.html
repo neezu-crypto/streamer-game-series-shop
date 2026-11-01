@@ -64,7 +64,8 @@
           <form id="walletChargeForm" class="wallet-form" autocomplete="off">
             <label for="walletAmount">입금할 금액</label>
             <div class="wallet-input-suffix"><input id="walletAmount" name="charge_amount_q8v2" type="number" min="1000" max="100000" step="100" inputmode="numeric" autocomplete="off" required><span>원</span></div>
-            <small>최소 1,000원 · 100원 단위 · 오늘 잔여 한도 <b id="walletRemainingInline">100,000원</b></small>
+            <small><span id="walletLimitMessage">최소 1,000원 · 100원 단위</span> · 오늘 잔여 한도 <b id="walletRemainingInline">100,000원</b></small>
+            <small id="walletAmountHint" role="status" aria-live="polite"></small>
             <div class="wallet-cash-preview">충전 후 지급 예정 <strong><span id="walletCashPreview">0</span>캐시</strong></div>
             <label for="walletDepositorName">입금자명</label>
             <input id="walletDepositorName" name="depositor_name_n3m7" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>

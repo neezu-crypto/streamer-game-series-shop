@@ -57,6 +57,12 @@ function formatDate(value) {
     : '시간 정보 없음';
 }
 
+function availableChargeLimitKrw() {
+  const remaining = walletState ? Number(walletState.todayRemainingKrw) : 100000;
+  if (!Number.isFinite(remaining)) return 0;
+  return Math.min(100000, Math.max(0, Math.floor(remaining / 100) * 100));
+}
+
 function createRequestId() {
   return `${Date.now()}_${crypto.randomUUID()}`;
 }
@@ -76,7 +82,7 @@ function setGate(message, title = '관리자 권한을 확인할 수 없습니�
 
 function setBusy(value) {
   busy = value;
-  $('walletChargeSubmit').disabled = value;
+  $('walletChargeSubmit').disabled = value || (!!walletState && availableChargeLimitKrw() < 1000);
   $('walletRefresh').disabled = value;
   $('walletSupportForm').querySelector('button[type="submit"]').disabled = value;
 }
@@ -191,10 +197,26 @@ async function refreshWallet(force = false) {
 }
 
 function updateCashPreview() {
-  const amount = Number($('walletAmount').value) || 0;
-  $('walletCashPreview').textContent = Number.isInteger(amount) && amount % 100 === 0
+  const input = $('walletAmount');
+  const limitKrw = availableChargeLimitKrw();
+  const entered = input.value === '' ? NaN : Number(input.value);
+  let adjusted = false;
+  input.max = String(limitKrw);
+  if (Number.isFinite(entered) && entered > limitKrw) {
+    input.value = limitKrw >= 1000 ? String(limitKrw) : '';
+    adjusted = limitKrw >= 1000;
+  }
+  const amount = Number(input.value) || 0;
+  $('walletLimitMessage').textContent = limitKrw < 1000 && walletState
+    ? '오늘 남은 한도가 최소 충전액보다 적어 신청할 수 없습니다.'
+    : '최소 1,000원 · 100원 단위';
+  $('walletAmountHint').textContent = adjusted
+    ? `입력 금액을 오늘 잔여 한도 ${formatWon(limitKrw)}으로 조정했습니다.`
+    : '';
+  $('walletCashPreview').textContent = Number.isInteger(amount) && amount >= 1000 && amount <= limitKrw && amount % 100 === 0
     ? (amount / 100).toLocaleString('ko-KR')
     : '0';
+  $('walletChargeSubmit').disabled = busy || (!!walletState && limitKrw < 1000);
 }
 
 async function initializeAdmin(user) {
