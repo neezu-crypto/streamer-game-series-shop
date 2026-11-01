@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1eb">
+  <meta name="description" content="스트리머 게임 시리즈 통합 캐시와 고객센터">
+  <title>통합 캐시 · 고객센터 — 게임 시리즈</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="wallet.css">
+  <script type="module" src="wallet.js"></script>
+</head>
+<body class="wallet-page">
+  <header class="site-header wallet-header">
+    <a class="brand" href="./" aria-label="게임 시리즈 상점 홈">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>WALLET · SUPPORT</small></span>
+    </a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a href="./">상점</a>
+      <a class="active" href="customer-center.html">통합 캐시·고객센터</a>
+    </nav>
+    <div class="wallet-auth"><span id="walletAuthStatus">로그인이 필요합니다</span><button id="walletAuthButton" class="series-link" type="button">관리자 로그인</button></div>
+  </header>
+
+  <main class="wallet-main">
+    <section class="wallet-intro">
+      <p class="eyebrow section-eyebrow">STREAMER GAME SERIES</p>
+      <h1>통합 캐시 <em>충전·고객센터</em></h1>
+      <p>이 페이지는 관리자 전용입니다. 모든 신청과 검수는 Firebase 서버에서 관리자 권한을 확인합니다.</p>
+    </section>
+
+    <section id="walletGate" class="wallet-gate" aria-live="polite">
+      <div class="wallet-gate-icon" aria-hidden="true">🔐</div>
+      <h2 id="walletGateTitle">관리자 로그인이 필요합니다</h2>
+      <p id="walletGateMessage">로그인한 뒤 서버에서 관리 권한을 확인합니다.</p>
+      <button id="walletGateLogin" class="wallet-primary" type="button">Google 로그인</button>
+    </section>
+
+    <div id="walletApp" hidden>
+      <section class="wallet-balance-card">
+        <div><p class="eyebrow">MY BALANCE</p><h2><span id="walletBalance">0</span> <small>캐시</small></h2><p>충전 비율 100원 = 1캐시</p></div>
+        <div class="wallet-limit"><span>오늘 남은 신청 한도</span><strong><span id="walletRemaining">100,000</span>원</strong><small>한국시간 기준 · 하루 최대 100,000원</small></div>
+        <button id="walletOpenCharge" class="wallet-primary" type="button">캐시 충전</button>
+      </section>
+
+      <section class="wallet-card" id="charge">
+        <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2>캐시 충전</h2></div></div>
+        <p class="wallet-hint">충전 금액을 입력하고 입금자명을 확인한 뒤 신청하세요. 입금 계좌 QR과 신청 양식은 버튼을 누르면 열립니다.</p>
+      </section>
+
+      <dialog id="walletChargeModal" class="wallet-modal" aria-labelledby="walletChargeModalTitle">
+        <section class="wallet-card wallet-modal-card">
+          <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2 id="walletChargeModalTitle">통합 캐시 충전하기</h2></div><button id="walletCloseCharge" class="wallet-modal-close" type="button" aria-label="충전 모달 닫기">×</button></div>
+          <p class="wallet-hint">입금 QR을 스캔해 이체한 다음 신청해 주세요. 입금 확인은 자동이 아니며, 통합 관리 센터에서 확인 후 캐시를 지급합니다.</p>
+        <div class="wallet-charge-grid">
+          <div class="wallet-qr-panel">
+            <div id="walletQrEmpty" class="wallet-qr-empty">관리자가 입금 QR을 등록하면 여기에 표시됩니다.</div>
+            <img id="walletQrImage" alt="입금 계좌 QR 코드" hidden>
+            <label class="wallet-file-label" for="walletQrFile">관리자 QR 등록·변경</label>
+            <input id="walletQrFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <small id="walletQrStatus">QR 이미지는 관리자 전용 Firebase 경로에 보관됩니다.</small>
+          </div>
+          <form id="walletChargeForm" class="wallet-form" autocomplete="off">
+            <label for="walletAmount">입금할 금액</label>
+            <div class="wallet-input-suffix"><input id="walletAmount" name="charge_amount_q8v2" type="number" min="1000" max="100000" step="100" inputmode="numeric" autocomplete="off" required><span>원</span></div>
+            <small>최소 1,000원 · 100원 단위 · 오늘 잔여 한도 <b id="walletRemainingInline">100,000원</b></small>
+            <div class="wallet-cash-preview">충전 후 지급 예정 <strong><span id="walletCashPreview">0</span>캐시</strong></div>
+            <label for="walletDepositorName">입금자명</label>
+            <input id="walletDepositorName" name="depositor_name_n3m7" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+            <small>신청한 입금자명은 다음 신청에도 사용할 수 있도록 저장됩니다. 브라우저 자동완성은 사용하지 않습니다.</small>
+            <label class="wallet-consent"><input id="walletChargePolicy" type="checkbox" required><span>충전 운영 기준을 확인했습니다. 입금 확인 후 지급되며, 신청 취소·환불·오입금은 아래 고객센터 운영 기준을 따릅니다.</span></label>
+            <button id="walletChargeSubmit" class="wallet-primary" type="submit">충전 신청</button>
+            <div id="walletChargeStatus" class="wallet-status" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+        </section>
+      </dialog>
+
+      <section class="wallet-card">
+        <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">HISTORY</p><h2>충전 신청 내역</h2></div><button id="walletRefresh" class="wallet-secondary" type="button">새로고침</button></div>
+        <div id="walletRequestList" class="wallet-list"></div>
+      </section>
+
+      <section class="wallet-card">
+        <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">SUPPORT</p><h2>고객센터</h2></div></div>
+        <article class="wallet-privacy-notice">
+          <h3>개인정보 처리 안내</h3>
+          <p>충전과 문의 처리를 위해 Firebase 로그인 UID, 입금자명, 신청 금액·상태·시각, 캐시 잔액·변동 내역 및 문의 내용을 저장합니다. 계좌 QR에는 계좌·예금주 정보가 포함될 수 있으며, 관리자 전용 서버 저장소에 보관됩니다.</p>
+          <p>데이터는 공유 Firebase 프로젝트의 비공개 <code>gameSeriesWallet/</code> 경로에 저장되고, 서버 함수가 관리자 UID를 확인한 뒤에만 조회·처리합니다. 브라우저가 데이터베이스를 직접 읽거나 쓰지 않습니다.</p>
+          <p class="wallet-policy-note">현재 초기 운영안에는 보유 기간과 정기 삭제 시점이 확정되어 있지 않습니다. 공개 판매 전에 보유 기간·삭제 절차와 개인정보 처리방침을 확정해야 합니다.</p>
+        </article>
+        <div class="wallet-policy-grid">
+          <article><h3>충전 운영 기준</h3><ul><li>1캐시는 100원이며, 1회 최소 충전 신청은 1,000원입니다.</li><li>하루 신청 한도는 한국시간 기준 100,000원입니다. 취소·거절된 신청은 한도에서 제외하고, 승인된 입금액은 환불 후에도 해당 일자의 총 입금액으로 계산합니다.</li><li>충전 신청 후 실제 입금이 확인되면 관리자가 수동으로 승인합니다. 신청만으로는 캐시가 지급되지 않습니다.</li></ul></article>
+          <article><h3>취소·환불·오입금 운영안</h3><ul><li>검수 전 대기 신청은 취소할 수 있습니다. 이미 입금했다면 취소만으로 환불되지 않으므로 고객센터에 알려 주세요.</li><li>승인된 충전 건은 해당 건의 캐시를 사용하지 않았고 잔액이 충분한 경우 전액 환불을 신청할 수 있습니다. 실제 계좌 반환은 관리자가 별도로 확인·처리합니다.</li><li>캐시를 사용했거나 입금자명·금액이 다른 경우, 중복·초과 입금은 고객센터로 접수해 건별 확인합니다. 자동 환불·자동 입금 확인은 지원하지 않습니다.</li></ul><p class="wallet-policy-note">이 문구는 관리자 전용 초기 운영안이며, 공개 판매 전에 관련 법률·세무 검토와 최종 약관 확정이 필요합니다.</p></article>
+        </div>
+        <form id="walletSupportForm" class="wallet-form wallet-support-form" autocomplete="off">
+          <label for="walletSupportCategory">문의 유형</label>
+          <select id="walletSupportCategory" required><option value="deposit-mismatch">입금 확인·금액 차이</option><option value="wrong-payer">입금자명·오입금</option><option value="refund">환불 문의</option><option value="other">기타</option></select>
+          <div class="wallet-support-meta"><label>관련 신청 번호 <input id="walletSupportChargeId" type="text" maxlength="80" autocomplete="off" placeholder="선택 입력"></label><label>실제 입금액 <input id="walletSupportAmount" type="number" min="0" max="10000000" step="100" autocomplete="off" placeholder="선택 입력"></label></div>
+          <label for="walletSupportMessage">문의 내용</label><textarea id="walletSupportMessage" maxlength="1200" rows="4" required placeholder="입금 날짜·금액 등 확인에 필요한 내용을 적어 주세요."></textarea>
+          <button class="wallet-secondary" type="submit">문의 접수</button><div id="walletSupportStatus" class="wallet-status" role="status" aria-live="polite"></div>
+        </form>
+        <div id="walletSupportList" class="wallet-list"></div>
+      </section>
+
+      <section class="wallet-card">
+        <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CASH LEDGER</p><h2>캐시 변동 내역</h2></div></div>
+        <div id="walletLedgerList" class="wallet-list"></div>
+      </section>
+      <div id="walletPageStatus" class="wallet-page-status" role="status" aria-live="polite"></div>
+    </div>
+  </main>
+  <footer class="site-footer"><a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span></a><p>스트리머 게임 시리즈 통합 캐시 · 관리자 전용</p><a href="./">상점으로 돌아가기</a></footer>
+</body>
+</html>
