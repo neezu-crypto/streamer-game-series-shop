@@ -150,8 +150,19 @@ function renderLedger(items) {
     return;
   }
   host.innerHTML = items.map((item) => {
-    const positive = item.kind === 'charge';
-    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>${positive ? '충전 승인' : '충전 환불'} · ${formatWon(item.amountKrw)} · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${positive ? '지급' : '환불'}</b></article>`;
+    const kind = String(item.kind || '');
+    const chestPurchase = kind === 'treasureChestPurchase';
+    const chestCancellation = kind === 'treasureChestCancellation';
+    const positive = kind === 'charge' || chestCancellation;
+    const cashAmount = Number(item.cashAmount || 0);
+    const title = chestPurchase
+      ? `보물상자 ${Number(item.paidChestCount || 0)}개 구매${Number(item.bonusChestCount || 0) ? ` · 보너스 ${Number(item.bonusChestCount).toLocaleString('ko-KR')}개` : ''}`
+      : chestCancellation
+        ? `보물상자 ${Number(item.chestCount || 0)}개 취소`
+        : (positive ? '충전 승인' : '충전 환불');
+    const badge = chestPurchase ? '구매' : chestCancellation ? '취소' : (positive ? '지급' : '환불');
+    const equivalent = chestPurchase || chestCancellation ? `${formatWon(item.amountKrw)} 상당` : formatWon(item.amountKrw);
+    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${cashAmount.toLocaleString('ko-KR')}캐시</strong><span>${title} · ${equivalent} · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${badge}</b></article>`;
   }).join('');
 }
 
