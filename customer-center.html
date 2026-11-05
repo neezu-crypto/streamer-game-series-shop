@@ -7,8 +7,8 @@
   <meta name="description" content="스트리머 게임 시리즈 통합 캐시와 고객센터">
   <title>통합 캐시 · 고객센터 — 게임 시리즈</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="wallet.css?v=20261106-tabs-review-fix">
-  <script type="module" src="wallet.js?v=20261106-tabs-review-fix"></script>
+  <link rel="stylesheet" href="wallet.css?v=20261106-viewer-charge1">
+  <script type="module" src="wallet.js?v=20261106-viewer-charge1"></script>
 </head>
 <body class="wallet-page">
   <header class="site-header wallet-header">
@@ -20,20 +20,20 @@
       <a href="./">상점</a>
       <a class="active" href="customer-center.html">통합 캐시·고객센터</a>
     </nav>
-    <div class="wallet-auth"><span id="walletAuthStatus">로그인이 필요합니다</span><button id="walletAuthButton" class="series-link" type="button">관리자 로그인</button></div>
+    <div class="wallet-auth"><span id="walletAuthStatus">로그인이 필요합니다</span><button id="walletAuthButton" class="series-link" type="button">Google 로그인</button></div>
   </header>
 
   <main class="wallet-main">
     <section class="wallet-intro">
       <p class="eyebrow section-eyebrow">STREAMER GAME SERIES</p>
       <h1>통합 캐시 <em>충전·고객센터</em></h1>
-      <p>이 페이지는 관리자 전용입니다. 모든 신청과 검수는 Firebase 서버에서 관리자 권한을 확인합니다.</p>
+      <p>인증 스트리머는 시청자 후원을 통해 본인 계정에 캐시를 적립할 수 있고, 일반 로그인 유저는 직접 QR 후원으로 본인 캐시를 충전할 수 있습니다.</p>
     </section>
 
     <section id="walletGate" class="wallet-gate" aria-live="polite">
       <div class="wallet-gate-icon" aria-hidden="true">🔐</div>
-      <h2 id="walletGateTitle">관리자 로그인이 필요합니다</h2>
-      <p id="walletGateMessage">로그인한 뒤 서버에서 관리 권한을 확인합니다.</p>
+      <h2 id="walletGateTitle">Google 로그인이 필요합니다</h2>
+      <p id="walletGateMessage">로그인하면 본인 캐시 충전 신청과 내역을 확인할 수 있습니다.</p>
       <button id="walletGateLogin" class="wallet-primary" type="button">Google 로그인</button>
     </section>
 
@@ -57,7 +57,7 @@
       <section id="walletPanelCharge" class="wallet-tabpanel" role="tabpanel" aria-labelledby="walletTabCharge" hidden>
       <section class="wallet-card" id="charge">
         <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2>캐시 충전</h2></div></div>
-        <p class="wallet-hint">SOOP 별풍선 후원 신청을 접수한 뒤 QR로 후원해 주세요. 후원 완료 알림은 자동 확인이나 캐시 지급이 아니며, 관리자가 실제 후원 내역을 대조한 후 승인합니다.</p>
+        <p id="walletChargeTabHint" class="wallet-hint">계정 유형에 맞는 SOOP 별풍선 충전 방식을 안내합니다. 후원 완료 알림은 자동 확인이나 캐시 지급이 아니며, 관리자가 실제 후원 내역을 대조한 후 승인합니다.</p>
         <button id="walletOpenChargeFromTab" class="wallet-primary" type="button">충전 신청 시작</button>
       </section>
       </section>
@@ -67,7 +67,7 @@
           <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2 id="walletChargeModalTitle">통합 캐시 충전하기</h2></div><button id="walletCloseCharge" class="wallet-modal-close" type="button" aria-label="충전 모달 닫기">×</button></div>
           <section id="walletChargeIntro" class="wallet-card">
             <h3>별풍선 후원 충전 안내</h3>
-            <p>신청 시 SOOP 후원자 닉네임·아이디와 후원할 별풍선 수량을 입력합니다. 신청 접수 후 QR로 별풍선을 후원하고 직접 후원 완료를 알려 주세요.</p>
+            <p id="walletChargeIntroGuide">계정 유형에 맞는 별풍선 후원 절차를 안내합니다.</p>
             <p>후원 완료 알림은 실제 후원이나 캐시 지급을 자동으로 확인하지 않습니다. 관리자가 실제 내역을 대조해 승인한 경우에만 별풍선 1개당 1캐시를 지급합니다.</p>
             <button id="walletChargeStart" class="wallet-primary" type="button">충전 신청 작성</button>
           </section>
@@ -77,18 +77,20 @@
             <div class="wallet-input-suffix"><input id="walletAmount" name="star_count" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" required><span>개</span></div>
             <small id="walletLimitMessage">1개 이상의 정수 · 별풍선 1개 = 1캐시</small>
             <div class="wallet-cash-preview">충전 후 지급 예정 <strong><span id="walletCashPreview">0</span>캐시</strong></div>
-            <label for="walletDonorNickname">SOOP 후원자 닉네임</label>
-            <input id="walletDonorNickname" type="text" maxlength="40" autocomplete="off" required>
-            <label for="walletDonorId">SOOP 후원자 아이디</label>
-            <input id="walletDonorId" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-            <small>검수 시 실제 후원 내역과 대조합니다. 신청한 정보는 다음 신청에도 사용할 수 있도록 저장됩니다.</small>
+            <div id="walletDonorFields">
+              <label for="walletDonorNickname">시청자 SOOP 후원자 닉네임</label>
+              <input id="walletDonorNickname" type="text" maxlength="40" autocomplete="off" required>
+              <label for="walletDonorId">시청자 SOOP 후원자 아이디</label>
+              <input id="walletDonorId" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+              <small>검수 시 실제 후원 내역과 대조합니다. 신청한 정보는 다음 신청에도 사용할 수 있도록 저장됩니다.</small>
+            </div>
             <label class="wallet-consent"><input id="walletChargePolicy" type="checkbox" required><span>별풍선 후원 방식과 관리자 수동 확인 절차를 확인했습니다. 후원 완료 알림만으로 캐시가 지급되지 않습니다.</span></label>
             <button id="walletChargeSubmit" class="wallet-primary" type="submit">충전 신청</button>
             <div id="walletChargeStatus" class="wallet-status" role="status" aria-live="polite"></div>
           </form>
         <section id="walletDonationStep" class="wallet-card" hidden>
           <h3>별풍선 후원 진행</h3>
-          <p>스마트폰으로 QR을 스캔해 신청 수량만큼 후원한 뒤 아래 버튼을 누르세요. 버튼은 관리자에게 검수 대기 알림을 보내며 실제 후원이나 캐시 지급을 자동으로 확인하지 않습니다.</p>
+          <p id="walletDonationGuide">QR 후원 절차를 진행한 뒤 후원 완료를 알려 주세요. 아래 버튼은 관리자에게 검수 대기 알림을 보내며 실제 후원이나 캐시 지급을 자동으로 확인하지 않습니다.</p>
           <div class="wallet-qr-panel">
             <img id="walletQrImage" src="./assets/admin-star-balloon-qr.png" alt="관리자 SOOP 별풍선 후원 QR 코드">
             <a class="wallet-secondary" href="https://m.sooplive.com/item/a/starballoongift?szBjId=skftodwocks2&amp;r=0.7998879052993009&amp;ref=webview&amp;isPlayStore=Y&amp;appVersion=8.34.4&amp;szOsVer=16&amp;szModel=SM-M166S&amp;szCodeType=starballoon_station&amp;szContentsType=station&amp;szOs=android&amp;store=P" target="_blank" rel="noopener">모바일 후원 페이지 열기</a>
@@ -104,9 +106,9 @@
       <section class="wallet-card">
         <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">HISTORY</p><h2>충전 신청 내역</h2></div><button id="walletRefresh" class="wallet-secondary" type="button">새로고침</button></div>
         <div id="walletRequestList" class="wallet-list"></div>
-        <section class="wallet-review-queue" aria-labelledby="walletReviewQueueTitle">
+        <section id="walletReviewQueue" class="wallet-review-queue" aria-labelledby="walletReviewQueueTitle" hidden>
           <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">ADMIN REVIEW</p><h3 id="walletReviewQueueTitle">별풍선 충전 검수 대기</h3></div></div>
-          <p class="wallet-hint">SOOP 실제 후원 내역에서 후원자 정보와 수량을 대조한 뒤에만 승인하세요. 승인은 해당 신청자에게 캐시를 지급하며 되돌릴 수 없습니다.</p>
+          <p class="wallet-hint">SOOP 실제 후원 내역과 수량을 대조한 뒤에만 승인하세요. 시청자 후원형은 인증 스트리머 신청자에게, 본인 충전형은 신청자 본인에게 캐시를 지급하며 되돌릴 수 없습니다.</p>
           <div id="walletReviewList" class="wallet-list"></div>
         </section>
       </section>
@@ -117,12 +119,12 @@
         <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">SUPPORT</p><h2>고객센터</h2></div></div>
         <article class="wallet-privacy-notice">
           <h3>개인정보 처리 안내</h3>
-          <p>충전과 문의 처리를 위해 Firebase 로그인 UID, SOOP 후원자 닉네임·아이디, 신청 별풍선 수량·상태·시각, 캐시 잔액·변동 내역 및 문의 내용을 저장합니다.</p>
-          <p>데이터는 공유 Firebase 프로젝트의 비공개 <code>gameSeriesWallet/</code> 경로에 저장됩니다. 브라우저는 쓰지 않으며, 로그인한 사용자는 본인 캐시 잔액 숫자만 실시간으로 읽을 수 있습니다. 충전·구매·반환 신청, 후원자 정보, 검수 상태와 변동 장부는 서버 함수가 로그인 UID와 관리자 권한을 확인한 뒤에만 조회·처리합니다.</p>
+          <p>충전과 문의 처리를 위해 Firebase 로그인 UID, 인증 스트리머가 입력한 시청자 SOOP 후원자 닉네임·아이디, 신청 별풍선 수량·상태·시각, 캐시 잔액·변동 내역 및 문의 내용을 저장합니다. 일반 로그인 사용자의 본인 충전에는 후원자 정보 입력을 받지 않습니다.</p>
+          <p>데이터는 공유 Firebase 프로젝트의 비공개 <code>gameSeriesWallet/</code> 경로에 저장됩니다. 브라우저는 쓰지 않으며, 로그인한 사용자는 본인 캐시 잔액 숫자와 본인의 충전·반환·문의 내역만 확인할 수 있습니다. 다른 이용자의 후원자 정보·검수 상태·변동 장부는 공개되지 않으며, 전체 검수 목록과 승인·거절은 관리자 권한으로만 처리합니다.</p>
           <p class="wallet-policy-note">보유 기간과 정기 삭제 시점은 아직 확정되지 않았습니다. <a href="./privacy.html">개인정보 처리방침</a>과 <a href="./terms.html">통합 캐시 운영약관</a>에서 실제 처리 방식과 현재 확정되지 않은 사항을 확인할 수 있습니다.</p>
         </article>
         <div class="wallet-policy-grid">
-          <article><h3>충전 운영 기준</h3><ul><li>별풍선 1개는 1캐시입니다. 별도 최소·최대 충전 제한은 없고 후원 수량은 1개 이상의 정수여야 합니다.</li><li>신청 후 QR로 관리자 SOOP 방송국에 별풍선을 후원하고 직접 후원 완료를 알립니다. 완료 알림은 실제 후원 또는 캐시 지급을 자동 확인하지 않습니다.</li><li>관리자가 후원자 닉네임·아이디와 수량을 실제 후원 내역으로 대조해 승인한 경우에만 캐시를 지급합니다.</li></ul></article>
+          <article><h3>충전 운영 기준</h3><ul><li>인증 스트리머는 시청자 후원자 정보와 수량을 입력한 뒤 라이브 화면에 QR을 노출할 수 있습니다. 관리자가 이를 대조해 승인하면 스트리머 신청자에게 캐시를 지급합니다.</li><li>일반 로그인 유저는 후원자 정보 없이 본인이 QR을 스캔해 후원하고, 승인되면 본인 계정에 캐시가 지급됩니다. 별풍선 1개는 1캐시이며 수량은 1개 이상의 정수여야 합니다.</li><li>완료 알림은 실제 후원 또는 캐시 지급을 자동 확인하지 않습니다.</li></ul></article>
           <article><h3>취소·환불 운영안</h3><ul><li>관리자 검수 전에는 신청을 취소할 수 있습니다. 이미 별풍선을 후원했다면 취소만으로 반환이 처리되지 않으므로 고객센터에 알려 주세요.</li><li>승인된 별풍선 충전 캐시 중 미사용분만 환불 신청할 수 있습니다. 신청한 캐시는 검수 완료 또는 거절 전까지 사용할 수 없도록 잠깁니다.</li><li>반환 요청은 SOOP을 통한 처리만 접수합니다. 별풍선 반환 가능 조건과 처리 기간은 확인되지 않았으므로 반환을 보장하거나 기한을 확정하지 않습니다. SOOP 확인·처리에 시간이 걸릴 수 있으며 결과 확인 후 안내합니다.</li><li>자동 후원 확인·자동 캐시 지급·자동 반환은 지원하지 않습니다. 중복 승인과 재처리는 서버 장부에서 한 번만 반영합니다.</li></ul></article>
         </div>
         <form id="walletSupportForm" class="wallet-form wallet-support-form" autocomplete="off">
@@ -145,6 +147,6 @@
       <div id="walletPageStatus" class="wallet-page-status" role="status" aria-live="polite"></div>
     </div>
   </main>
-  <footer class="site-footer"><a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span></a><p>스트리머 게임 시리즈 통합 캐시 · 관리자 전용</p><a href="./terms.html">운영약관</a><a href="./privacy.html">개인정보 처리방침</a><a href="./">상점으로 돌아가기</a></footer>
+  <footer class="site-footer"><a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span></a><p>스트리머 게임 시리즈 통합 캐시</p><a href="./terms.html">운영약관</a><a href="./privacy.html">개인정보 처리방침</a><a href="./">상점으로 돌아가기</a></footer>
 </body>
 </html>

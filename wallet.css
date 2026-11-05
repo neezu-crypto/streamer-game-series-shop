@@ -74,7 +74,13 @@
 .wallet-review-queue h3 { margin: 6px 0 0; font-size: 18px; letter-spacing: -.035em; }
 .wallet-review-row { border-color: #ddd5ef; background: #fcfbff; }
 .wallet-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.wallet-approve-action { border-color: var(--ink); color: #fff; background: var(--ink); }
+.wallet-review-actions .wallet-approve-action {
+  border-color: var(--ink) !important;
+  color: #fff !important;
+  background: var(--ink) !important;
+  text-shadow: none;
+}
+.wallet-review-actions .wallet-approve-action:hover { background: #3b3659 !important; }
 .wallet-list-row > div:first-child { min-width: 0; }
 .wallet-list-row strong, .wallet-list-row span, .wallet-list-row small { display: block; }
 .wallet-list-row strong { font-size: 12px; }
