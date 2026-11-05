@@ -7,8 +7,8 @@
   <meta name="description" content="스트리머 게임 시리즈 통합 캐시와 고객센터">
   <title>통합 캐시 · 고객센터 — 게임 시리즈</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="wallet.css?v=20261106-tabs-review">
-  <script type="module" src="wallet.js?v=20261106-tabs-review"></script>
+  <link rel="stylesheet" href="wallet.css?v=20261106-tabs-review-fix">
+  <script type="module" src="wallet.js?v=20261106-tabs-review-fix"></script>
 </head>
 <body class="wallet-page">
   <header class="site-header wallet-header">
@@ -48,7 +48,7 @@
 
       <section id="walletPanelBalance" class="wallet-tabpanel" role="tabpanel" aria-labelledby="walletTabBalance">
       <section class="wallet-balance-card">
-        <div><p class="eyebrow">MY BALANCE</p><h2><span id="walletBalance">0</span> <small>캐시</small></h2><p>별풍선 1개 = 1캐시</p><p id="walletRefundReserve" class="wallet-hint" hidden></p></div>
+        <div><p class="eyebrow">내 캐시</p><h2><span id="walletBalance">0</span> <small>캐시</small></h2><p>별풍선 1개 = 1캐시</p><p id="walletRefundReserve" class="wallet-hint" hidden></p></div>
         <div class="wallet-limit"><span>충전 방식</span><strong>SOOP 별풍선</strong><small>관리자 수동 확인 후 지급</small></div>
         <button id="walletOpenCharge" class="wallet-primary" type="button">캐시 충전</button>
       </section>
@@ -95,6 +95,7 @@
             <small>관리자에게 별풍선을 후원하는 모바일 전용 링크입니다.</small>
           </div>
           <div><button id="walletDonationCancel" class="wallet-secondary" type="button">신청 취소</button><button id="walletDonationComplete" class="wallet-primary" type="button">후원 완료</button></div>
+          <div id="walletDonationStatus" class="wallet-status" role="status" aria-live="polite"></div>
         </section>
         </section>
       </dialog>
