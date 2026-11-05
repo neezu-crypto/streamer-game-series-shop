@@ -24,7 +24,7 @@
 .wallet-limit { display: flex; flex-direction: column; align-items: end; gap: 5px; color: var(--muted); font-size: 12px; }
 .wallet-limit strong { color: var(--ink); font-size: 22px; font-variant-numeric: tabular-nums; }
 .wallet-card { margin: 18px 0; padding: 24px; }
-.wallet-modal { width: min(920px, calc(100% - 24px)); max-width: none; max-height: 92vh; padding: 0; overflow: visible; border: 0; background: transparent; }
+.wallet-modal { width: min(690px, calc(100% - 24px)); max-width: none; max-height: 92vh; padding: 0; overflow: visible; border: 0; background: transparent; }
 .wallet-modal::backdrop { background: rgba(31, 28, 44, .58); backdrop-filter: blur(5px); }
 .wallet-modal-card { max-height: 92vh; margin: 0; overflow: auto; border-radius: 20px; }
 .wallet-modal-close { width: 36px; height: 36px; flex: none; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fffefa; font-size: 24px; line-height: 1; cursor: pointer; }
@@ -45,6 +45,7 @@
 .wallet-form small { color: var(--muted); font-size: 10px; line-height: 1.55; }
 .wallet-input-suffix { display: flex; align-items: center; border: 1px solid #ded8d1; border-radius: 10px; background: #fff; }
 .wallet-input-suffix input { border: 0 !important; background: transparent !important; }
+#walletAmount { text-align: right; }
 .wallet-input-suffix span { padding: 0 12px; color: var(--muted); font-size: 12px; }
 .wallet-cash-preview { display: flex; justify-content: space-between; padding: 12px; border-radius: 11px; background: #f6f2ff; color: var(--muted); font-size: 12px; }
 .wallet-cash-preview strong { color: var(--violet); font-size: 14px; }
