@@ -43,6 +43,8 @@ let busy = false;
 let isVerifiedStreamer = false;
 
 const walletTabs = Array.from(document.querySelectorAll('[role="tab"][aria-controls^="walletPanel"]'));
+const walletQuery = new URLSearchParams(window.location.search);
+const shouldOpenWalletReview = walletQuery.get('tab') === 'requests' && walletQuery.get('focus') === 'walletReviewQueue';
 
 function activateWalletTab(tab, focus = false) {
   walletTabs.forEach((item) => {
@@ -52,6 +54,17 @@ function activateWalletTab(tab, focus = false) {
     $(item.getAttribute('aria-controls')).hidden = !selected;
   });
   if (focus) tab.focus();
+}
+
+function applyWalletReviewDeepLink() {
+  if (!shouldOpenWalletReview) return;
+  const requestTab = $('walletTabRequests');
+  if (requestTab) activateWalletTab(requestTab);
+  requestAnimationFrame(() => {
+    const reviewQueue = $('walletReviewQueue');
+    if (!reviewQueue || reviewQueue.hidden) return;
+    reviewQueue.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
 }
 
 walletTabs.forEach((tab, index) => {
@@ -249,6 +262,7 @@ function renderWallet(data) {
   updateCashPreview();
   gate.hidden = true;
   walletApp.hidden = false;
+  applyWalletReviewDeepLink();
 }
 
 function configureChargeExperience() {
