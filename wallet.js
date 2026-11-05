@@ -26,6 +26,8 @@ const cancelCharge = callable('gameSeriesWalletCancelCharge');
 const submitRefund = callable('gameSeriesWalletSubmitRefund');
 const submitSupport = callable('gameSeriesWalletSubmitSupport');
 const bootstrapAdminUid = callable('bootstrapAdminUid');
+const getWalletAdminList = callable('gameSeriesWalletAdminList');
+const reviewWalletRequest = callable('gameSeriesWalletAdminReview');
 
 const $ = (id) => document.getElementById(id);
 const authStatus = $('walletAuthStatus');
@@ -39,6 +41,32 @@ const supportStatus = $('walletSupportStatus');
 let currentUser = null;
 let walletState = null;
 let busy = false;
+
+const walletTabs = Array.from(document.querySelectorAll('[role="tab"][aria-controls^="walletPanel"]'));
+
+function activateWalletTab(tab, focus = false) {
+  walletTabs.forEach((item) => {
+    const selected = item === tab;
+    item.setAttribute('aria-selected', String(selected));
+    item.tabIndex = selected ? 0 : -1;
+    $(item.getAttribute('aria-controls')).hidden = !selected;
+  });
+  if (focus) tab.focus();
+}
+
+walletTabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => activateWalletTab(tab));
+  tab.addEventListener('keydown', (event) => {
+    let nextIndex = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % walletTabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + walletTabs.length) % walletTabs.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = walletTabs.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    activateWalletTab(walletTabs[nextIndex], true);
+  });
+});
 
 function escapeHtml(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
@@ -75,6 +103,7 @@ function setBusy(value) {
   $('walletChargeSubmit').disabled = value;
   $('walletRefresh').disabled = value;
   $('walletSupportForm').querySelector('button[type="submit"]').disabled = value;
+  document.querySelectorAll('[data-wallet-review]').forEach((button) => { button.disabled = value; });
 }
 
 function renderChargeRequests(items) {
@@ -122,6 +151,37 @@ function renderChargeRequests(items) {
       await refreshWallet();
     }
     catch (error) { window.alert(`환불 신청 실패: ${error.message || error}`); }
+  }));
+}
+
+function renderChargeReviews(items) {
+  const host = $('walletReviewList');
+  const pending = items.filter((item) => item.status === 'donationCompleted');
+  if (!pending.length) {
+    host.innerHTML = '<div class="wallet-empty">검수 대기 중인 별풍선 충전 신청이 없습니다.</div>';
+    return;
+  }
+  host.innerHTML = pending.map((item) => `<article class="wallet-list-row wallet-review-row"><div><strong>${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시 · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개</strong><span>후원자 ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')}) · ${formatDate(item.donationCompletedAt || item.updatedAt || item.createdAt)}</span><small>신청 번호: ${escapeHtml(item.requestId)}</small></div><div class="wallet-list-trailing"><b class="wallet-status-pill donationCompleted">후원 완료 알림</b><div class="wallet-review-actions"><button class="wallet-small-action" type="button" data-wallet-review="reject" data-wallet-request-id="${escapeHtml(item.requestId)}">거절</button><button class="wallet-small-action wallet-approve-action" type="button" data-wallet-review="approve" data-wallet-request-id="${escapeHtml(item.requestId)}">승인·캐시 지급</button></div></div></article>`).join('');
+  host.querySelectorAll('[data-wallet-review]').forEach((button) => button.addEventListener('click', async () => {
+    const action = button.dataset.walletReview;
+    const requestId = button.dataset.walletRequestId;
+    const isApproval = action === 'approve';
+    const confirmation = isApproval
+      ? 'SOOP 실제 후원 내역의 후원자 정보와 수량을 대조했나요? 승인하면 해당 신청자에게 캐시가 지급됩니다.'
+      : '이 별풍선 충전 신청을 거절할까요? 후원 완료 알림 상태의 신청만 거절할 수 있습니다.';
+    if (!window.confirm(confirmation)) return;
+    const note = window.prompt(`${isApproval ? '승인' : '거절'} 검수 메모를 입력해 주세요. (선택 입력)`);
+    if (note === null) return;
+    setBusy(true);
+    try {
+      await reviewWalletRequest({ kind: 'charge', action, requestId, note: note.trim() });
+      window.alert(isApproval ? '승인 완료: 캐시 지급을 처리했습니다.' : '충전 신청을 거절했습니다.');
+      await refreshWallet(true);
+    } catch (error) {
+      window.alert(`${isApproval ? '승인' : '거절'} 처리 실패: ${error.message || error}`);
+    } finally {
+      setBusy(false);
+    }
   }));
 }
 
@@ -176,13 +236,18 @@ function renderWallet(data) {
   walletApp.hidden = false;
 }
 
+function renderWalletScreen(walletData, adminData) {
+  renderWallet(walletData);
+  renderChargeReviews((adminData && adminData.chargeRequests) || []);
+}
+
 async function refreshWallet(force = false) {
   if (!currentUser || (busy && !force)) return;
   setBusy(true);
   $('walletPageStatus').textContent = '캐시·신청 내역을 불러오는 중입니다.';
   try {
-    const result = await getWalletState();
-    renderWallet(result.data);
+    const [result, adminResult] = await Promise.all([getWalletState(), getWalletAdminList()]);
+    renderWalletScreen(result.data, adminResult.data);
     $('walletPageStatus').textContent = '';
   } catch (error) {
     console.error('관리자 통합 캐시 조회 실패:', error);
@@ -219,8 +284,8 @@ async function initializeAdmin(user) {
   walletApp.hidden = true;
   try {
     if (bootstrapAdminUid) await bootstrapAdminUid();
-    const result = await getWalletState();
-    renderWallet(result.data);
+    const [result, adminResult] = await Promise.all([getWalletState(), getWalletAdminList()]);
+    renderWalletScreen(result.data, adminResult.data);
   } catch (error) {
     console.error('관리자 인증 실패:', error);
     if (error.code === 'functions/permission-denied') setGate('이 계정은 관리자 전용 화면에 접근할 수 없습니다.');
@@ -246,7 +311,7 @@ $('walletGateLogin').addEventListener('click', () => authButton.click());
 
 $('walletAmount').addEventListener('input', updateCashPreview);
 $('walletRefresh').addEventListener('click', refreshWallet);
-$('walletOpenCharge').addEventListener('click', () => {
+function openChargeModal() {
   $('walletChargeIntro').hidden = false;
   $('walletChargeForm').hidden = true;
   $('walletDonationStep').hidden = true;
@@ -254,7 +319,10 @@ $('walletOpenCharge').addEventListener('click', () => {
   $('walletDonationComplete').disabled = false;
   chargeStatus.textContent = '';
   $('walletChargeModal').showModal();
-});
+}
+
+$('walletOpenCharge').addEventListener('click', openChargeModal);
+$('walletOpenChargeFromTab').addEventListener('click', openChargeModal);
 $('walletCloseCharge').addEventListener('click', () => $('walletChargeModal').close());
 $('walletChargeModal').addEventListener('click', (event) => {
   if (event.target === $('walletChargeModal')) $('walletChargeModal').close();
