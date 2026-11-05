@@ -12,10 +12,6 @@ const SEND_COOLDOWN_MS = 900;
 const FANPAGE_DECORATION_EVENT_MS = 60000;
 const FANPAGE_DECORATION_MAX_ITEMS = 100;
 const WALLET_ROOT = 'gameSeriesWallet';
-const WALLET_MIN_CHARGE_KRW = 1000;
-const WALLET_MAX_DAILY_CHARGE_KRW = 100000;
-const WALLET_KRW_PER_CASH = 100;
-const WALLET_MAX_QR_BYTES = 100000;
 const GAME_IDS = new Set([
   'streamerLifeGame', 'soopStockMarket', 'streamBetMarket',
   'interior3dViewer', 'streamerJurumable', 'onyuVn', 'dontPressButton', 'streamerFanPage'
@@ -444,18 +440,15 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
   return { ok: true, eventId, clientEventId, durationMs: DISPLAY_MS };
 });
 
-// 통합 캐시는 v1에서 관리자 계정만 사용할 수 있다. QR·입금자명·요청 내용과 잔액은
-// RTDB 직접 접근을 열지 않고 이 관리자 인증 callable들로만 처리한다.
+// 통합 캐시는 관리자 계정만 사용하며 RTDB 직접 접근을 열지 않는다.
 exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
   const uid = await requireWalletAdmin(request);
   const base = db.ref(WALLET_ROOT);
-  const [profileSnap, accountSnap, qrSnap, requestSnap, supportSnap, dailySnap, ledgerSnap] = await Promise.all([
+  const [profileSnap, accountSnap, requestSnap, supportSnap, ledgerSnap] = await Promise.all([
     base.child(`profiles/${uid}`).get(),
     base.child(`accounts/${uid}`).get(),
-    base.child('config/qrDataUrl').get(),
     base.child('chargeRequests').orderByKey().limitToLast(100).get(),
     base.child('supportRequests').orderByKey().limitToLast(100).get(),
-    base.child(`dailyReservations/${uid}/${walletDateKey()}`).get(),
     base.child(`ledger/${uid}`).orderByKey().limitToLast(50).get(),
   ]);
   const requests = [];
@@ -475,94 +468,32 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
   const account = accountSnap.val() || {};
   const balanceCash = Number(account.balanceCash) || 0;
   const refundReservedCash = walletReservedRefundCash(account);
-  const daily = dailySnap.val() || {};
-  const reservedKrw = Object.values(daily.requests || {}).reduce((sum, item) => {
-    if (item && !['cancelled', 'rejected'].includes(item.status)) return sum + (Number(item.amountKrw) || 0);
-    return sum;
-  }, 0);
   return {
     uid,
     balanceCash,
     refundReservedCash,
     availableRefundCash: Math.max(0, balanceCash - refundReservedCash),
-    depositorName: String((profileSnap.val() || {}).depositorName || ''),
-    qrDataUrl: String(qrSnap.val() || ''),
-    todayReservedKrw: reservedKrw,
-    todayRemainingKrw: Math.max(0, WALLET_MAX_DAILY_CHARGE_KRW - reservedKrw),
+    soopDonorNickname: String((profileSnap.val() || {}).soopDonorNickname || ''),
+    soopDonorId: String((profileSnap.val() || {}).soopDonorId || ''),
     requests: requests.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 30),
     supportRequests: supportRequests.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 20),
     ledger: ledger.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)),
   };
 });
 
-exports.gameSeriesWalletAdminSaveQr = onCall({ region: REGION, maxInstances: 5 }, async (request) => {
-  const uid = await requireWalletAdmin(request);
-  const dataUrl = String((request.data || {}).qrDataUrl || '');
-  const match = dataUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]*={0,2})$/);
-  if (!match || dataUrl.length > Math.ceil(WALLET_MAX_QR_BYTES * 4 / 3) + 100) {
-    throw new HttpsError('invalid-argument', 'QR 이미지는 JPEG, PNG, WebP 파일만 올릴 수 있습니다(100KB 이하).');
-  }
-  const bytes = Buffer.from(match[2], 'base64');
-  if (!bytes.length || bytes.length > WALLET_MAX_QR_BYTES || bytes.toString('base64') !== match[2]) {
-    throw new HttpsError('invalid-argument', 'QR 이미지 파일을 확인할 수 없습니다.');
-  }
-  const mime = match[1];
-  const validSignature = mime === 'jpeg'
-    ? bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
-    : mime === 'png'
-      ? bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-      : bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
-  if (!validSignature) throw new HttpsError('invalid-argument', '파일 형식이 이미지 확장자와 일치하지 않습니다.');
-  await db.ref(`${WALLET_ROOT}/config`).update({ qrDataUrl: dataUrl, updatedAt: Date.now(), updatedByUid: uid });
-  return { ok: true, bytes: bytes.length };
-});
-
 exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
   const uid = await requireWalletAdmin(request);
   const data = request.data || {};
   const requestId = walletSafeId(data.requestId, '충전 요청 번호');
-  const amountKrw = Number(data.amountKrw);
-  if (!Number.isSafeInteger(amountKrw) || amountKrw < WALLET_MIN_CHARGE_KRW ||
-      amountKrw > WALLET_MAX_DAILY_CHARGE_KRW || amountKrw % WALLET_KRW_PER_CASH !== 0) {
-    throw new HttpsError('invalid-argument', '1회 최소 1,000원이며 100원 단위로 입력해 주세요.');
+  const starCount = Number(data.starCount);
+  if (!Number.isSafeInteger(starCount) || starCount <= 0) {
+    throw new HttpsError('invalid-argument', '후원할 별풍선 수량은 1개 이상의 정수여야 합니다.');
   }
-  const depositorName = walletText(data.depositorName, 40, '입금자명');
+  const soopDonorNickname = walletText(data.soopDonorNickname, 40, 'SOOP 후원자 닉네임');
+  const soopDonorId = walletText(data.soopDonorId, 40, 'SOOP 후원자 아이디');
   const base = db.ref(WALLET_ROOT);
-  const qrSnap = await base.child('config/qrDataUrl').get();
-  if (!qrSnap.exists()) throw new HttpsError('failed-precondition', '관리자가 입금 QR을 등록한 뒤 신청할 수 있습니다.');
-
   const now = Date.now();
-  const dateKey = walletDateKey(now);
-  const dailyRef = base.child(`dailyReservations/${uid}/${dateKey}`);
-  await base.child(`profiles/${uid}`).update({ depositorName, updatedAt: now });
-  let overDailyLimit = false;
-  let requestIdConflict = false;
-  const reservation = await dailyRef.transaction((current) => {
-    overDailyLimit = false;
-    requestIdConflict = false;
-    const state = current && typeof current === 'object' ? current : {};
-    const entries = state.requests && typeof state.requests === 'object' ? { ...state.requests } : {};
-    const previous = entries[requestId];
-    if (previous) {
-      if (Number(previous.amountKrw) !== amountKrw || ['cancelled', 'rejected'].includes(previous.status)) {
-        requestIdConflict = true;
-      }
-      return state;
-    }
-    const used = Object.values(entries).reduce((sum, entry) => {
-      if (entry && !['cancelled', 'rejected'].includes(entry.status)) return sum + (Number(entry.amountKrw) || 0);
-      return sum;
-    }, 0);
-    if (used + amountKrw > WALLET_MAX_DAILY_CHARGE_KRW) {
-      overDailyLimit = true;
-      return;
-    }
-    entries[requestId] = { amountKrw, status: 'pending', reservedAt: now };
-    return { requests: entries };
-  }, undefined, false);
-  if (overDailyLimit) throw new HttpsError('resource-exhausted', '한국시간 기준 오늘 충전 신청 한도 100,000원을 초과합니다.');
-  if (!reservation.committed) throw new HttpsError('aborted', '오늘 충전 한도를 확인하지 못했습니다. 다시 시도해 주세요.');
-  if (requestIdConflict) throw new HttpsError('already-exists', '이미 사용된 충전 요청 번호입니다. 새로고침 후 다시 신청해 주세요.');
+  await base.child(`profiles/${uid}`).update({ soopDonorNickname, soopDonorId, updatedAt: now });
 
   const chargeRef = base.child(`chargeRequests/${requestId}`);
   let idConflict = false;
@@ -571,29 +502,45 @@ exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10
     saved = await chargeRef.transaction((current) => {
       idConflict = false;
       if (current) {
-        if (current.ownerUid !== uid || Number(current.amountKrw) !== amountKrw) idConflict = true;
+        if (current.ownerUid !== uid || Number(current.starCount) !== starCount || current.soopDonorId !== soopDonorId) idConflict = true;
         return current;
       }
       return {
         ownerUid: uid,
-        amountKrw,
-        cashAmount: amountKrw / WALLET_KRW_PER_CASH,
-        depositorName,
-        dailyKey: dateKey,
-        status: 'pending',
+        paymentMethod: 'starBalloon',
+        starCount,
+        cashAmount: starCount,
+        soopDonorNickname,
+        soopDonorId,
+        status: 'awaitingDonation',
         createdAt: now,
         updatedAt: now,
       };
     }, undefined, false);
-  } catch (error) {
-    await dailyRef.child(`requests/${requestId}`).update({ status: 'cancelled' }).catch(() => {});
-    throw error;
-  }
+  } catch (error) { throw error; }
   if (!saved.committed || idConflict) {
-    await dailyRef.child(`requests/${requestId}`).update({ status: 'cancelled' });
     throw new HttpsError('already-exists', '충전 신청을 저장하지 못했습니다. 새 요청으로 다시 시도해 주세요.');
   }
   return { ok: true, requestId, status: String((saved.snapshot.val() || {}).status || 'pending') };
+});
+
+exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+  const uid = await requireWalletAdmin(request);
+  const requestId = walletSafeId((request.data || {}).requestId, '충전 요청 번호');
+  const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
+  let invalid = false;
+  const result = await chargeRef.transaction((current) => {
+    invalid = false;
+    if (!current || current.ownerUid !== uid || current.paymentMethod !== 'starBalloon') { invalid = true; return current; }
+    if (current.status === 'awaitingDonation') {
+      return { ...current, status: 'donationCompleted', donationCompletedAt: Date.now(), updatedAt: Date.now() };
+    }
+    if (current.status === 'donationCompleted') return current;
+    invalid = true;
+    return current;
+  }, undefined, false);
+  if (invalid || !result.committed) throw new HttpsError('failed-precondition', '후원 대기 중인 본인 신청만 완료 알림을 보낼 수 있습니다.');
+  return { ok: true, status: String((result.snapshot.val() || {}).status || '') };
 });
 
 exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
@@ -609,12 +556,10 @@ exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10
     // requests impossible to cancel.
     if (!current || current.ownerUid !== uid) { notCancelable = true; return null; }
     if (current.status === 'cancelled') return current;
-    if (current.status !== 'pending') { notCancelable = true; return current; }
+    if (!['awaitingDonation', 'donationCompleted'].includes(current.status)) { notCancelable = true; return current; }
     return { ...current, status: 'cancelled', updatedAt: Date.now(), cancelledByUid: uid };
   }, undefined, false);
   if (notCancelable || !result.committed) throw new HttpsError('failed-precondition', '대기 중인 본인 신청만 취소할 수 있습니다.');
-  const entry = result.snapshot.val();
-  await db.ref(`${WALLET_ROOT}/dailyReservations/${uid}/${entry.dailyKey}/requests/${requestId}`).update({ status: 'cancelled' });
   return { ok: true };
 });
 
@@ -625,8 +570,8 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
   const chargeSnap = await chargeRef.get();
   const charge = chargeSnap.val();
-  if (!charge || charge.ownerUid !== uid || charge.status !== 'approved') {
-    throw new HttpsError('failed-precondition', '환불 신청은 승인된 본인 충전 건만 가능합니다.');
+  if (!charge || charge.ownerUid !== uid || charge.status !== 'approved' || charge.paymentMethod !== 'starBalloon') {
+    throw new HttpsError('failed-precondition', '환불 신청은 승인된 본인의 별풍선 충전 건만 가능합니다.');
   }
   const originalCashAmount = Number(charge.cashAmount) || 0;
   const alreadyRefundedCash = Number(charge.refundedCashAmount) || 0;
@@ -668,7 +613,6 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
     }
     reservations[requestId] = {
       cashAmount: refundCashAmount,
-      amountKrw: refundCashAmount * WALLET_KRW_PER_CASH,
       reservedAt: Date.now(),
     };
     createdReservation = true;
@@ -691,7 +635,7 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
       status: 'refundRequested',
       refundReason: reason,
       refundCashAmount,
-      refundAmountKrw: refundCashAmount * WALLET_KRW_PER_CASH,
+      refundStarCount: refundCashAmount,
       refundRequestedAt: now,
       updatedAt: now,
     };
@@ -707,21 +651,21 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
     if (createdReservation) await releaseWalletRefundReservation(uid, requestId);
     throw new HttpsError('aborted', '환불 신청 상태가 바뀌었습니다. 새로고침해 주세요.');
   }
-  return { ok: true, cashAmount: refundCashAmount, amountKrw: refundCashAmount * WALLET_KRW_PER_CASH };
+  return { ok: true, cashAmount: refundCashAmount, starCount: refundCashAmount };
 });
 
 exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
   const uid = await requireWalletAdmin(request);
   const data = request.data || {};
   const category = String(data.category || '');
-  if (!['deposit-mismatch', 'wrong-payer', 'refund', 'other'].includes(category)) {
+  if (!['donation-check', 'wrong-donor', 'refund', 'other'].includes(category)) {
     throw new HttpsError('invalid-argument', '문의 유형을 선택해 주세요.');
   }
   const message = walletText(data.message, 1200, '문의 내용');
   const requestId = walletSafeId(data.requestId, '고객센터 요청 번호');
-  const amountKrw = data.amountKrw ? Number(data.amountKrw) : 0;
-  if (!Number.isSafeInteger(amountKrw) || amountKrw < 0 || amountKrw > 10000000) {
-    throw new HttpsError('invalid-argument', '입금액이 올바르지 않습니다.');
+  const starCount = data.starCount ? Number(data.starCount) : 0;
+  if (!Number.isSafeInteger(starCount) || starCount < 0 || starCount > 10000000) {
+    throw new HttpsError('invalid-argument', '별풍선 수량이 올바르지 않습니다.');
   }
   const supportRef = db.ref(`${WALLET_ROOT}/supportRequests/${requestId}`);
   const now = Date.now();
@@ -736,7 +680,7 @@ exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 1
       ownerUid: uid,
       category,
       message,
-      amountKrw,
+      starCount,
       relatedChargeRequestId: String(data.relatedChargeRequestId || '').slice(0, 80),
       status: 'open',
       createdAt: now,
@@ -750,10 +694,9 @@ exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 1
 exports.gameSeriesWalletAdminList = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
   await requireWalletAdmin(request);
   const root = db.ref(WALLET_ROOT);
-  const [charges, support, config] = await Promise.all([
+  const [charges, support] = await Promise.all([
     root.child('chargeRequests').orderByKey().limitToLast(200).get(),
     root.child('supportRequests').orderByKey().limitToLast(100).get(),
-    root.child('config').get(),
   ]);
   const chargeRequests = [];
   charges.forEach((child) => {
@@ -764,7 +707,7 @@ exports.gameSeriesWalletAdminList = onCall({ region: REGION, maxInstances: 10 },
     supportRequests.push({ requestId: child.key, ...(child.val() || {}) });
   });
   return {
-    qrConfigured: !!(config.val() || {}).qrDataUrl,
+    donationLink: 'https://st.sooplive.com/app/gift_starballoon.php?szBjId=skftodwocks2&szWork=BJ_STATION&sys_type=web&location=station',
     chargeRequests: chargeRequests.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)),
     supportRequests: supportRequests.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)),
   };
@@ -807,22 +750,21 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
   const current = currentSnap.val();
   if (!current) throw new HttpsError('not-found', '충전 신청을 찾지 못했습니다.');
   const ownerUid = String(current.ownerUid || '');
-  const amountKrw = Number(current.amountKrw);
   const cashAmount = Number(current.cashAmount);
-  if (!ownerUid || !Number.isSafeInteger(amountKrw) || amountKrw < WALLET_MIN_CHARGE_KRW ||
-      amountKrw % WALLET_KRW_PER_CASH !== 0 || cashAmount !== amountKrw / WALLET_KRW_PER_CASH) {
-    throw new HttpsError('failed-precondition', '충전 신청 데이터가 올바르지 않습니다.');
+  const starCount = Number(current.starCount);
+  if (!ownerUid || current.paymentMethod !== 'starBalloon' || !Number.isSafeInteger(starCount) || starCount <= 0 ||
+      cashAmount !== starCount || !walletText(current.soopDonorNickname, 40, 'SOOP 후원자 닉네임') || !walletText(current.soopDonorId, 40, 'SOOP 후원자 아이디')) {
+    throw new HttpsError('failed-precondition', '별풍선 충전 신청 데이터가 올바르지 않습니다.');
   }
 
   if (action === 'reject') {
     let invalid = false;
     const result = await chargeRef.transaction((value) => {
       invalid = false;
-      if (!value || value.status !== 'pending') { invalid = true; return value; }
+      if (!value || value.status !== 'donationCompleted') { invalid = true; return value; }
       return { ...value, status: 'rejected', reviewNote: note, reviewedAt: now, reviewedByUid: reviewerUid, updatedAt: now };
     }, undefined, false);
-    if (invalid || !result.committed) throw new HttpsError('failed-precondition', '대기 중인 충전 신청만 거절할 수 있습니다.');
-    await base.child(`dailyReservations/${ownerUid}/${current.dailyKey}/requests/${requestId}`).update({ status: 'rejected' });
+    if (invalid || !result.committed) throw new HttpsError('failed-precondition', '후원 완료 알림을 보낸 신청만 거절할 수 있습니다.');
     return { ok: true };
   }
 
@@ -831,7 +773,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     const claim = await chargeRef.transaction((value) => {
       invalid = false;
       if (!value) { invalid = true; return null; }
-      if (value.status === 'pending') return { ...value, status: 'processing', reviewAction: 'approve', reviewStartedAt: now, reviewedByUid: reviewerUid };
+      if (value.status === 'donationCompleted') return { ...value, status: 'processing', reviewAction: 'approve', reviewStartedAt: now, reviewedByUid: reviewerUid };
       if (value.status === 'processing' && value.reviewAction === 'approve') return value;
       if (value.status === 'approved') return value;
       invalid = true;
@@ -839,7 +781,7 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     }, undefined, false);
     const afterClaim = claim.snapshot.val() || {};
     if (invalid || !claim.committed || !['processing', 'approved'].includes(afterClaim.status)) {
-      throw new HttpsError('failed-precondition', '대기 중인 충전 신청만 승인할 수 있습니다.');
+      throw new HttpsError('failed-precondition', '후원 완료 알림을 보낸 신청만 승인할 수 있습니다.');
     }
     const accountRef = base.child(`accounts/${ownerUid}`);
     const accountResult = await accountRef.transaction((value) => {
@@ -851,13 +793,12 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     }, undefined, false);
     if (!accountResult.committed) throw new HttpsError('aborted', '캐시 지급을 마치지 못했습니다. 다시 검수해 주세요.');
     await base.child(`ledger/${ownerUid}/${requestId}_charge`).set({
-      kind: 'charge', requestId, amountKrw, cashAmount, createdAt: now, createdByUid: reviewerUid,
+      kind: 'starBalloonCharge', requestId, starCount, cashAmount, createdAt: now, createdByUid: reviewerUid,
     });
     await chargeRef.update({
       status: 'approved', reviewNote: note, reviewedAt: now, reviewedByUid: reviewerUid,
       updatedAt: now, cashCreditedAt: now,
     });
-    await base.child(`dailyReservations/${ownerUid}/${current.dailyKey}/requests/${requestId}`).update({ status: 'approved' });
     return { ok: true, cashAmount };
   }
 
@@ -921,10 +862,10 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
     throw new HttpsError('failed-precondition', '접수된 환불 신청만 처리할 수 있습니다.');
   }
   const refundCashAmount = Number(refundState.refundCashAmount) || cashAmount;
-  const refundAmountKrw = Number(refundState.refundAmountKrw) || refundCashAmount * WALLET_KRW_PER_CASH;
+  const refundStarCount = Number(refundState.refundStarCount) || refundCashAmount;
   if (!Number.isSafeInteger(refundCashAmount) || refundCashAmount <= 0 || refundCashAmount > cashAmount ||
-      !Number.isSafeInteger(refundAmountKrw) || refundAmountKrw !== refundCashAmount * WALLET_KRW_PER_CASH) {
-    throw new HttpsError('failed-precondition', '환불 금액 데이터가 올바르지 않습니다. 신청 내역을 다시 확인해 주세요.');
+      !Number.isSafeInteger(refundStarCount) || refundStarCount !== refundCashAmount) {
+    throw new HttpsError('failed-precondition', '별풍선 반환 수량 데이터가 올바르지 않습니다. 신청 내역을 다시 확인해 주세요.');
   }
   const accountRef = base.child(`accounts/${ownerUid}`);
   let insufficientBalance = false;
@@ -962,13 +903,13 @@ exports.gameSeriesWalletAdminReview = onCall({ region: REGION, maxInstances: 10 
   if (insufficientBalance) throw new HttpsError('failed-precondition', '잔액이 환불액보다 적어 환불을 완료할 수 없습니다.');
   if (!refundResult.committed) throw new HttpsError('aborted', '환불 처리를 마치지 못했습니다. 다시 검수해 주세요.');
   await base.child(`ledger/${ownerUid}/${requestId}_refund`).set({
-    kind: 'refund', requestId, amountKrw: refundAmountKrw, cashAmount: refundCashAmount,
-    originalAmountKrw: amountKrw, originalCashAmount: cashAmount, createdAt: now, createdByUid: reviewerUid,
+    kind: 'starBalloonRefund', requestId, starCount: refundStarCount, cashAmount: refundCashAmount,
+    originalStarCount: starCount, originalCashAmount: cashAmount, createdAt: now, createdByUid: reviewerUid,
   });
   await chargeRef.update({
     status: 'refunded', refundDecision: 'completed', refundAdminNote: note,
-    refundCashAmount, refundAmountKrw, refundedCashAmount: refundCashAmount,
+    refundCashAmount, refundStarCount, refundedCashAmount: refundCashAmount,
     refundReviewedAt: now, refundReviewedByUid: reviewerUid, refundedAt: now, updatedAt: now,
   });
-  return { ok: true, cashAmount: refundCashAmount, amountKrw: refundAmountKrw };
+  return { ok: true, cashAmount: refundCashAmount, starCount: refundStarCount };
 });

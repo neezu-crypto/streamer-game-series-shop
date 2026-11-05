@@ -39,42 +39,50 @@
 
     <div id="walletApp" hidden>
       <section class="wallet-balance-card">
-        <div><p class="eyebrow">MY BALANCE</p><h2><span id="walletBalance">0</span> <small>캐시</small></h2><p>충전 비율 100원 = 1캐시</p><p id="walletRefundReserve" class="wallet-hint" hidden></p></div>
-        <div class="wallet-limit"><span>오늘 남은 신청 한도</span><strong><span id="walletRemaining">100,000</span>원</strong><small>한국시간 기준 · 하루 최대 100,000원</small></div>
+        <div><p class="eyebrow">MY BALANCE</p><h2><span id="walletBalance">0</span> <small>캐시</small></h2><p>별풍선 1개 = 1캐시</p><p id="walletRefundReserve" class="wallet-hint" hidden></p></div>
+        <div class="wallet-limit"><span>충전 방식</span><strong>SOOP 별풍선</strong><small>관리자 수동 확인 후 지급</small></div>
         <button id="walletOpenCharge" class="wallet-primary" type="button">캐시 충전</button>
       </section>
 
       <section class="wallet-card" id="charge">
         <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2>캐시 충전</h2></div></div>
-        <p class="wallet-hint">충전 금액을 입력하고 입금자명을 확인한 뒤 신청하세요. 입금 계좌 QR과 신청 양식은 버튼을 누르면 열립니다.</p>
+        <p class="wallet-hint">SOOP 별풍선 후원 신청을 접수한 뒤 QR로 후원해 주세요. 후원 완료 알림은 자동 확인이나 캐시 지급이 아니며, 관리자가 실제 후원 내역을 대조한 후 승인합니다.</p>
       </section>
 
       <dialog id="walletChargeModal" class="wallet-modal" aria-labelledby="walletChargeModalTitle">
         <section class="wallet-card wallet-modal-card">
           <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">CHARGE</p><h2 id="walletChargeModalTitle">통합 캐시 충전하기</h2></div><button id="walletCloseCharge" class="wallet-modal-close" type="button" aria-label="충전 모달 닫기">×</button></div>
-          <p class="wallet-hint">입금 QR을 스캔해 이체한 다음 신청해 주세요. 입금 확인은 자동이 아니며, 통합 관리 센터에서 확인 후 캐시를 지급합니다.</p>
-        <div class="wallet-charge-grid">
-          <div class="wallet-qr-panel">
-            <div id="walletQrEmpty" class="wallet-qr-empty">관리자가 입금 QR을 등록하면 여기에 표시됩니다.</div>
-            <img id="walletQrImage" alt="입금 계좌 QR 코드" hidden>
-            <label class="wallet-file-label" for="walletQrFile">관리자 QR 등록·변경</label>
-            <input id="walletQrFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-            <small id="walletQrStatus">QR 이미지는 관리자 전용 Firebase 경로에 보관됩니다.</small>
-          </div>
-          <form id="walletChargeForm" class="wallet-form" autocomplete="off">
-            <label for="walletAmount">입금할 금액</label>
-            <div class="wallet-input-suffix"><input id="walletAmount" name="charge_amount_q8v2" type="number" min="1000" max="100000" step="100" inputmode="numeric" autocomplete="off" required><span>원</span></div>
-            <small><span id="walletLimitMessage">최소 1,000원 · 100원 단위</span> · 오늘 잔여 한도 <b id="walletRemainingInline">100,000원</b></small>
-            <small id="walletAmountHint" role="status" aria-live="polite"></small>
+          <section id="walletChargeIntro" class="wallet-card">
+            <h3>별풍선 후원 충전 안내</h3>
+            <p>신청 시 SOOP 후원자 닉네임·아이디와 후원할 별풍선 수량을 입력합니다. 신청 접수 후 QR로 별풍선을 후원하고 직접 후원 완료를 알려 주세요.</p>
+            <p>후원 완료 알림은 실제 후원이나 캐시 지급을 자동으로 확인하지 않습니다. 관리자가 실제 내역을 대조해 승인한 경우에만 별풍선 1개당 1캐시를 지급합니다.</p>
+            <button id="walletChargeStart" class="wallet-primary" type="button">충전 신청 작성</button>
+          </section>
+          <form id="walletChargeForm" class="wallet-form" autocomplete="off" hidden>
+            <button id="walletChargeBack" class="wallet-secondary" type="button">안내로 돌아가기</button>
+            <label for="walletAmount">후원할 별풍선 수량</label>
+            <div class="wallet-input-suffix"><input id="walletAmount" name="star_count" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" required><span>개</span></div>
+            <small id="walletLimitMessage">1개 이상의 정수 · 별풍선 1개 = 1캐시</small>
             <div class="wallet-cash-preview">충전 후 지급 예정 <strong><span id="walletCashPreview">0</span>캐시</strong></div>
-            <label for="walletDepositorName">입금자명</label>
-            <input id="walletDepositorName" name="depositor_name_n3m7" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-            <small>신청한 입금자명은 다음 신청에도 사용할 수 있도록 저장됩니다. 브라우저 자동완성은 사용하지 않습니다.</small>
-            <label class="wallet-consent"><input id="walletChargePolicy" type="checkbox" required><span>충전 운영 기준을 확인했습니다. 입금 확인 후 지급되며, 신청 취소·환불·오입금은 아래 고객센터 운영 기준을 따릅니다.</span></label>
+            <label for="walletDonorNickname">SOOP 후원자 닉네임</label>
+            <input id="walletDonorNickname" type="text" maxlength="40" autocomplete="off" required>
+            <label for="walletDonorId">SOOP 후원자 아이디</label>
+            <input id="walletDonorId" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+            <small>검수 시 실제 후원 내역과 대조합니다. 신청한 정보는 다음 신청에도 사용할 수 있도록 저장됩니다.</small>
+            <label class="wallet-consent"><input id="walletChargePolicy" type="checkbox" required><span>별풍선 후원 방식과 관리자 수동 확인 절차를 확인했습니다. 후원 완료 알림만으로 캐시가 지급되지 않습니다.</span></label>
             <button id="walletChargeSubmit" class="wallet-primary" type="submit">충전 신청</button>
             <div id="walletChargeStatus" class="wallet-status" role="status" aria-live="polite"></div>
           </form>
-        </div>
+        <section id="walletDonationStep" class="wallet-card" hidden>
+          <h3>별풍선 후원 진행</h3>
+          <p>스마트폰으로 QR을 스캔해 신청 수량만큼 후원한 뒤 아래 버튼을 누르세요. 버튼은 관리자에게 검수 대기 알림을 보내며 실제 후원이나 캐시 지급을 자동으로 확인하지 않습니다.</p>
+          <div class="wallet-qr-panel">
+            <img id="walletQrImage" src="./assets/admin-star-balloon-qr.png" alt="관리자 SOOP 별풍선 후원 QR 코드">
+            <a class="wallet-secondary" href="https://st.sooplive.com/app/gift_starballoon.php?szBjId=skftodwocks2&amp;szWork=BJ_STATION&amp;sys_type=web&amp;location=station" target="_blank" rel="noopener">후원 페이지 열기</a>
+            <small>관리자 SOOP 방송국 별풍선 후원 링크입니다.</small>
+          </div>
+          <div><button id="walletDonationCancel" class="wallet-secondary" type="button">신청 취소</button><button id="walletDonationComplete" class="wallet-primary" type="button">후원 완료</button></div>
+        </section>
         </section>
       </dialog>
 
@@ -87,19 +95,19 @@
         <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">SUPPORT</p><h2>고객센터</h2></div></div>
         <article class="wallet-privacy-notice">
           <h3>개인정보 처리 안내</h3>
-          <p>충전과 문의 처리를 위해 Firebase 로그인 UID, 입금자명, 신청 금액·상태·시각, 캐시 잔액·변동 내역 및 문의 내용을 저장합니다. 계좌 QR에는 계좌·예금주 정보가 포함될 수 있으며, 관리자 전용 서버 저장소에 보관됩니다.</p>
+          <p>충전과 문의 처리를 위해 Firebase 로그인 UID, SOOP 후원자 닉네임·아이디, 신청 별풍선 수량·상태·시각, 캐시 잔액·변동 내역 및 문의 내용을 저장합니다.</p>
           <p>데이터는 공유 Firebase 프로젝트의 비공개 <code>gameSeriesWallet/</code> 경로에 저장되고, 서버 함수가 관리자 UID를 확인한 뒤에만 조회·처리합니다. 브라우저가 데이터베이스를 직접 읽거나 쓰지 않습니다.</p>
-          <p class="wallet-policy-note">현재 초기 운영안에는 보유 기간과 정기 삭제 시점이 확정되어 있지 않습니다. 공개 판매 전에 보유 기간·삭제 절차와 개인정보 처리방침을 확정해야 합니다.</p>
+          <p class="wallet-policy-note">보유 기간과 정기 삭제 시점은 아직 확정되지 않았습니다. <a href="./privacy.html">개인정보 처리방침</a>과 <a href="./terms.html">통합 캐시 운영약관</a>에서 실제 처리 방식과 현재 확정되지 않은 사항을 확인할 수 있습니다.</p>
         </article>
         <div class="wallet-policy-grid">
-          <article><h3>충전 운영 기준</h3><ul><li>1캐시는 100원이며, 1회 최소 충전 신청은 1,000원입니다.</li><li>하루 신청 한도는 한국시간 기준 100,000원입니다. 취소·거절된 신청은 한도에서 제외하고, 승인된 입금액은 환불 후에도 해당 일자의 총 입금액으로 계산합니다.</li><li>충전 신청 후 실제 입금이 확인되면 관리자가 수동으로 승인합니다. 신청만으로는 캐시가 지급되지 않습니다.</li></ul></article>
-          <article><h3>취소·환불·오입금 운영안</h3><ul><li>검수 전 대기 신청은 취소할 수 있습니다. 이미 입금했다면 신청 취소만으로 계좌 반환이 되지 않으므로 고객센터에 알려 주세요.</li><li>승인된 유료 충전 잔액은 미사용분에 한해 환불 신청할 수 있습니다. 일부 사용했다면 사용분은 환불되지 않고 남은 캐시만 환불 대상으로 계산합니다. 예: 10캐시 중 3캐시를 사용했다면 7캐시(700원)가 환불 대상입니다. 환불 신청액은 계정의 사용 가능한 유료 잔액과 선택한 충전 건의 미환불 한도 중 적은 금액입니다.</li><li>미사용 유료 캐시는 별도 신청 기한 없이 환불을 신청할 수 있으며, 환불 수수료는 공제하지 않습니다. 신청한 캐시는 검수 완료 또는 거절 전까지 사용 가능 잔액에서 잠기며, 관리자가 계좌 반환을 수동 처리합니다.</li><li>환불 신청과 반환 계좌정보 확인이 모두 끝난 날부터 통상 5영업일 이내(주말·공휴일 제외)에 송금합니다. 계좌정보 보완이나 오류로 지연될 때는 사유와 필요한 조치, 예상 일정을 안내합니다. 법령에서 더 짧은 환급 기한을 정한 경우에는 해당 기한을 우선합니다.</li><li>입금자명·금액이 다르거나 중복·초과 입금된 경우에는 고객센터로 접수해 건별 확인합니다. 자동 입금 확인과 자동 계좌 환불은 지원하지 않습니다.</li></ul><p class="wallet-policy-note">이 정책은 관리자 전용 운영안입니다. 실제 잔액의 사용·충전·환불 내역과 충전 건별 환불 한도를 대조해 서버가 환불액을 산정합니다. 공개 판매 전에 관련 법률·세무 검토와 최종 약관 확정을 마쳐야 합니다.</p></article>
+          <article><h3>충전 운영 기준</h3><ul><li>별풍선 1개는 1캐시입니다. 별도 최소·최대 충전 제한은 없고 후원 수량은 1개 이상의 정수여야 합니다.</li><li>신청 후 QR로 관리자 SOOP 방송국에 별풍선을 후원하고 직접 후원 완료를 알립니다. 완료 알림은 실제 후원 또는 캐시 지급을 자동 확인하지 않습니다.</li><li>관리자가 후원자 닉네임·아이디와 수량을 실제 후원 내역으로 대조해 승인한 경우에만 캐시를 지급합니다.</li></ul></article>
+          <article><h3>취소·환불 운영안</h3><ul><li>관리자 검수 전에는 신청을 취소할 수 있습니다. 이미 별풍선을 후원했다면 취소만으로 반환이 처리되지 않으므로 고객센터에 알려 주세요.</li><li>승인된 별풍선 충전 캐시 중 미사용분만 환불 신청할 수 있습니다. 신청한 캐시는 검수 완료 또는 거절 전까지 사용할 수 없도록 잠깁니다.</li><li>반환 요청은 SOOP을 통한 처리만 접수합니다. 별풍선 반환 가능 조건과 처리 기간은 확인되지 않았으므로 반환을 보장하거나 기한을 확정하지 않습니다. SOOP 확인·처리에 시간이 걸릴 수 있으며 결과 확인 후 안내합니다.</li><li>자동 후원 확인·자동 캐시 지급·자동 반환은 지원하지 않습니다. 중복 승인과 재처리는 서버 장부에서 한 번만 반영합니다.</li></ul></article>
         </div>
         <form id="walletSupportForm" class="wallet-form wallet-support-form" autocomplete="off">
           <label for="walletSupportCategory">문의 유형</label>
-          <select id="walletSupportCategory" required><option value="deposit-mismatch">입금 확인·금액 차이</option><option value="wrong-payer">입금자명·오입금</option><option value="refund">환불 문의</option><option value="other">기타</option></select>
-          <div class="wallet-support-meta"><label>관련 신청 번호 <input id="walletSupportChargeId" type="text" maxlength="80" autocomplete="off" placeholder="선택 입력"></label><label>실제 입금액 <input id="walletSupportAmount" type="number" min="0" max="10000000" step="100" autocomplete="off" placeholder="선택 입력"></label></div>
-          <label for="walletSupportMessage">문의 내용</label><textarea id="walletSupportMessage" maxlength="1200" rows="4" required placeholder="입금 날짜·금액 등 확인에 필요한 내용을 적어 주세요."></textarea>
+          <select id="walletSupportCategory" required><option value="donation-check">별풍선 후원 확인</option><option value="wrong-donor">후원자 정보·수량 차이</option><option value="refund">반환 문의</option><option value="other">기타</option></select>
+          <div class="wallet-support-meta"><label>관련 신청 번호 <input id="walletSupportChargeId" type="text" maxlength="80" autocomplete="off" placeholder="선택 입력"></label><label>별풍선 수량 <input id="walletSupportAmount" type="number" min="0" max="10000000" step="1" autocomplete="off" placeholder="선택 입력"></label></div>
+          <label for="walletSupportMessage">문의 내용</label><textarea id="walletSupportMessage" maxlength="1200" rows="4" required placeholder="후원 시각·수량 등 확인에 필요한 내용을 적어 주세요."></textarea>
           <button class="wallet-secondary" type="submit">문의 접수</button><div id="walletSupportStatus" class="wallet-status" role="status" aria-live="polite"></div>
         </form>
         <div id="walletSupportList" class="wallet-list"></div>
@@ -112,6 +120,6 @@
       <div id="walletPageStatus" class="wallet-page-status" role="status" aria-live="polite"></div>
     </div>
   </main>
-  <footer class="site-footer"><a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span></a><p>스트리머 게임 시리즈 통합 캐시 · 관리자 전용</p><a href="./">상점으로 돌아가기</a></footer>
+  <footer class="site-footer"><a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span></a><p>스트리머 게임 시리즈 통합 캐시 · 관리자 전용</p><a href="./terms.html">운영약관</a><a href="./privacy.html">개인정보 처리방침</a><a href="./">상점으로 돌아가기</a></footer>
 </body>
 </html>

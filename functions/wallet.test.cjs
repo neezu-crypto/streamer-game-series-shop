@@ -2,166 +2,48 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 
 let tree = {};
-
-function pathParts(path) {
-  return String(path || '').split('/').filter(Boolean);
-}
-
-function readPath(path) {
-  let current = tree;
-  for (const part of pathParts(path)) {
-    if (!current || typeof current !== 'object') return null;
-    current = current[part];
-  }
-  return current == null ? null : structuredClone(current);
-}
-
-function writePath(path, value) {
-  const parts = pathParts(path);
-  if (!parts.length) { tree = value == null ? {} : structuredClone(value); return; }
-  let current = tree;
-  for (const part of parts.slice(0, -1)) {
-    if (!current[part] || typeof current[part] !== 'object') current[part] = {};
-    current = current[part];
-  }
-  if (value == null) delete current[parts.at(-1)];
-  else current[parts.at(-1)] = structuredClone(value);
-}
-
-class Snapshot {
-  constructor(value, limit = 0) { this.value = value == null ? null : structuredClone(value); this.limit = limit; }
-  val() { return this.value == null ? null : structuredClone(this.value); }
-  exists() { return this.value != null; }
-  forEach(callback) {
-    if (!this.value || typeof this.value !== 'object') return false;
-    let keys = Object.keys(this.value).sort();
-    if (this.limit) keys = keys.slice(-this.limit);
-    for (const key of keys) if (callback({ key, val: () => structuredClone(this.value[key]) })) return true;
-    return false;
-  }
-}
-
-class Reference {
-  constructor(path = '', limit = 0) { this.path = path; this.limit = limit; }
-  child(path) { return new Reference([this.path, path].filter(Boolean).join('/'), this.limit); }
-  orderByKey() { return this; }
-  limitToLast(limit) { return new Reference(this.path, limit); }
-  async get() { return new Snapshot(readPath(this.path), this.limit); }
-  async set(value) { writePath(this.path, value); }
-  async update(value) {
-    const previous = readPath(this.path) || {};
-    writePath(this.path, { ...previous, ...structuredClone(value) });
-  }
-  async transaction(update) {
-    // Firebase Admin's updater may first see its local null before the server
-    // snapshot. Returning undefined aborts immediately; a value causes RTDB to
-    // compare against server state and retry the updater after a conflict.
-    const remote = readPath(this.path);
-    const localNext = update(null);
-    if (localNext === undefined) return { committed: false, snapshot: new Snapshot(remote) };
-    if (JSON.stringify(remote) !== 'null') {
-      const serverNext = update(remote);
-      if (serverNext === undefined) return { committed: false, snapshot: new Snapshot(remote) };
-      writePath(this.path, serverNext);
-    } else {
-      writePath(this.path, localNext);
-    }
-    return { committed: true, snapshot: new Snapshot(readPath(this.path)) };
-  }
-}
-
-class HttpsError extends Error {
-  constructor(code, message) { super(message); this.code = code; }
-}
-
+const parts = (path) => String(path || '').split('/').filter(Boolean);
+function read(path) { let value = tree; for (const part of parts(path)) { if (!value || typeof value !== 'object') return null; value = value[part]; } return value == null ? null : structuredClone(value); }
+function write(path, value) { const keys = parts(path); if (!keys.length) { tree = value == null ? {} : structuredClone(value); return; } let parent = tree; for (const key of keys.slice(0, -1)) parent = parent[key] ||= {}; if (value == null) delete parent[keys.at(-1)]; else parent[keys.at(-1)] = structuredClone(value); }
+class Snapshot { constructor(value, limit = 0) { this.value = value == null ? null : structuredClone(value); this.limit = limit; } val() { return this.value == null ? null : structuredClone(this.value); } exists() { return this.value != null; } forEach(fn) { if (!this.value || typeof this.value !== 'object') return false; let keys = Object.keys(this.value).sort(); if (this.limit) keys = keys.slice(-this.limit); for (const key of keys) if (fn({ key, val: () => structuredClone(this.value[key]) })) return true; return false; } }
+class Ref { constructor(path = '', limit = 0) { this.path = path; this.limit = limit; } child(path) { return new Ref([this.path, path].filter(Boolean).join('/'), this.limit); } orderByKey() { return this; } limitToLast(limit) { return new Ref(this.path, limit); } async get() { return new Snapshot(read(this.path), this.limit); } async set(value) { write(this.path, value); } async update(value) { write(this.path, { ...(read(this.path) || {}), ...structuredClone(value) }); } async transaction(update) { const remote = read(this.path); const local = update(null); if (local === undefined) return { committed: false, snapshot: new Snapshot(remote) }; const next = remote == null ? local : update(remote); if (next === undefined) return { committed: false, snapshot: new Snapshot(remote) }; write(this.path, next); return { committed: true, snapshot: new Snapshot(read(this.path)) }; } }
+class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const originalLoad = Module._load;
-Module._load = function (request, parent, isMain) {
-  if (request === 'firebase-admin/app') return { initializeApp: () => ({}) };
-  if (request === 'firebase-admin/database') return { getDatabase: () => ({ ref: (path) => new Reference(path) }) };
-  if (request === 'firebase-functions/v2/https') {
-    return { HttpsError, onCall: (options, handler) => typeof options === 'function' ? options : handler };
-  }
-  return originalLoad.call(this, request, parent, isMain);
-};
-
-const functions = require('./index.js');
-Module._load = originalLoad;
-
-const admin = { auth: { uid: 'admin-test-uid' }, data: {} };
-const outsider = { auth: { uid: 'ordinary-test-uid' }, data: {} };
+Module._load = function (request, parent, isMain) { if (request === 'firebase-admin/app') return { initializeApp: () => ({}) }; if (request === 'firebase-admin/database') return { getDatabase: () => ({ ref: (path) => new Ref(path) }) }; if (request === 'firebase-functions/v2/https') return { HttpsError, onCall: (options, handler) => typeof options === 'function' ? options : handler }; return originalLoad.call(this, request, parent, isMain); };
+const functions = require('./index.js'); Module._load = originalLoad;
+const admin = { auth: { uid: 'admin-test-uid' }, data: {} }; const outsider = { auth: { uid: 'ordinary-test-uid' }, data: {} };
 const call = (name, user, data = {}) => functions[name]({ auth: user.auth, data });
-const expectCode = async (promise, code) => {
-  await assert.rejects(promise, (error) => error && error.code === code);
-};
+const expectCode = (promise, code) => assert.rejects(promise, (error) => error && error.code === code);
 
 async function main() {
   tree = { adminCenter: { adminUids: { 'admin-test-uid': true } } };
   await expectCode(call('gameSeriesWalletGetAdminState', outsider), 'permission-denied');
-  await expectCode(call('gameSeriesWalletSubmitSupport', outsider, { requestId: 'support-uid-0001', category: 'other', message: 'x' }), 'permission-denied');
-
-  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
-  await expectCode(call('gameSeriesWalletAdminSaveQr', admin, { qrDataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' }), 'invalid-argument');
-  const qr = await call('gameSeriesWalletAdminSaveQr', admin, { qrDataUrl: `data:image/jpeg;base64,${jpeg}` });
-  assert.equal(qr.ok, true);
-
-  await expectCode(call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-min-0001', amountKrw: 900, depositorName: '테스트' }), 'invalid-argument');
-  const first = await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-valid-0001', amountKrw: 1000, depositorName: '테스트 입금자' });
-  assert.equal(first.status, 'pending');
-  const duplicate = await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-valid-0001', amountKrw: 1000, depositorName: '테스트 입금자' });
-  assert.equal(duplicate.status, 'pending');
-  await expectCode(call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-over-0001', amountKrw: 100000, depositorName: '테스트' }), 'resource-exhausted');
-  await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-cancel-0001', amountKrw: 1000, depositorName: '테스트 입금자' });
-  await call('gameSeriesWalletCancelCharge', admin, { requestId: 'charge-cancel-0001' });
-  const second = await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-valid-0002', amountKrw: 99000, depositorName: '테스트 입금자' });
-  assert.equal(second.status, 'pending');
-
-  let overview = await call('gameSeriesWalletGetAdminState', admin);
-  assert.equal(overview.todayReservedKrw, 100000);
-  assert.equal(overview.depositorName, '테스트 입금자');
-  assert.match(overview.qrDataUrl, /^data:image\/jpeg;base64,/);
-
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0002', action: 'reject', note: '테스트 거절' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'approve', note: '테스트 승인' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'approve', note: '중복 재시도' });
-  overview = await call('gameSeriesWalletGetAdminState', admin);
-  assert.equal(overview.balanceCash, 10, '중복 승인 재시도도 한 번만 지급되어야 함');
-  assert.equal(overview.todayReservedKrw, 1000, '거절된 신청은 일일 한도에서 제외되어야 함');
-  assert.equal(overview.ledger.filter((entry) => entry.kind === 'charge').length, 1);
-
-  await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'charge-refund-0001', amountKrw: 1000, depositorName: '테스트 입금자' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'approve', note: '테스트 승인' });
-  await call('gameSeriesWalletSubmitRefund', admin, { requestId: 'charge-refund-0001', reason: '테스트 환불' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'completeRefund', note: '테스트 회수' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-refund-0001', action: 'completeRefund', note: '중복 환불 재시도' });
-  overview = await call('gameSeriesWalletGetAdminState', admin);
-  assert.equal(overview.balanceCash, 10, '두 번째 테스트 승인·환불 후 첫 충전 잔액은 남아 있어야 함');
-
-  await call('gameSeriesWalletSubmitRefund', admin, { requestId: 'charge-valid-0001', reason: '테스트 환불' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'completeRefund', note: '은행 반환 테스트 완료' });
-  await call('gameSeriesWalletAdminReview', admin, { requestId: 'charge-valid-0001', action: 'completeRefund', note: '중복 환불 재시도' });
-  overview = await call('gameSeriesWalletGetAdminState', admin);
-  assert.equal(overview.balanceCash, 0, '중복 환불 재시도도 한 번만 차감되어야 함');
-  assert.equal(overview.ledger.length, 4, '캐시 변동 내역은 충전과 환불 모두 반환되어야 함');
-  assert.equal(overview.ledger.filter((entry) => entry.kind === 'refund').length, 2);
-
-  await call('gameSeriesWalletSubmitSupport', admin, {
-    requestId: 'support-uid-0001', category: 'wrong-payer', amountKrw: 1500,
-    relatedChargeRequestId: 'charge-valid-0001', message: '테스트 문의',
-  });
-  const adminList = await call('gameSeriesWalletAdminList', admin);
-  assert.equal(adminList.chargeRequests.length, 4);
-  assert.equal(adminList.supportRequests.length, 1);
-  assert.equal(adminList.qrConfigured, true);
-  await call('gameSeriesWalletAdminReview', admin, { kind: 'support', requestId: 'support-uid-0001', action: 'close', note: '테스트 답변' });
-  overview = await call('gameSeriesWalletGetAdminState', admin);
-  assert.equal(overview.supportRequests[0].status, 'closed');
-  assert.equal(overview.supportRequests[0].adminNote, '테스트 답변');
-  await expectCode(call('gameSeriesWalletAdminList', outsider), 'permission-denied');
-  await expectCode(call('gameSeriesWalletAdminReview', outsider, { requestId: 'charge-valid-0001', action: 'approve' }), 'permission-denied');
-  console.log('wallet function checks passed: admin gate, QR validation, amount limits, daily cap, idempotent credit/refund, support review');
+  await expectCode(call('gameSeriesWalletSubmitCharge', admin, { requestId: 'star-invalid-0001', starCount: 0, soopDonorNickname: '테스트', soopDonorId: 'tester' }), 'invalid-argument');
+  const first = await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'star-valid-0001', starCount: 10, soopDonorNickname: '테스트 후원자', soopDonorId: 'tester' });
+  assert.equal(first.status, 'awaitingDonation');
+  const duplicate = await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'star-valid-0001', starCount: 10, soopDonorNickname: '테스트 후원자', soopDonorId: 'tester' });
+  assert.equal(duplicate.status, 'awaitingDonation');
+  await call('gameSeriesWalletCancelCharge', admin, { requestId: 'star-valid-0001' });
+  await expectCode(call('gameSeriesWalletMarkDonationComplete', admin, { requestId: 'star-valid-0001' }), 'failed-precondition');
+  await call('gameSeriesWalletSubmitCharge', admin, { requestId: 'star-valid-0002', starCount: 10, soopDonorNickname: '테스트 후원자', soopDonorId: 'tester' });
+  await expectCode(call('gameSeriesWalletAdminReview', admin, { requestId: 'star-valid-0002', action: 'approve' }), 'failed-precondition');
+  await call('gameSeriesWalletMarkDonationComplete', admin, { requestId: 'star-valid-0002' });
+  await call('gameSeriesWalletMarkDonationComplete', admin, { requestId: 'star-valid-0002' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'star-valid-0002', action: 'approve', note: '실제 SOOP 후원 대조 완료' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'star-valid-0002', action: 'approve', note: '중복 승인 재시도' });
+  let state = await call('gameSeriesWalletGetAdminState', admin);
+  assert.equal(state.balanceCash, 10, '중복 승인도 한 번만 캐시를 지급해야 함');
+  assert.equal(state.ledger.filter((entry) => entry.kind === 'starBalloonCharge').length, 1);
+  await call('gameSeriesWalletSubmitRefund', admin, { requestId: 'star-valid-0002', reason: 'SOOP 반환 테스트' });
+  state = await call('gameSeriesWalletGetAdminState', admin);
+  assert.equal(state.refundReservedCash, 10, '반환 대기 캐시는 사용 가능 잔액에서 잠겨야 함');
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'star-valid-0002', action: 'completeRefund', note: 'SOOP 반환 확인' });
+  await call('gameSeriesWalletAdminReview', admin, { requestId: 'star-valid-0002', action: 'completeRefund', note: '중복 반환 재시도' });
+  state = await call('gameSeriesWalletGetAdminState', admin);
+  assert.equal(state.balanceCash, 0, '중복 반환 처리도 한 번만 캐시를 회수해야 함');
+  assert.equal(state.ledger.filter((entry) => entry.kind === 'starBalloonRefund').length, 1);
+  await call('gameSeriesWalletSubmitSupport', admin, { requestId: 'support-star-0001', category: 'donation-check', starCount: 10, relatedChargeRequestId: 'star-valid-0002', message: '테스트 문의' });
+  await expectCode(call('gameSeriesWalletAdminReview', outsider, { requestId: 'star-valid-0002', action: 'approve' }), 'permission-denied');
+  console.log('wallet function checks passed: permissions, donation completion, cancellation, manual approval, refund lock, and idempotent credit/refund');
 }
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch((error) => { console.error(error); process.exitCode = 1; });

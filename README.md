@@ -34,7 +34,7 @@ python3 -m http.server 8080
 
 각 게임은 Firebase Authentication의 공통 `gameSeriesEmotes` 앱을 사용합니다. Cloud Functions는 `gameSeriesShop/ownership/{uid}/{productId}`의 서버 구매 기록을 확인하고, 사용 자격·좌표·전송 간격을 검증한 뒤 RTDB의 `gameSeriesShop/emoteEvents`에 표시 이벤트를 기록합니다. 클라이언트는 해당 이벤트만 실시간으로 읽으며 소유권·구매 데이터에는 직접 접근하지 않습니다.
 
-`customer-center.html`은 관리자 전용 통합 캐시 충전·고객센터 화면입니다. QR, 입금자명, 신청, 캐시 잔액과 장부는 공유 RTDB의 `gameSeriesWallet/` 아래에 저장되며, 브라우저의 RTDB 직접 읽기·쓰기는 사용하지 않습니다. `functions/index.js`의 새 callable은 `adminCenter/adminUids/{uid}`를 서버에서 확인합니다. 충전 신청은 KST 일일 한도와 100원 단위를 서버에서 검증하고, 캐시는 통합 관리 센터에서 실제 입금을 확인해 승인한 뒤에만 지급합니다. 계좌 QR은 정적 Pages 파일에 포함하지 않습니다.
+`customer-center.html`은 관리자 전용 통합 캐시 충전·고객센터 화면입니다. 별풍선 후원자 닉네임·아이디, 신청 수량, 상태, 캐시 잔액과 장부는 공유 RTDB의 `gameSeriesWallet/` 아래에 저장되며, 브라우저의 RTDB 직접 읽기·쓰기는 사용하지 않습니다. `functions/index.js`의 callable은 `adminCenter/adminUids/{uid}`를 서버에서 확인합니다. 별풍선 1개는 1캐시이며, 사용자의 후원 완료 알림은 실제 후원 또는 지급을 자동 확인하지 않습니다. 통합 관리 센터에서 실제 SOOP 후원 내역을 대조해 승인한 뒤에만 캐시를 지급합니다. SOOP 후원 QR은 정적 Pages 자산으로 배포합니다.
 
 현재 카탈로그는 출시 전 시안이고 구매/결제 흐름은 아직 연결하지 않았습니다. 따라서 서버 소유권 기록이 없는 계정의 팝업은 빈 상태를 안내합니다. 실제 구매 기능을 추가할 때 결제 확인이 끝난 서버 코드만 `ownership`에 기록해야 합니다.
 

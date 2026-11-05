@@ -20,8 +20,8 @@ const functions = getFunctions(app, 'us-central1');
 
 const callable = (name) => httpsCallable(functions, name);
 const getWalletState = callable('gameSeriesWalletGetAdminState');
-const saveQr = callable('gameSeriesWalletAdminSaveQr');
 const submitCharge = callable('gameSeriesWalletSubmitCharge');
+const markDonationComplete = callable('gameSeriesWalletMarkDonationComplete');
 const cancelCharge = callable('gameSeriesWalletCancelCharge');
 const submitRefund = callable('gameSeriesWalletSubmitRefund');
 const submitSupport = callable('gameSeriesWalletSubmitSupport');
@@ -46,10 +46,6 @@ function escapeHtml(value) {
   })[c]);
 }
 
-function formatWon(value) {
-  return `${(Number(value) || 0).toLocaleString('ko-KR')}원`;
-}
-
 function formatDate(value) {
   const date = new Date(Number(value) || 0);
   return Number.isFinite(date.getTime()) && date.getTime() > 0
@@ -57,18 +53,12 @@ function formatDate(value) {
     : '시간 정보 없음';
 }
 
-function availableChargeLimitKrw() {
-  const remaining = walletState ? Number(walletState.todayRemainingKrw) : 100000;
-  if (!Number.isFinite(remaining)) return 0;
-  return Math.min(100000, Math.max(0, Math.floor(remaining / 100) * 100));
-}
-
 function createRequestId() {
   return `${Date.now()}_${crypto.randomUUID()}`;
 }
 
 const STATUS_LABELS = {
-  pending: '입금 확인 대기', processing: '지급 처리 중', approved: '승인 · 캐시 지급 완료',
+  awaitingDonation: '후원 대기', donationCompleted: '후원 완료 알림 · 관리자 확인 대기', processing: '지급 처리 중', approved: '승인 · 캐시 지급 완료',
   rejected: '신청 거절', cancelled: '신청 취소', refundRequested: '환불 검수 대기',
   refundProcessing: '환불 처리 중', refundRejecting: '환불 거절 처리 중', refunded: '환불 완료', open: '답변 대기', closed: '처리 완료',
 };
@@ -82,7 +72,7 @@ function setGate(message, title = '관리자 권한을 확인할 수 없습니�
 
 function setBusy(value) {
   busy = value;
-  $('walletChargeSubmit').disabled = value || (!!walletState && availableChargeLimitKrw() < 1000);
+  $('walletChargeSubmit').disabled = value;
   $('walletRefresh').disabled = value;
   $('walletSupportForm').querySelector('button[type="submit"]').disabled = value;
 }
@@ -94,20 +84,23 @@ function renderChargeRequests(items) {
     return;
   }
   host.innerHTML = items.map((item) => {
-    const action = item.status === 'pending'
+    const action = ['awaitingDonation', 'donationCompleted'].includes(item.status)
       ? `<button class="wallet-small-action" type="button" data-wallet-cancel="${escapeHtml(item.requestId)}">신청 취소</button>`
       : item.status === 'approved'
         ? `<button class="wallet-small-action" type="button" data-wallet-refund="${escapeHtml(item.requestId)}" data-wallet-refund-cash="${Number(item.cashAmount) || 0}">환불 신청</button>`
         : '';
     const showRefund = ['refundRequested', 'refundProcessing', 'refundRejecting', 'refunded'].includes(item.status);
     const refundCash = showRefund ? Number(item.refundCashAmount) || (item.status === 'refunded' ? Number(item.cashAmount) || 0 : 0) : 0;
-    const refundAmount = showRefund ? Number(item.refundAmountKrw) || refundCash * 100 : 0;
+    const refundStars = showRefund ? Number(item.refundStarCount) || refundCash : 0;
     const refundDetail = refundCash > 0
-      ? `<small>환불 ${refundAmount.toLocaleString('ko-KR')}원 · ${refundCash.toLocaleString('ko-KR')}캐시</small>` : '';
-    return `<article class="wallet-list-row"><div><strong>${formatWon(item.amountKrw)} · ${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>입금자명 ${escapeHtml(item.depositorName || '-')} · ${formatDate(item.createdAt)}</span>${refundDetail}${item.reviewNote ? `<small>검수 메모: ${escapeHtml(item.reviewNote)}</small>` : ''}${item.refundAdminNote ? `<small>환불 메모: ${escapeHtml(item.refundAdminNote)}</small>` : ''}</div><div class="wallet-list-trailing"><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b>${action}</div></article>`;
+      ? `<small>SOOP 반환 요청 ${refundStars.toLocaleString('ko-KR')}개 · ${refundCash.toLocaleString('ko-KR')}캐시</small>` : '';
+    const donationInfo = item.paymentMethod === 'starBalloon'
+      ? `SOOP ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')}) · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개`
+      : '전환 전 현금 충전 기록';
+    return `<article class="wallet-list-row"><div><strong>${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>${donationInfo} · ${formatDate(item.createdAt)}</span>${refundDetail}${item.reviewNote ? `<small>검수 메모: ${escapeHtml(item.reviewNote)}</small>` : ''}${item.refundAdminNote ? `<small>반환 메모: ${escapeHtml(item.refundAdminNote)}</small>` : ''}</div><div class="wallet-list-trailing"><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b>${action}</div></article>`;
   }).join('');
   host.querySelectorAll('[data-wallet-cancel]').forEach((button) => button.addEventListener('click', async () => {
-    if (!window.confirm('대기 중인 충전 신청을 취소할까요? 실제로 입금한 경우 취소만으로 환불되지는 않습니다.')) return;
+    if (!window.confirm('대기 중인 별풍선 충전 신청을 취소할까요? 이미 후원했다면 취소만으로 SOOP 반환이 처리되지는 않습니다.')) return;
     try { await cancelCharge({ requestId: button.dataset.walletCancel }); await refreshWallet(); }
     catch (error) { window.alert(`취소 실패: ${error.message || error}`); }
   }));
@@ -120,13 +113,12 @@ function renderChargeRequests(items) {
         window.alert('현재 환불할 수 있는 미사용 캐시가 없습니다.');
         return;
       }
-      const refundKrw = refundCash * 100;
-      if (!window.confirm(`미사용 잔액 ${refundCash.toLocaleString('ko-KR')}캐시 (${formatWon(refundKrw)})의 환불을 신청할까요? 검수 중에는 신청액을 사용할 수 없습니다.`)) return;
-      const reason = window.prompt('환불 사유를 입력해 주세요. 계좌 반환은 관리자가 실제 송금 후 완료 처리합니다.');
+      if (!window.confirm(`미사용 잔액 ${refundCash.toLocaleString('ko-KR')}캐시의 SOOP 반환을 신청할까요? 검수 중에는 신청액을 사용할 수 없습니다.`)) return;
+      const reason = window.prompt('반환 사유를 입력해 주세요. SOOP의 처리 조건과 기간은 확정되지 않았습니다.');
       if (!reason || !reason.trim()) return;
       const response = await submitRefund({ requestId: button.dataset.walletRefund, reason: reason.trim() });
       const result = response.data || {};
-      window.alert(`환불 신청 접수: ${Number(result.cashAmount || refundCash).toLocaleString('ko-KR')}캐시 (${formatWon(result.amountKrw || refundKrw)})`);
+      window.alert(`SOOP 반환 신청 접수: ${Number(result.cashAmount || refundCash).toLocaleString('ko-KR')}캐시`);
       await refreshWallet();
     }
     catch (error) { window.alert(`환불 신청 실패: ${error.message || error}`); }
@@ -139,8 +131,8 @@ function renderSupport(items) {
     host.innerHTML = '<div class="wallet-empty">접수된 고객센터 문의가 없습니다.</div>';
     return;
   }
-  const category = { 'deposit-mismatch': '입금 확인·금액 차이', 'wrong-payer': '입금자명·오입금', refund: '환불 문의', other: '기타' };
-  host.innerHTML = items.map((item) => `<article class="wallet-list-row"><div><strong>${escapeHtml(category[item.category] || '고객센터 문의')} · ${escapeHtml(item.amountKrw ? formatWon(item.amountKrw) : '금액 미입력')}</strong><span>${formatDate(item.createdAt)}${item.relatedChargeRequestId ? ` · 신청 ${escapeHtml(item.relatedChargeRequestId)}` : ''}</span><p>${escapeHtml(item.message)}</p>${item.adminNote ? `<small>답변: ${escapeHtml(item.adminNote)}</small>` : ''}</div><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b></article>`).join('');
+  const category = { 'donation-check': '별풍선 후원 확인', 'wrong-donor': '후원자 정보·수량 차이', refund: '반환 문의', other: '기타' };
+  host.innerHTML = items.map((item) => `<article class="wallet-list-row"><div><strong>${escapeHtml(category[item.category] || '고객센터 문의')} · ${Number(item.starCount || 0) ? `${Number(item.starCount).toLocaleString('ko-KR')}개` : '수량 미입력'}</strong><span>${formatDate(item.createdAt)}${item.relatedChargeRequestId ? ` · 신청 ${escapeHtml(item.relatedChargeRequestId)}` : ''}</span><p>${escapeHtml(item.message)}</p>${item.adminNote ? `<small>답변: ${escapeHtml(item.adminNote)}</small>` : ''}</div><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b></article>`).join('');
 }
 
 function renderLedger(items) {
@@ -153,16 +145,15 @@ function renderLedger(items) {
     const kind = String(item.kind || '');
     const chestPurchase = kind === 'treasureChestPurchase';
     const chestCancellation = kind === 'treasureChestCancellation';
-    const positive = kind === 'charge' || chestCancellation;
+    const positive = kind === 'starBalloonCharge' || chestCancellation;
     const cashAmount = Number(item.cashAmount || 0);
     const title = chestPurchase
       ? `보물상자 ${Number(item.paidChestCount || 0)}개 구매${Number(item.bonusChestCount || 0) ? ` · 보너스 ${Number(item.bonusChestCount).toLocaleString('ko-KR')}개` : ''}`
       : chestCancellation
         ? `보물상자 ${Number(item.chestCount || 0)}개 취소`
-        : (positive ? '충전 승인' : '충전 환불');
-    const badge = chestPurchase ? '구매' : chestCancellation ? '취소' : (positive ? '지급' : '환불');
-    const equivalent = chestPurchase || chestCancellation ? `${formatWon(item.amountKrw)} 상당` : formatWon(item.amountKrw);
-    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${cashAmount.toLocaleString('ko-KR')}캐시</strong><span>${title} · ${equivalent} · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${badge}</b></article>`;
+        : (positive ? '별풍선 충전 승인' : 'SOOP 반환 완료');
+    const badge = chestPurchase ? '구매' : chestCancellation ? '취소' : (positive ? '지급' : '반환');
+    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${cashAmount.toLocaleString('ko-KR')}캐시</strong><span>${title} · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개 · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${badge}</b></article>`;
   }).join('');
 }
 
@@ -175,12 +166,8 @@ function renderWallet(data) {
   reserveNote.textContent = reserved > 0
     ? `환불 검수 중인 ${reserved.toLocaleString('ko-KR')}캐시는 처리 완료 또는 거절 전까지 사용할 수 없습니다.`
     : '';
-  $('walletRemaining').textContent = Number(data.todayRemainingKrw || 0).toLocaleString('ko-KR');
-  $('walletRemainingInline').textContent = formatWon(data.todayRemainingKrw);
-  $('walletDepositorName').value = data.depositorName || '';
-  $('walletQrImage').hidden = !data.qrDataUrl;
-  $('walletQrImage').src = data.qrDataUrl || '';
-  $('walletQrEmpty').hidden = !!data.qrDataUrl;
+  $('walletDonorNickname').value = data.soopDonorNickname || '';
+  $('walletDonorId').value = data.soopDonorId || '';
   renderChargeRequests(data.requests || []);
   renderSupport(data.supportRequests || []);
   renderLedger(data.ledger || []);
@@ -209,25 +196,11 @@ async function refreshWallet(force = false) {
 
 function updateCashPreview() {
   const input = $('walletAmount');
-  const limitKrw = availableChargeLimitKrw();
-  const entered = input.value === '' ? NaN : Number(input.value);
-  let adjusted = false;
-  input.max = String(limitKrw);
-  if (Number.isFinite(entered) && entered > limitKrw) {
-    input.value = limitKrw >= 1000 ? String(limitKrw) : '';
-    adjusted = limitKrw >= 1000;
-  }
   const amount = Number(input.value) || 0;
-  $('walletLimitMessage').textContent = limitKrw < 1000 && walletState
-    ? '오늘 남은 한도가 최소 충전액보다 적어 신청할 수 없습니다.'
-    : '최소 1,000원 · 100원 단위';
-  $('walletAmountHint').textContent = adjusted
-    ? `입력 금액을 오늘 잔여 한도 ${formatWon(limitKrw)}으로 조정했습니다.`
-    : '';
-  $('walletCashPreview').textContent = Number.isInteger(amount) && amount >= 1000 && amount <= limitKrw && amount % 100 === 0
-    ? (amount / 100).toLocaleString('ko-KR')
+  $('walletCashPreview').textContent = Number.isSafeInteger(amount) && amount > 0
+    ? amount.toLocaleString('ko-KR')
     : '0';
-  $('walletChargeSubmit').disabled = busy || (!!walletState && limitKrw < 1000);
+  $('walletChargeSubmit').disabled = busy;
 }
 
 async function initializeAdmin(user) {
@@ -273,67 +246,81 @@ $('walletGateLogin').addEventListener('click', () => authButton.click());
 
 $('walletAmount').addEventListener('input', updateCashPreview);
 $('walletRefresh').addEventListener('click', refreshWallet);
-$('walletOpenCharge').addEventListener('click', () => $('walletChargeModal').showModal());
+$('walletOpenCharge').addEventListener('click', () => {
+  $('walletChargeIntro').hidden = false;
+  $('walletChargeForm').hidden = true;
+  $('walletDonationStep').hidden = true;
+  $('walletDonationStep').dataset.requestId = '';
+  $('walletDonationComplete').disabled = false;
+  chargeStatus.textContent = '';
+  $('walletChargeModal').showModal();
+});
 $('walletCloseCharge').addEventListener('click', () => $('walletChargeModal').close());
 $('walletChargeModal').addEventListener('click', (event) => {
   if (event.target === $('walletChargeModal')) $('walletChargeModal').close();
 });
+$('walletChargeStart').addEventListener('click', () => {
+  $('walletChargeIntro').hidden = true;
+  $('walletChargeForm').hidden = false;
+});
+$('walletChargeBack').addEventListener('click', () => {
+  $('walletChargeForm').hidden = true;
+  $('walletChargeIntro').hidden = false;
+  chargeStatus.textContent = '';
+});
 
-$('walletQrFile').addEventListener('change', async (event) => {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 100000) {
-    $('walletQrStatus').textContent = 'JPEG, PNG, WebP 파일을 100KB 이하로 선택해 주세요.';
-    event.target.value = '';
-    return;
-  }
+$('walletDonationCancel').addEventListener('click', async () => {
+  const requestId = $('walletDonationStep').dataset.requestId;
+  if (!requestId || !window.confirm('별풍선 충전 신청을 취소할까요? 이미 후원했다면 SOOP 반환은 자동으로 처리되지 않습니다.')) return;
   try {
-    const qrDataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'));
-      reader.readAsDataURL(file);
-    });
-    $('walletQrStatus').textContent = '관리자 전용 저장소에 등록하는 중입니다.';
-    await saveQr({ qrDataUrl });
-    $('walletQrStatus').textContent = '입금 QR을 관리자 전용 저장소에 저장했습니다.';
-    await refreshWallet(true);
-  } catch (error) {
-    $('walletQrStatus').textContent = `QR 저장 실패: ${error.message || error}`;
-  } finally {
-    event.target.value = '';
-  }
+    await cancelCharge({ requestId });
+    $('walletDonationStep').hidden = true;
+    $('walletChargeForm').hidden = true;
+    $('walletChargeIntro').hidden = false;
+    await refreshWallet();
+  } catch (error) { window.alert(`취소 실패: ${error.message || error}`); }
+});
+
+$('walletDonationComplete').addEventListener('click', async () => {
+  const requestId = $('walletDonationStep').dataset.requestId;
+  if (!requestId || !window.confirm('실제 별풍선 후원을 마쳤나요? 이 알림은 캐시 지급이나 후원 자동 확인이 아닙니다.')) return;
+  try {
+    await markDonationComplete({ requestId });
+    $('walletDonationComplete').disabled = true;
+    chargeStatus.textContent = '후원 완료 알림을 보냈습니다. 관리자가 실제 후원 내역을 확인한 뒤 승인합니다.';
+    await refreshWallet();
+  } catch (error) { window.alert(`후원 완료 알림 실패: ${error.message || error}`); }
 });
 
 $('walletChargeForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (busy) return;
-  const amountKrw = Number($('walletAmount').value);
-  const depositorName = $('walletDepositorName').value.trim();
+  const starCount = Number($('walletAmount').value);
+  const soopDonorNickname = $('walletDonorNickname').value.trim();
+  const soopDonorId = $('walletDonorId').value.trim();
   if (!$('walletChargePolicy').checked) {
     chargeStatus.textContent = '충전 운영 기준을 확인해 주세요.';
     return;
   }
-  if (!Number.isSafeInteger(amountKrw) || amountKrw < 1000 || amountKrw % 100 !== 0) {
-    chargeStatus.textContent = '1,000원 이상을 100원 단위로 입력해 주세요.';
+  if (!Number.isSafeInteger(starCount) || starCount <= 0) {
+    chargeStatus.textContent = '후원할 별풍선 수량을 1개 이상의 정수로 입력해 주세요.';
     return;
   }
-  if (amountKrw > Number(walletState?.todayRemainingKrw || 0)) {
-    chargeStatus.textContent = '오늘 남은 신청 한도를 초과합니다.';
+  if (!soopDonorNickname || !soopDonorId) {
+    chargeStatus.textContent = 'SOOP 후원자 닉네임과 아이디를 입력해 주세요.';
     return;
   }
-  if (!depositorName) {
-    chargeStatus.textContent = '입금자명을 입력해 주세요.';
-    return;
-  }
-  if (!window.confirm(`${formatWon(amountKrw)} 입금 신청을 할까요? 신청만으로 캐시가 지급되지는 않습니다.`)) return;
+  if (!window.confirm(`별풍선 ${starCount.toLocaleString('ko-KR')}개 충전을 신청할까요? 신청과 후원 완료 알림만으로 캐시가 지급되지는 않습니다.`)) return;
   setBusy(true);
   chargeStatus.textContent = '충전 신청을 저장하고 있습니다.';
   try {
-    await submitCharge({ requestId: createRequestId(), amountKrw, depositorName });
-    $('walletAmount').value = '';
+    const response = await submitCharge({ requestId: createRequestId(), starCount, soopDonorNickname, soopDonorId });
+    $('walletDonationStep').hidden = false;
+    $('walletDonationStep').dataset.requestId = response.data.requestId;
+    $('walletChargeForm').hidden = true;
+    $('walletChargeIntro').hidden = true;
     $('walletChargePolicy').checked = false;
-    chargeStatus.textContent = '신청을 접수했습니다. 실제 입금 확인 후 통합 관리 센터에서 검수됩니다.';
+    chargeStatus.textContent = '신청을 접수했습니다. QR로 후원한 뒤 후원 완료를 눌러 주세요.';
     await refreshWallet(true);
   } catch (error) {
     chargeStatus.textContent = error.message || '충전 신청을 저장하지 못했습니다.';
@@ -354,7 +341,7 @@ $('walletSupportForm').addEventListener('submit', async (event) => {
       requestId: createRequestId(),
       category: $('walletSupportCategory').value,
       message,
-      amountKrw: Number($('walletSupportAmount').value) || 0,
+      starCount: Number($('walletSupportAmount').value) || 0,
       relatedChargeRequestId: $('walletSupportChargeId').value.trim(),
     });
     $('walletSupportForm').reset();
