@@ -32,6 +32,13 @@
 .wallet-modal { width: min(690px, calc(100% - 24px)); max-width: none; max-height: 92vh; padding: 0; overflow: visible; border: 0; background: transparent; }
 .wallet-modal::backdrop { background: rgba(31, 28, 44, .58); backdrop-filter: blur(5px); }
 .wallet-modal-card { max-height: 92vh; margin: 0; overflow: auto; border-radius: 20px; }
+.wallet-login-card { max-width: 510px; }
+.wallet-login-choices { display: grid; gap: 10px; margin-top: 20px; }
+.wallet-login-choice { min-height: 48px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: #fffefa; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.wallet-login-choice:hover { transform: translateY(-1px); box-shadow: 0 5px 13px rgba(31,28,44,.10); }
+.wallet-login-google { border-color: #cbd6ff; background: #f5f8ff; }
+.wallet-login-kakao { border-color: #ebd670; background: #fee500; color: #181600; }
+.wallet-login-card .wallet-form { margin-top: 18px; }
 .wallet-modal-close { width: 36px; height: 36px; flex: none; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fffefa; font-size: 24px; line-height: 1; cursor: pointer; }
 .wallet-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
 .wallet-section-heading h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.04em; }

@@ -7,8 +7,9 @@
   <meta name="description" content="스트리머 게임 시리즈 통합 캐시와 고객센터">
   <title>통합 캐시 · 고객센터 — 게임 시리즈</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="wallet.css?v=20261106-viewer-charge1">
-  <script type="module" src="wallet.js?v=20261106-viewer-charge1"></script>
+  <link rel="stylesheet" href="wallet.css?v=20261107-three-login1">
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script type="module" src="wallet.js?v=20261107-three-login1"></script>
 </head>
 <body class="wallet-page">
   <header class="site-header wallet-header">
@@ -20,7 +21,7 @@
       <a href="./">상점</a>
       <a class="active" href="customer-center.html">통합 캐시·고객센터</a>
     </nav>
-    <div class="wallet-auth"><span id="walletAuthStatus">로그인이 필요합니다</span><button id="walletAuthButton" class="series-link" type="button">Google 로그인</button></div>
+    <div class="wallet-auth"><span id="walletAuthStatus">로그인이 필요합니다</span><button id="walletAuthButton" class="series-link" type="button">로그인</button></div>
   </header>
 
   <main class="wallet-main">
@@ -32,10 +33,33 @@
 
     <section id="walletGate" class="wallet-gate" aria-live="polite">
       <div class="wallet-gate-icon" aria-hidden="true">🔐</div>
-      <h2 id="walletGateTitle">Google 로그인이 필요합니다</h2>
+      <h2 id="walletGateTitle">로그인이 필요합니다</h2>
       <p id="walletGateMessage">로그인하면 본인 캐시 충전 신청과 내역을 확인할 수 있습니다.</p>
-      <button id="walletGateLogin" class="wallet-primary" type="button">Google 로그인</button>
+      <button id="walletGateLogin" class="wallet-primary" type="button">로그인 방법 선택</button>
     </section>
+
+    <dialog id="walletLoginModal" class="wallet-modal" aria-labelledby="walletLoginModalTitle">
+      <section class="wallet-card wallet-modal-card wallet-login-card">
+        <div class="wallet-section-heading"><div><p class="eyebrow section-eyebrow">ACCOUNT</p><h2 id="walletLoginModalTitle">계정 로그인</h2></div><button id="walletLoginClose" class="wallet-modal-close" type="button" aria-label="로그인 창 닫기">×</button></div>
+        <p class="wallet-hint">시리즈에서 사용 중인 계정 보호 방식으로 로그인합니다. 세 방법 모두 기존 UID와 캐시 내역을 유지합니다.</p>
+        <div id="walletLoginChoices" class="wallet-login-choices">
+          <button id="walletLoginGoogle" class="wallet-login-choice wallet-login-google" type="button">🔵 Google로 로그인</button>
+          <button id="walletLoginKakao" class="wallet-login-choice wallet-login-kakao" type="button">💬 카카오로 로그인</button>
+          <button id="walletLoginStreamer" class="wallet-login-choice" type="button">🎙️ 스트리머 인증으로 로그인</button>
+        </div>
+        <form id="walletStreamerLoginForm" class="wallet-form" hidden>
+          <button id="walletStreamerLoginBack" class="wallet-secondary" type="button">로그인 방법으로 돌아가기</button>
+          <p class="wallet-hint">스트리머 인증은 SOOP 닉네임과 아이디를 확인한 뒤 승인됩니다. 이미 인증된 계정이면 인증 상태를 확인합니다.</p>
+          <label for="walletStreamerNickname">SOOP 닉네임</label>
+          <input id="walletStreamerNickname" type="text" maxlength="40" autocomplete="off" required>
+          <label for="walletStreamerSoopId">SOOP 아이디</label>
+          <input id="walletStreamerSoopId" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" required>
+          <button class="wallet-primary" type="submit">스트리머 인증 신청</button>
+          <button id="walletStreamerCheck" class="wallet-secondary" type="button">인증 상태 확인</button>
+          <div id="walletStreamerLoginStatus" class="wallet-status" role="status" aria-live="polite"></div>
+        </form>
+      </section>
+    </dialog>
 
     <div id="walletApp" hidden>
       <div class="wallet-tabs" role="tablist" aria-label="통합 캐시와 고객센터 메뉴">

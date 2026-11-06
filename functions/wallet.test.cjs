@@ -12,15 +12,27 @@ const originalLoad = Module._load;
 Module._load = function (request, parent, isMain) { if (request === 'firebase-admin/app') return { initializeApp: () => ({}) }; if (request === 'firebase-admin/database') return { getDatabase: () => ({ ref: (path) => new Ref(path) }) }; if (request === 'firebase-functions/v2/https') return { HttpsError, onCall: (options, handler) => typeof options === 'function' ? options : handler }; return originalLoad.call(this, request, parent, isMain); };
 const functions = require('./index.js'); Module._load = originalLoad;
 const googleAuth = (uid) => ({ uid, token: { firebase: { sign_in_provider: 'google.com' } } });
+const customAuth = (uid) => ({ uid, token: { firebase: { sign_in_provider: 'custom' } } });
+const anonymousAuth = (uid) => ({ uid, token: { firebase: { sign_in_provider: 'anonymous' } } });
 const admin = { auth: googleAuth('admin-test-uid'), data: {} }; const outsider = { auth: googleAuth('ordinary-test-uid'), data: {} };
+const kakaoUser = { auth: customAuth('kakao-test-uid'), data: {} };
+const streamerUser = { auth: anonymousAuth('streamer-test-uid'), data: {} };
+const anonymousUser = { auth: anonymousAuth('anonymous-test-uid'), data: {} };
 const call = (name, user, data = {}) => functions[name]({ auth: user.auth, data });
 const expectCode = (promise, code) => assert.rejects(promise, (error) => error && error.code === code);
 
 async function main() {
   tree = {
     adminCenter: { adminUids: { 'admin-test-uid': true } },
-    users: { 'admin-test-uid': { streamerVerified: true } },
+    users: {
+      'admin-test-uid': { streamerVerified: true },
+      'kakao-test-uid': { kakaoLinked: true },
+      'streamer-test-uid': { streamerVerified: true },
+    },
   };
+  await expectCode(call('gameSeriesWalletGetAdminState', anonymousUser), 'unauthenticated');
+  assert.equal((await call('gameSeriesWalletGetAdminState', kakaoUser)).uid, 'kakao-test-uid', '카카오 보호 계정은 custom 토큰이어도 이용할 수 있어야 함');
+  assert.equal((await call('gameSeriesWalletGetAdminState', streamerUser)).uid, 'streamer-test-uid', '스트리머 인증 계정은 익명 세션 기반이어도 이용할 수 있어야 함');
   const viewerState = await call('gameSeriesWalletGetAdminState', outsider);
   assert.equal(viewerState.isAdmin, false, '일반 로그인 유저는 검수 권한을 받지 않아야 함');
   assert.equal(viewerState.isVerifiedStreamer, false, '일반 로그인 유저는 본인 충전형이어야 함');

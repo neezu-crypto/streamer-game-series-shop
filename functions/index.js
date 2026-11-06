@@ -44,7 +44,7 @@ function requireUser(request) {
 }
 
 async function requireWalletAdmin(request) {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const admin = await db.ref(`adminCenter/adminUids/${uid}`).get();
   if (admin.val() !== true) {
     throw new HttpsError('permission-denied', '관리자만 이용할 수 있습니다.');
@@ -52,13 +52,16 @@ async function requireWalletAdmin(request) {
   return uid;
 }
 
-function requireWalletUser(request) {
+async function requireWalletUser(request) {
   const uid = requireUser(request);
   const provider = request.auth?.token?.firebase?.sign_in_provider;
-  if (!provider || provider === 'anonymous') {
-    throw new HttpsError('unauthenticated', '통합 캐시를 이용하려면 Google 로그인으로 계정을 확인해 주세요.');
-  }
-  return uid;
+  // Google은 Firebase 제공자로 바로 구분된다. 카카오와 스트리머 인증은 기존
+  // 익명 UID를 보호/전환하는 시리즈 공통 방식이라, custom·anonymous 토큰만으로
+  // 차단하지 않고 서버에 기록된 보호 상태를 반드시 함께 확인한다.
+  if (provider && provider !== 'anonymous' && provider !== 'custom') return uid;
+  const identity = (await db.ref(`users/${uid}`).get()).val() || {};
+  if (identity.googleLinked === true || identity.kakaoLinked === true || identity.streamerVerified === true) return uid;
+  throw new HttpsError('unauthenticated', '통합 캐시는 Google·카카오 로그인 또는 스트리머 인증 후 이용할 수 있습니다.');
 }
 
 async function isWalletAdmin(uid) {
@@ -456,7 +459,7 @@ exports.gameSeriesShopSendEmote = onCall({ region: REGION, maxInstances: 40 }, a
 // 통합 캐시는 로그인 유저가 본인 계정으로 충전할 수 있다. 인증 스트리머는 시청자 후원형을
 // 선택하며, 검수·전체 목록만 관리자 전용이다.
 exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const base = db.ref(WALLET_ROOT);
   const [profileSnap, accountSnap, requestSnap, supportSnap, ledgerSnap, streamerVerifiedSnap] = await Promise.all([
     base.child(`profiles/${uid}`).get(),
@@ -499,7 +502,7 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
 });
 
 exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const data = request.data || {};
   const requestId = walletSafeId(data.requestId, '충전 요청 번호');
   const starCount = Number(data.starCount);
@@ -550,7 +553,7 @@ exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10
 });
 
 exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId, '충전 요청 번호');
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
   let invalid = false;
@@ -569,7 +572,7 @@ exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInsta
 });
 
 exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId);
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
   let notCancelable = false;
@@ -589,7 +592,7 @@ exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10
 });
 
 exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId);
   const reason = walletText((request.data || {}).reason, 500, '환불 사유');
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
@@ -680,7 +683,7 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
 });
 
 exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
-  const uid = requireWalletUser(request);
+  const uid = await requireWalletUser(request);
   const data = request.data || {};
   const category = String(data.category || '');
   if (!['donation-check', 'wrong-donor', 'refund', 'other'].includes(category)) {

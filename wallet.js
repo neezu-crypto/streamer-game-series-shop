@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut,
+  getAuth, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, signInAnonymously,
+  signInWithCustomToken, signInWithPopup, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
@@ -27,6 +28,11 @@ const submitRefund = callable('gameSeriesWalletSubmitRefund');
 const submitSupport = callable('gameSeriesWalletSubmitSupport');
 const getWalletAdminList = callable('gameSeriesWalletAdminList');
 const reviewWalletRequest = callable('gameSeriesWalletAdminReview');
+// 주식시장·인생게임과 같은 공용 계정 보호 함수다. 상점이 별도 계정을 만들지
+// 않고, 기존 시리즈 UID의 캐시·인증 상태를 그대로 사용하도록 한다.
+const linkGoogleAccount = callable('linkGoogleAccount');
+const linkKakaoAccount = callable('linkKakaoAccount');
+const requestStreamerVerification = callable('requestStreamerVerification');
 
 const $ = (id) => document.getElementById(id);
 const authStatus = $('walletAuthStatus');
@@ -305,7 +311,7 @@ async function refreshWallet(force = false) {
     $('walletPageStatus').textContent = '';
   } catch (error) {
     console.error('통합 캐시 조회 실패:', error);
-    if (error.code === 'functions/unauthenticated') setGate('Google 로그인 후 본인 캐시 충전 신청과 내역을 이용할 수 있습니다.', 'Google 로그인이 필요합니다');
+    if (error.code === 'functions/unauthenticated') setGate('Google·카카오 로그인 또는 스트리머 인증 후 본인 캐시 충전 신청과 내역을 이용할 수 있습니다.');
     else setGate(`정보를 불러오지 못했습니다. 다시 시도해 주세요. (${error.message || error})`);
     $('walletPageStatus').textContent = '';
   } finally {
@@ -324,14 +330,15 @@ function updateCashPreview() {
 
 async function initializeWalletUser(user) {
   currentUser = user;
-  if (!user || user.isAnonymous) {
+  if (!user) {
     authStatus.textContent = '로그인이 필요합니다';
-    authButton.textContent = 'Google 로그인';
-    setGate('Google 로그인 후 본인 캐시 충전 신청과 내역을 이용할 수 있습니다.', 'Google 로그인이 필요합니다');
+    authButton.textContent = '로그인';
+    setGate('Google·카카오 로그인 또는 스트리머 인증 후 본인 캐시 충전 신청과 내역을 이용할 수 있습니다.');
+    try { await signInAnonymously(auth); } catch (error) { console.error('익명 세션 시작 실패:', error); }
     return;
   }
-  authStatus.textContent = user.email || '계정 확인 중';
-  authButton.textContent = '로그아웃';
+  authStatus.textContent = user.isAnonymous ? '로그인이 필요합니다' : (user.email || '연결된 계정');
+  authButton.textContent = user.isAnonymous ? '로그인' : '로그아웃';
   gateTitle.textContent = '로그인 계정 확인 중';
   gateMessage.textContent = '서버에서 충전 신청 권한을 확인합니다.';
   gate.hidden = false;
@@ -342,26 +349,133 @@ async function initializeWalletUser(user) {
     if (result.data?.isAdmin === true) void refreshReviewQueue();
   } catch (error) {
     console.error('통합 캐시 로그인 확인 실패:', error);
-    if (error.code === 'functions/unauthenticated') setGate('Google 로그인 후 다시 시도해 주세요.', 'Google 로그인이 필요합니다');
+    if (error.code === 'functions/unauthenticated') setGate('Google·카카오 로그인 또는 스트리머 인증 후 다시 시도해 주세요.');
     else setGate(`계정 정보를 확인하지 못했습니다. 다시 로그인해 주세요. (${error.message || error})`);
   }
 }
 
 onAuthStateChanged(auth, initializeWalletUser);
 
+function openLoginModal() {
+  $('walletLoginChoices').hidden = false;
+  $('walletStreamerLoginForm').hidden = true;
+  $('walletStreamerLoginStatus').textContent = '';
+  $('walletLoginModal').showModal();
+}
+
+function closeLoginModal() {
+  $('walletLoginModal').close();
+}
+
+async function loginWithGoogle() {
+  try {
+    const provider = new GoogleAuthProvider();
+    if (auth.currentUser?.isAnonymous) {
+      await linkWithPopup(auth.currentUser, provider);
+    } else {
+      await signInWithPopup(auth, provider);
+    }
+    await linkGoogleAccount();
+    closeLoginModal();
+  } catch (error) {
+    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') return;
+    // 이미 다른 시리즈 UID에 연결된 Google 계정은 해당 계정으로 전환한다.
+    if (error?.code === 'auth/credential-already-in-use' || error?.code === 'auth/email-already-in-use') {
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+        await linkGoogleAccount();
+        closeLoginModal();
+        return;
+      } catch (switchError) {
+        console.error('Google 계정 전환 실패:', switchError);
+        window.alert(`Google 로그인에 실패했습니다. ${switchError.message || switchError}`);
+        return;
+      }
+    }
+    console.error('Google 로그인 실패:', error);
+    window.alert(`Google 로그인에 실패했습니다. ${error.message || error}`);
+  }
+}
+
+async function loginWithKakao() {
+  if (typeof window.Kakao === 'undefined' || !window.Kakao.isInitialized()) {
+    window.alert('카카오 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    return;
+  }
+  window.Kakao.Auth.login({
+    success: async (kakaoAuth) => {
+      try {
+        const result = await linkKakaoAccount({ kakaoAccessToken: kakaoAuth.access_token });
+        if (result.data?.action === 'switch') await signInWithCustomToken(auth, result.data.customToken);
+        closeLoginModal();
+      } catch (error) {
+        console.error('카카오 로그인 실패:', error);
+        window.alert(`카카오 로그인에 실패했습니다. ${error.message || error}`);
+      }
+    },
+    fail: () => window.alert('카카오 로그인이 취소되었거나 실패했습니다.'),
+  });
+}
+
+async function submitStreamerLogin(data) {
+  const status = $('walletStreamerLoginStatus');
+  status.textContent = '스트리머 인증 상태를 확인하고 있습니다.';
+  try {
+    const result = await requestStreamerVerification({ ...data, source: 'game-series-shop' });
+    const payload = result.data || {};
+    if (payload.action === 'switch' && payload.customToken) {
+      await signInWithCustomToken(auth, payload.customToken);
+      closeLoginModal();
+      return;
+    }
+    if (payload.action === 'already-verified' || payload.action === 'auto-approved') {
+      closeLoginModal();
+      await initializeWalletUser(auth.currentUser);
+      return;
+    }
+    const code = payload.verificationCode ? ` 인증 코드: ${payload.verificationCode}` : '';
+    status.textContent = `인증 신청이 접수되었습니다.${code} SOOP 쪽지 안내를 완료한 뒤 인증 상태 확인을 눌러 주세요.`;
+  } catch (error) {
+    console.error('스트리머 인증 처리 실패:', error);
+    status.textContent = `인증 처리를 완료하지 못했습니다. ${error.message || error}`;
+  }
+}
+
 authButton.addEventListener('click', async () => {
-  if (currentUser) {
+  if (currentUser && !currentUser.isAnonymous) {
     await signOut(auth);
     return;
   }
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (error) {
-    console.error('Google 로그인 실패:', error);
-    window.alert(`로그인에 실패했습니다. ${error.message || error}`);
-  }
+  openLoginModal();
 });
 
-$('walletGateLogin').addEventListener('click', () => authButton.click());
+$('walletGateLogin').addEventListener('click', openLoginModal);
+$('walletLoginClose').addEventListener('click', closeLoginModal);
+$('walletLoginModal').addEventListener('click', (event) => { if (event.target === $('walletLoginModal')) closeLoginModal(); });
+$('walletLoginGoogle').addEventListener('click', loginWithGoogle);
+$('walletLoginKakao').addEventListener('click', loginWithKakao);
+$('walletLoginStreamer').addEventListener('click', () => {
+  $('walletLoginChoices').hidden = true;
+  $('walletStreamerLoginForm').hidden = false;
+  $('walletStreamerLoginStatus').textContent = '';
+});
+$('walletStreamerLoginBack').addEventListener('click', () => {
+  $('walletLoginChoices').hidden = false;
+  $('walletStreamerLoginForm').hidden = true;
+});
+$('walletStreamerLoginForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const nickname = $('walletStreamerNickname').value.trim();
+  const soopId = $('walletStreamerSoopId').value.trim();
+  if (!nickname) return window.alert('SOOP 닉네임을 입력해 주세요.');
+  if (!/^[a-z0-9]{2,20}$/.test(soopId)) return window.alert('SOOP 아이디는 영문 소문자·숫자 2~20자로 입력해 주세요.');
+  void submitStreamerLogin({ nickname, soopId });
+});
+$('walletStreamerCheck').addEventListener('click', () => void submitStreamerLogin({ checkOnly: true }));
+
+if (typeof window.Kakao !== 'undefined' && !window.Kakao.isInitialized()) {
+  window.Kakao.init('ed4f01d6903ca41d5dc0ab32b6ae143c');
+}
 
 $('walletAmount').addEventListener('input', updateCashPreview);
 $('walletRefresh').addEventListener('click', refreshWallet);
