@@ -73,6 +73,25 @@ button { color: inherit; }
 }
 .series-link span { margin-left: 7px; color: var(--violet); }
 .series-link:hover { transform: translateY(-2px); border-color: var(--violet); }
+.series-link[hidden] { display: none; }
+.shop-login-modal { width: min(480px, calc(100% - 32px)); }
+.shop-login-shell { position: relative; }
+.shop-login-choices { display: grid; gap: 10px; margin-top: 24px; }
+.shop-login-choices[hidden], .shop-streamer-login-form[hidden] { display: none; }
+.shop-login-choice, .shop-login-submit, .shop-login-back {
+  min-height: 46px; border: 1px solid rgba(40, 37, 62, .16); border-radius: 12px;
+  background: #fffefa; color: var(--ink); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+}
+.shop-login-choice:hover, .shop-login-submit:hover, .shop-login-back:hover { transform: translateY(-1px); box-shadow: 0 5px 13px rgba(40,37,62,.10); }
+.shop-login-google { border-color: #cbd6ff; background: #f5f8ff; }
+.shop-login-kakao { border-color: #ebd670; background: #fee500; color: #181600; }
+.shop-streamer-login-form { display: flex; flex-direction: column; gap: 9px; margin-top: 20px; text-align: left; }
+.shop-streamer-login-form p, .shop-login-status { margin: 0 0 6px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.shop-streamer-login-form label { margin-top: 3px; font-size: 12px; font-weight: 750; }
+.shop-streamer-login-form input { min-height: 42px; padding: 10px 12px; border: 1px solid #ded8d1; border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 13px; }
+.shop-streamer-login-form input:focus { outline: 3px solid rgba(139,130,233,.18); border-color: var(--violet); }
+.shop-login-submit { border-color: var(--ink); background: var(--ink); color: #fff; }
+.shop-login-back { min-height: 38px; padding: 8px 12px; font-size: 11px; }
 
 .hero {
   width: min(1240px, calc(100% - 64px));
@@ -370,6 +389,7 @@ button { color: inherit; }
   .brand-mark { width: 33px; height: 33px; }
   .main-nav { gap: 17px; font-size: 11px; }
   .series-link { padding: 9px 11px; font-size: 10px; }
+  .shop-login-modal { width: min(430px, calc(100% - 24px)); }
   .hero { width: calc(100% - 36px); min-height: unset; padding: 54px 2% 60px; grid-template-columns: 1fr; gap: 25px; }
   .hero h1 { font-size: clamp(39px, 11vw, 58px); margin-top: 20px; }
   .hero-description { font-size: 12px; }
