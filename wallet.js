@@ -51,6 +51,7 @@ let isVerifiedStreamer = false;
 const walletTabs = Array.from(document.querySelectorAll('[role="tab"][aria-controls^="walletPanel"]'));
 const walletQuery = new URLSearchParams(window.location.search);
 const shouldOpenWalletReview = walletQuery.get('tab') === 'requests' && walletQuery.get('focus') === 'walletReviewQueue';
+let pendingChargeDeepLink = walletQuery.get('open') === 'charge';
 
 function activateWalletTab(tab, focus = false) {
   walletTabs.forEach((item) => {
@@ -269,6 +270,10 @@ function renderWallet(data) {
   gate.hidden = true;
   walletApp.hidden = false;
   applyWalletReviewDeepLink();
+  if (pendingChargeDeepLink) {
+    pendingChargeDeepLink = false;
+    openChargeModal();
+  }
 }
 
 function configureChargeExperience() {
