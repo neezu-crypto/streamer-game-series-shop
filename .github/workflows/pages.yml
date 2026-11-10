@@ -28,7 +28,7 @@ jobs:
       - name: Assemble site files
         run: |
           mkdir -p _site/assets _site/catalog
-          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html _site/
+          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html maintenance-admin-gate.js _site/
           cp catalog/stickers.json _site/catalog/
           cp assets/sticker-pack-01.png assets/admin-star-balloon-qr.png _site/assets/
       - name: Upload static site
