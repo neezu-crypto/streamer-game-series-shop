@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="쓰다듬는 손">
+  <defs>
+    <clipPath id="palmClip">
+      <ellipse cx="128" cy="146" rx="68" ry="58"/>
+    </clipPath>
+  </defs>
+  <g class="tool-base" transform="rotate(-8 128 128)">
+    <!-- 소매(손 뒤) -->
+    <g class="tool-cuff">
+      <ellipse cx="184" cy="204" rx="42" ry="26" transform="rotate(34 184 204)" fill="#FCB5B5" stroke="#764C37" stroke-width="7" stroke-linejoin="round"/>
+    </g>
+    <g class="tool-hand">
+      <!-- 외곽선 층: 덩어리를 굵게 겹쳐 안쪽 이음매 없는 하나의 윤곽으로 -->
+      <g fill="#764C37" stroke="#764C37" stroke-width="14" stroke-linejoin="round">
+        <ellipse cx="128" cy="146" rx="68" ry="58"/>
+        <circle cx="86" cy="86" r="25"/>
+        <circle cx="124" cy="70" r="26"/>
+        <circle cx="164" cy="84" r="24"/>
+        <ellipse cx="50" cy="138" rx="29" ry="22" transform="rotate(-24 50 138)"/>
+      </g>
+      <!-- 채색 층 -->
+      <g fill="#FCECD4">
+        <ellipse cx="128" cy="146" rx="68" ry="58"/>
+        <circle cx="86" cy="86" r="25"/>
+        <circle cx="124" cy="70" r="26"/>
+        <circle cx="164" cy="84" r="24"/>
+        <ellipse cx="50" cy="138" rx="29" ry="22" transform="rotate(-24 50 138)"/>
+      </g>
+      <!-- 아래쪽 그림자 한 면(손바닥 아래 가장자리) -->
+      <g clip-path="url(#palmClip)">
+        <ellipse cx="128" cy="146" rx="68" ry="58" fill="#EBCFB0"/>
+        <ellipse cx="134" cy="136" rx="66" ry="54" fill="#FCECD4"/>
+      </g>
+      <!-- 손바닥 패드(손목 쪽) -->
+      <ellipse cx="132" cy="158" rx="24" ry="18" fill="#FCB5B5"/>
+      <!-- 손가락 사이·엄지 홈 -->
+      <g fill="none" stroke="#764C37" stroke-width="7" stroke-linecap="round">
+        <path d="M106 66 Q 110 82 106 98"/>
+        <path d="M145 68 Q 150 82 146 96"/>
+        <path d="M68 124 Q 80 124 88 130"/>
+      </g>
+    </g>
+  </g>
+</svg>

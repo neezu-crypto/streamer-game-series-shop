@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "species": [
+    {
+      "id": "mongsil",
+      "name": "몽실이",
+      "tagline": "함께 자라는 작은 친구",
+      "description": "몽실몽실한 털에 별 모양 꼬리를 가진 몽실이예요. 스트리머와 팬이 쓰다듬고 밥을 챙기며 정을 쌓아 가는 우리 팬페이지의 가족이에요.",
+      "colors": [
+        {
+          "id": "cream",
+          "label": "크림",
+          "image": "assets/tamagotchi/mongsil-cream.svg",
+          "swatch": "#FCECD4"
+        },
+        {
+          "id": "pink",
+          "label": "핑크",
+          "image": "assets/tamagotchi/mongsil-pink.svg",
+          "swatch": "#FFD9DF"
+        },
+        {
+          "id": "mint",
+          "label": "민트",
+          "image": "assets/tamagotchi/mongsil-mint.svg",
+          "swatch": "#D3F0E1"
+        },
+        {
+          "id": "lavender",
+          "label": "라벤더",
+          "image": "assets/tamagotchi/mongsil-lavender.svg",
+          "swatch": "#E4DBFB"
+        }
+      ],
+      "info": {
+        "home": "스트리머의 팬페이지",
+        "care": "스트리머와 팬이 함께 돌봐 줘요",
+        "stats": "배부름·기분·털 상태를 팬 모두가 볼 수 있어요"
+      },
+      "interactions": [
+        {
+          "id": "pet",
+          "label": "쓰다듬기",
+          "group": "base",
+          "desc": "살살 쓰다듬으면 눈을 감고 좋아해요.",
+          "preset": "쓰다듬 받음",
+          "tool": "pet"
+        },
+        {
+          "id": "feed",
+          "label": "밥주기",
+          "group": "base",
+          "desc": "오물오물 맛있게 먹어요.",
+          "preset": "먹기",
+          "tool": "feed"
+        },
+        {
+          "id": "groom",
+          "label": "털갈이",
+          "group": "base",
+          "desc": "몽실몽실 털을 말끔하게 다듬어요.",
+          "preset": "털갈이",
+          "tool": "groom"
+        },
+        {
+          "id": "gem",
+          "label": "하트 보석",
+          "group": "base",
+          "desc": "가끔 반짝이는 하트 보석을 남겨요.",
+          "preset": "보석",
+          "tool": "gem"
+        },
+        {
+          "id": "play",
+          "label": "놀기",
+          "group": "training",
+          "desc": "신나게 폴짝폴짝 뛰어놀아요.",
+          "preset": "놀기",
+          "tool": "play",
+          "hop": true
+        },
+        {
+          "id": "bath",
+          "label": "목욕",
+          "group": "training",
+          "desc": "보글보글 거품 목욕을 즐겨요.",
+          "preset": "목욕",
+          "tool": "bath"
+        },
+        {
+          "id": "nap",
+          "label": "낮잠",
+          "group": "training",
+          "desc": "새근새근 낮잠을 자요.",
+          "preset": "잠",
+          "tool": "nap"
+        },
+        {
+          "id": "walk",
+          "label": "산책",
+          "group": "training",
+          "desc": "통통 튀며 산책해요.",
+          "preset": "산책",
+          "tool": "walk",
+          "hop": true
+        },
+        {
+          "id": "talk",
+          "label": "수다",
+          "group": "training",
+          "desc": "쫑알쫑알 이야기를 들려줘요.",
+          "preset": "대화",
+          "tool": "talk"
+        },
+        {
+          "id": "sing",
+          "label": "노래",
+          "group": "training",
+          "desc": "음표와 함께 노래해요.",
+          "preset": "노래",
+          "tool": "sing"
+        },
+        {
+          "id": "dance",
+          "label": "춤",
+          "group": "training",
+          "desc": "리듬에 맞춰 몸을 흔들어요.",
+          "preset": "춤",
+          "tool": "dance"
+        },
+        {
+          "id": "cheer",
+          "label": "응원",
+          "group": "training",
+          "desc": "별 눈으로 힘껏 응원해요.",
+          "preset": "응원",
+          "tool": "cheer"
+        }
+      ]
+    }
+  ]
+}

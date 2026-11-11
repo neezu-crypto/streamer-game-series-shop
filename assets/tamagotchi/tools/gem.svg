@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="하트 보석">
+  <defs><clipPath id="hc"><path d="M128 158 C 52 112 58 40 98 38 C 116 37 126 50 128 62 C 130 50 140 37 158 38 C 198 40 204 112 128 158 Z"/></clipPath></defs>
+  <g class="tool-base">
+    <!-- 막대 -->
+    <rect x="116" y="140" width="24" height="94" rx="12" fill="#F7D77A" stroke="#764C37" stroke-width="7"/>
+    <path d="M140 156 v66 q0 8 -8 8 q8 -4 8 -14z" fill="#E8B955" opacity=".8"/>
+    <!-- 집게 -->
+    <g fill="none" stroke="#764C37" stroke-width="22" stroke-linecap="round"><path d="M128 152 Q 74 142 66 104"/><path d="M128 152 Q 182 142 190 104"/></g>
+    <g fill="none" stroke="#F7D77A" stroke-width="10" stroke-linecap="round"><path d="M128 152 Q 74 142 66 104"/><path d="M128 152 Q 182 142 190 104"/></g>
+    <!-- 하트 보석 -->
+    <path d="M128 158 C 52 112 58 40 98 38 C 116 37 126 50 128 62 C 130 50 140 37 158 38 C 198 40 204 112 128 158 Z" fill="#FCB5B5" stroke="#764C37" stroke-width="8" stroke-linejoin="round"/>
+    <g clip-path="url(#hc)">
+    <path d="M128 62 L 168 70 L 186 100 L 128 148 L 76 108 L 92 72 Z" fill="#FDD0D6" opacity=".9"/>
+    <path d="M128 148 L 186 100 Q 176 128 128 158 Z" fill="#F08A9A" opacity=".8"/>
+    </g>
+    <path d="M78 76 Q 82 56 100 52" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="76" cy="94" r="5" fill="#fff"/>
+  </g>
+</svg>

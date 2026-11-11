@@ -33,9 +33,10 @@ function showLoginButton(show) {
   loginButton.hidden = !show;
 }
 
-function openLoginModal() {
-  $('shopLoginChoices').hidden = false;
-  $('shopStreamerLoginForm').hidden = true;
+function openLoginModal(options = {}) {
+  const streamerForm = options && options.streamer === true;
+  $('shopLoginChoices').hidden = streamerForm;
+  $('shopStreamerLoginForm').hidden = !streamerForm;
   $('shopStreamerLoginStatus').textContent = '';
   loginModal.showModal();
 }
@@ -43,6 +44,12 @@ function openLoginModal() {
 function closeLoginModal() {
   loginModal.close();
 }
+
+// 로그인·인증이 끝났음을 다른 스크립트(예: 분양소)에 알린다. Google 연결은 UID가 그대로라 상태 변경 이벤트가 다시 오지 않는다.
+function notifyAuthChanged() {
+  window.dispatchEvent(new CustomEvent('shop-auth-changed'));
+}
+window.openShopLoginModal = openLoginModal;
 
 async function updateLoginVisibility(user) {
   currentUser = user;
@@ -72,14 +79,14 @@ async function loginWithGoogle() {
     if (auth.currentUser?.isAnonymous) await linkWithPopup(auth.currentUser, provider);
     else await signInWithPopup(auth, provider);
     await linkGoogleAccount();
-    closeLoginModal();
+    closeLoginModal(); notifyAuthChanged();
   } catch (error) {
     if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') return;
     if (error?.code === 'auth/credential-already-in-use' || error?.code === 'auth/email-already-in-use') {
       try {
         await signInWithPopup(auth, new GoogleAuthProvider());
         await linkGoogleAccount();
-        closeLoginModal();
+        closeLoginModal(); notifyAuthChanged();
         return;
       } catch (switchError) {
         console.error('상점 Google 계정 전환 실패:', switchError);
@@ -102,7 +109,7 @@ function loginWithKakao() {
       try {
         const result = await linkKakaoAccount({ kakaoAccessToken: kakaoAuth.access_token });
         if (result.data?.action === 'switch') await signInWithCustomToken(auth, result.data.customToken);
-        closeLoginModal();
+        closeLoginModal(); notifyAuthChanged();
         await updateLoginVisibility(auth.currentUser);
       } catch (error) {
         console.error('상점 카카오 로그인 실패:', error);
@@ -121,11 +128,11 @@ async function submitStreamerLogin(data) {
     const payload = result.data || {};
     if (payload.action === 'switch' && payload.customToken) {
       await signInWithCustomToken(auth, payload.customToken);
-      closeLoginModal();
+      closeLoginModal(); notifyAuthChanged();
       return;
     }
     if (payload.action === 'already-verified' || payload.action === 'auto-approved') {
-      closeLoginModal();
+      closeLoginModal(); notifyAuthChanged();
       await updateLoginVisibility(auth.currentUser);
       return;
     }

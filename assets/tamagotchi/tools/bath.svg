@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="샤워기">
+  <defs><clipPath id="dm"><path d="M76 150 Q 76 76 128 76 Q 180 76 180 150 Z"/></clipPath></defs>
+  <g class="tool-base" transform="translate(128 140) scale(1.25) translate(-128 -140) rotate(30 128 128)">
+    <rect x="116" y="20" width="24" height="64" rx="12" fill="#F9C99A" stroke="#764C37" stroke-width="7"/>
+    <rect x="112" y="46" width="32" height="14" rx="5" fill="#FCB5B5" stroke="#764C37" stroke-width="5"/>
+    <path d="M76 150 Q 76 76 128 76 Q 180 76 180 150 Z" fill="#BFE6EE"/>
+    <g clip-path="url(#dm)"><ellipse cx="176" cy="130" rx="34" ry="64" fill="#8FC8D6"/><ellipse cx="116" cy="124" rx="52" ry="58" fill="#BFE6EE"/></g>
+    <path d="M92 108 Q 98 90 118 86" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+    <path d="M76 150 Q 76 76 128 76 Q 180 76 180 150 Z" fill="none" stroke="#764C37" stroke-width="7" stroke-linejoin="round"/>
+    <ellipse cx="128" cy="150" rx="54" ry="16" fill="#FCECD4" stroke="#764C37" stroke-width="7"/>
+    <g fill="#764C37"><circle cx="106" cy="148" r="3.5"/><circle cx="128" cy="154" r="3.5"/><circle cx="150" cy="148" r="3.5"/><circle cx="117" cy="141" r="3"/><circle cx="139" cy="141" r="3"/></g>
+  </g>
+</svg>

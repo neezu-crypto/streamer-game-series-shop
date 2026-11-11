@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <script type="module" src="./maintenance-admin-gate.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1eb">
+  <meta name="description" content="스트리머와 팬이 함께 돌보며 정을 쌓는 다마고치, 새 가족을 만나 보세요.">
+  <title>다마고치 분양소 — 게임 시리즈 상점</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="tamagotchi.css?v=20261112-tg-shop32">
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script type="module" src="shop-login.js?v=20261112-tg-shop32"></script>
+  <script type="module" src="tamagotchi.js?v=20261112-tg-shop32"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="게임 시리즈 상점 홈">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span>
+    </a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a href="./">스티커</a>
+      <a class="active" href="tamagotchi.html">다마고치</a>
+      <a href="customer-center.html">캐시 충전·고객센터</a>
+    </nav>
+    <button id="shopLoginButton" class="series-link" type="button">로그인</button>
+  </header>
+
+  <main class="tg-main">
+    <header class="tg-head">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> STREAMER TAMAGOTCHI</p>
+      <h1 id="tg-title">다마고치 <em>분양소</em></h1>
+      <div id="tgBalance" class="tg-balance" hidden>
+        <span>내 통합 캐시</span><strong id="tgBalanceValue">—</strong>
+        <a href="customer-center.html#charge">캐시 충전</a>
+      </div>
+      <p id="tgPreviewBadge" class="tg-preview-badge" hidden>관리자 미리보기 · 일반 사용자에게는 아직 보이지 않아요</p>
+    </header>
+
+    <div id="tgList" class="tg-list" aria-live="polite">
+      <div class="loading-card loading-bar">분양소를 불러오고 있어요…</div>
+    </div>
+
+    <div id="tgShowcase" class="tg-showcase" hidden>
+      <div id="tgExpandBar" class="tg-expand-bar" hidden>
+        <div class="tg-orient" role="radiogroup" aria-label="화면 방향">
+          <button type="button" class="tg-orient-chip" data-orient="auto" role="radio">자동</button>
+          <button type="button" class="tg-orient-chip" data-orient="portrait" role="radio">세로</button>
+          <button type="button" class="tg-orient-chip" data-orient="landscape" role="radio">가로</button>
+        </div>
+        <button id="tgExpandClose" type="button" class="tg-expand-close" aria-label="크게 보기 닫기">✕</button>
+      </div>
+      <section id="tgStage" class="tg-stage" aria-label="다마고치 미리보기">
+        <div id="tgPet" class="tg-stage-pet"></div>
+        <div id="tgStageColors" class="tg-stage-colors" role="radiogroup" aria-label="색상 바꿔 보기"></div>
+        <div id="tgHealth" class="tg-health" role="radiogroup" aria-label="건강 상태 미리보기"></div>
+        <p id="tgHospital" class="tg-hospital-badge" hidden>🏥 입원 중 · 23시간 뒤 퇴원해요</p>
+        <button id="tgExpand" type="button" class="tg-expand-btn" aria-label="크게 보기">⛶ 크게 보기</button>
+        <p id="tgOrientHint" class="tg-orient-hint" role="status" hidden></p>
+        <p id="tgTip" class="tg-tip" aria-hidden="true" hidden></p>
+        <p id="tgBubble" class="tg-bubble" role="status" aria-live="polite">아래 상호작용을 눌러 미리 보세요</p>
+      </section>
+      <div id="tgStats" class="tg-stats" aria-label="상태 미리보기"></div>
+      <div id="tgActions" class="tg-actions" role="group" aria-label="상호작용 미리보기"></div>
+      <section id="tgInfo" class="tg-info" aria-label="다마고치 정보"></section>
+    </div>
+
+    <section id="tgAdmin" class="tg-admin" hidden aria-labelledby="tg-admin-title">
+      <details>
+        <summary id="tg-admin-title">관리자 도구 · 테스트 분양</summary>
+        <p class="tg-admin-note">캐시를 쓰지 않고 테스트 다마고치를 지급해요. 판매 개시 전에 반드시 정리해 주세요.</p>
+        <form id="tgAdminForm" class="tg-admin-form">
+          <label for="tgAdminStreamer">팬페이지 ID(SOOP 아이디)</label>
+          <input id="tgAdminStreamer" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" required>
+          <label for="tgAdminColor">색</label>
+          <select id="tgAdminColor"></select>
+          <label for="tgAdminName">이름(선택)</label>
+          <input id="tgAdminName" type="text" maxlength="30" autocomplete="off">
+          <div class="tg-admin-actions">
+            <button class="tg-button tg-button-primary" type="submit">테스트 분양</button>
+            <button id="tgAdminClear" class="tg-button" type="button">이 팬페이지의 테스트 다마고치 정리</button>
+          </div>
+        </form>
+        <p id="tgAdminStatus" class="tg-admin-status" role="status" aria-live="polite"></p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand footer-brand" href="./" aria-label="상점 홈으로">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>ORIGINAL GOODS</small></span>
+    </a>
+    <p>스트리머 게임 시리즈 상점 <span>·</span> 한 번 맞이한 친구의 분양비는 환불되지 않아요.</p>
+    <a href="#tg-title" class="back-top">맨 위로 ↑</a>
+    <a href="customer-center.html">캐시 충전·고객센터</a>
+  </footer>
+
+  <dialog class="preview-dialog tg-dialog" id="tgDialog" aria-labelledby="tgDialogTitle">
+    <div class="dialog-shell">
+      <button id="tgDialogClose" class="dialog-close" type="button" aria-label="창 닫기" title="창 닫기">×</button>
+      <div id="tgDialogBody"></div>
+    </div>
+  </dialog>
+
+  <dialog id="shopLoginModal" class="preview-dialog shop-login-modal" aria-labelledby="shopLoginModalTitle">
+    <div class="dialog-shell shop-login-shell">
+      <button id="shopLoginClose" class="dialog-close" type="button" aria-label="로그인 창 닫기" title="로그인 창 닫기">×</button>
+      <div class="dialog-heading">
+        <p class="eyebrow section-eyebrow">ACCOUNT</p>
+        <h2 id="shopLoginModalTitle">계정 로그인</h2>
+        <p>시리즈에서 사용 중인 계정 보호 방식으로 로그인합니다.</p>
+      </div>
+      <div id="shopLoginChoices" class="shop-login-choices">
+        <button id="shopLoginGoogle" class="shop-login-choice shop-login-google" type="button">🔵 Google로 로그인</button>
+        <button id="shopLoginKakao" class="shop-login-choice shop-login-kakao" type="button">💬 카카오로 로그인</button>
+        <button id="shopLoginStreamer" class="shop-login-choice" type="button">🎙️ 스트리머 인증으로 로그인</button>
+      </div>
+      <form id="shopStreamerLoginForm" class="shop-streamer-login-form" hidden>
+        <button id="shopStreamerLoginBack" class="shop-login-back" type="button">← 로그인 방법으로 돌아가기</button>
+        <p>SOOP 닉네임과 아이디를 확인한 뒤 스트리머 인증을 진행합니다.</p>
+        <label for="shopStreamerNickname">SOOP 닉네임</label>
+        <input id="shopStreamerNickname" type="text" maxlength="40" autocomplete="off" required>
+        <label for="shopStreamerSoopId">SOOP 아이디</label>
+        <input id="shopStreamerSoopId" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" required>
+        <button class="shop-login-submit" type="submit">스트리머 인증 신청</button>
+        <button id="shopStreamerCheck" class="shop-login-back" type="button">인증 상태 확인</button>
+        <div id="shopStreamerLoginStatus" class="shop-login-status" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

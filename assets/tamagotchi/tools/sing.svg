@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="마이크">
+  <defs><clipPath id="mh"><circle cx="128" cy="84" r="50"/></clipPath></defs>
+  <g class="tool-base" transform="rotate(-35 128 128)">
+    <rect x="118" y="134" width="20" height="86" rx="10" fill="#F9C99A" stroke="#764C37" stroke-width="7"/>
+    <path d="M138 150 v54 q0 8 -8 8 q8 -4 8 -14z" fill="#EBA878" opacity=".8"/>
+    <rect x="116" y="204" width="24" height="12" rx="6" fill="#F7D77A" stroke="#764C37" stroke-width="5"/>
+    <rect x="108" y="126" width="40" height="16" rx="8" fill="#F7D77A" stroke="#764C37" stroke-width="6"/>
+    <circle cx="128" cy="84" r="50" fill="#EBCFB0"/>
+    <g clip-path="url(#mh)"><circle cx="122" cy="78" r="50" fill="#FCECD4"/><path d="M60 70 Q 128 100 196 70 L 196 96 Q 128 126 60 96 Z" fill="#FCB5B5" stroke="#764C37" stroke-width="5"/></g>
+    <circle cx="128" cy="84" r="50" fill="none" stroke="#764C37" stroke-width="7"/>
+  </g>
+</svg>
