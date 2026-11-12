@@ -1,13 +1,14 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop45';
-import { createSound } from './tamagotchi-sound.js?v=20261112-tg-shop45';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop45';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-care1';
+import { createSound } from './tamagotchi-sound.js?v=20261112-tg-care1';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-care1';
+import { createScene } from './tamagotchi-scene.js?v=20261112-tg-care1';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop45';
+} from './tamagotchi-logic.mjs?v=20261112-tg-care1';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -148,7 +149,7 @@ function syncPowerMode() {
   document.querySelector('.tg-tool-cursor')?.classList.toggle('is-lite', lite);
 }
 function relayoutStage() {
-  syncPowerMode(); requestAnimationFrame(() => { alignHome(); if (healthState === 'hospital') placeOnBed(true); if (inBath) placeInBath(true); }); }
+  syncPowerMode(); requestAnimationFrame(() => { alignHome(); if (healthState === 'hospital') placeOnBed(true); if (getScene().inBath()) placeInBath(true); }); }
 async function setExpanded(on, { fromHistory = false } = {}) {
   if (on === expanded) return;
   expanded = on; toolCtl?.clear();
@@ -215,88 +216,19 @@ function renderStats() {
 function applyHealth(id) {
   healthState = id; toolCtl?.clear(); hideTip();
   petApi?.setCondition?.(id);
-  $('tgStage').classList.toggle('is-hospital', id === 'hospital');
-  placeOnBed(id === 'hospital'); applyOrientation();
+  getScene().setHospital(id === 'hospital'); applyOrientation();
   $('tgHospital').hidden = id !== 'hospital';
   document.querySelectorAll('[data-health]').forEach((n) => n.setAttribute('aria-checked', String(n.dataset.health === id)));
   $('tgBubble').textContent = id === 'ok' ? IDLE_BUBBLE : BLOCK_TEXT[id] || '컨디션이 떨어졌어요. 잘 먹고 푹 쉬게 해 주세요.';
   renderStats();
 }
-// 병실 일러스트(1585×992)의 베개 위치에 펫을 얹는다. 배경이 cover로 그려지므로 같은 계산으로 좌표를 맞춘다.
-const ROOM = { w: 1585, h: 992, pillow: [712, 690], petWidth: 330 };
-
-// ---------- 평상시 방 배경: 방석이 펫 발밑에 오도록 배경 크기·위치를 맞춘다(펫은 움직이지 않음) ----------
-const HOME = { w: 1585, h: 992, seat: [795, 792], petUnits: 590 }; // petUnits: 기본 보기(무대 944px·펫 352px)에서 펫 너비를 그림 좌표로 잰 값
-// 일반·크게 보기의 구도(펫 : 방석 : 방)가 같도록 배경 배율 k에 맞춰 펫 너비도 정한다(펫 너비 = petUnits × k).
-function alignHome() {
-  const stage = $('tgStage'); const pet = $('tgPet');
-  if (!stage || !pet || pet.style.transform) return; // 산책·입원·욕실처럼 펫이 옮겨진 동안은 그대로
-  let k = 0;
-  for (let i = 0; i < 3; i += 1) { // 펫 크기가 바뀌면 발 위치도 바뀌므로 몇 번 맞춰 수렴시킨다
-    const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
-    if (!s.width || !p.width) return;
-    const fx = p.left - s.left + p.width / 2; const fy = p.top - s.top + p.height * 0.95;
-    // 방석 점을 발밑에 맞추면서 그림이 무대를 빈틈없이 덮는 가장 작은 배율
-    k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
-      fy / HOME.seat[1], (s.height - fy) / (HOME.h - HOME.seat[1]));
-    const want = Math.min(HOME.petUnits * k, s.height * 0.62); // 세로가 짧은 무대에서 펫이 잘리지 않게 상한
-    if (Math.abs(want - p.width) < 2) {
-      stage.style.setProperty('--home-size', `${(HOME.w * k).toFixed(1)}px ${(HOME.h * k).toFixed(1)}px`);
-      stage.style.setProperty('--home-pos', `${(fx - HOME.seat[0] * k).toFixed(1)}px ${(fy - HOME.seat[1] * k).toFixed(1)}px`);
-      return;
-    }
-    pet.style.width = `${want.toFixed(1)}px`;
-  }
-  const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
-  const fx = p.left - s.left + p.width / 2; const fy = p.top - s.top + p.height * 0.95;
-  k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
-    fy / HOME.seat[1], (s.height - fy) / (HOME.h - HOME.seat[1]));
-  stage.style.setProperty('--home-size', `${(HOME.w * k).toFixed(1)}px ${(HOME.h * k).toFixed(1)}px`);
-  stage.style.setProperty('--home-pos', `${(fx - HOME.seat[0] * k).toFixed(1)}px ${(fy - HOME.seat[1] * k).toFixed(1)}px`);
-}
-
-// ---------- 욕실: 목욕 도구를 고르면 욕조에 들어간다(크기 70%, 몸이 물에 잠김) ----------
-const BATH = { w: 1585, h: 992, water: [785, 606], scale: 0.875, sink: 0.6 }; // 기본 펫 80% 기준 → 이전 70%와 같은 크기
-let inBath = false;
-function placeInBath(on) {
-  const pet = $('tgPet'); const stage = $('tgStage');
-  if (!stage.querySelector('.tg-bath-front')) { const f = el('div', 'tg-bath-front'); f.setAttribute('aria-hidden', 'true'); stage.append(f); }
-  if (!on) { pet.style.transform = ''; return; }
-  const prev = pet.style.transform; const prevT = pet.style.transition; pet.style.transition = 'none'; pet.style.transform = '';
-  const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
-  pet.style.transform = prev; void pet.offsetWidth; pet.style.transition = prevT;
-  const k = Math.max(s.width / BATH.w, s.height / BATH.h);
-  const ox = (s.width - BATH.w * k) / 2; const oy = (s.height - BATH.h * k) / 2;
-  const tx = ox + BATH.water[0] * k; const ty = oy + BATH.water[1] * k;
-  const cx = p.left - s.left + p.width / 2; const cy = p.top - s.top + p.height / 2;
-  // 펫 높이의 sink 지점(배 근처)이 수면에 오도록: 그 아래는 반투명 물 덮개에 잠겨 보인다
-  const dy = ty - (cy + (BATH.sink - 0.5) * p.height * BATH.scale);
-  pet.style.transform = `translate(${(tx - cx).toFixed(1)}px, ${dy.toFixed(1)}px) scale(${BATH.scale})`;
-}
-function setBath(on) {
-  if (on === inBath) return;
-  inBath = on; const stage = $('tgStage'); const pet = $('tgPet');
-  stage.classList.toggle('is-bath', on);
-  pet.style.transition = reducedMotion ? 'none' : 'transform .5s ease';
-  placeInBath(on);
-  setTimeout(() => { pet.style.transition = ''; if (!on) alignHome(); }, reducedMotion ? 0 : 520);
-}
-function placeOnBed(on) {
-  const pet = $('tgPet'); const stage = $('tgStage');
-  if (!stage.querySelector('.tg-hospital-front')) { const f = el('div', 'tg-hospital-front'); f.setAttribute('aria-hidden', 'true'); stage.append(f); }
-  if (!on) { pet.style.transform = ''; window.removeEventListener('resize', bedResize); return; }
-  pet.style.transform = '';
-  const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
-  const k = Math.max(s.width / ROOM.w, s.height / ROOM.h);
-  const ox = (s.width - ROOM.w * k) / 2; const oy = (s.height - ROOM.h * k) / 2;
-  const tx = ox + ROOM.pillow[0] * k; const ty = oy + ROOM.pillow[1] * k;
-  const scale = (ROOM.petWidth * k) / p.width;
-  const cx = p.left - s.left + p.width / 2; const cy = p.top - s.top + p.height / 2;
-  pet.style.transform = `translate(${(tx - cx).toFixed(1)}px, ${(ty - cy).toFixed(1)}px) scale(${scale.toFixed(3)})`;
-  window.addEventListener('resize', bedResize);
-}
-let bedTimer = 0;
-function bedResize() { clearTimeout(bedTimer); bedTimer = setTimeout(() => { if (healthState === 'hospital') placeOnBed(true); }, 200); }
+// 무대 배치(방·욕실·병실)는 공용 모듈(tamagotchi-scene.js)
+let scene = null;
+function getScene() { if (!scene) scene = createScene({ stage: $('tgStage'), pet: $('tgPet'), reduced: reducedMotion }); return scene; }
+function alignHome() { getScene().alignHome(); }
+function placeInBath(on) { getScene().placeInBath(on); }
+function setBath(on) { getScene().setBath(on); }
+function placeOnBed(on) { getScene().placeOnBed(on); }
 function renderHealth() {
   $('tgHealth').replaceChildren(...HEALTH_STATES.map((h) => {
     const b = el('button', 'tg-health-chip'); b.type = 'button'; b.dataset.health = h.id; b.textContent = h.label;
@@ -344,7 +276,9 @@ function onToolChange(event) {
   if (event.type === 'select') { $('tgBubble').textContent = `${item.label} 선택 중 — ${toolHint(event.tool)}`; showTip(toolText(event.tool, 'tip')); }
   if (event.type === 'clear') { $('tgBubble').textContent = healthState === 'ok' ? IDLE_BUBBLE : BLOCK_TEXT[healthState] || IDLE_BUBBLE; hideTip(); }
   if (event.type === 'blocked') { $('tgBubble').textContent = BLOCK_TEXT[event.condition] || '지금은 할 수 없어요.'; }
-  if (event.type === 'act') hideTip();
+  if (event.type === 'act' || event.type === 'hold') hideTip();
+  if (event.type === 'hold') $('tgBubble').textContent = `${TOOLS[event.tool]?.done || item.label} (${Math.floor(event.total / 1000)}초)`;
+  if (event.type === 'holdDone') $('tgBubble').textContent = '😊';
   if (event.type === 'walk') { if (event.meters > 0) hideTip(); $('tgBubble').textContent = event.meters > 0 ? `산책 중… ${event.meters}m 걸었어요` : '산책로에 도착했어요! 클릭하거나 누른 채 같이 걸어요'; }
   if (event.type === 'stat') $('tgBubble').textContent = event.value > 0 ? `쿨쿨… 피로가 풀리고 있어요 (피로 ${event.value}, ${event.delta})` : '쿨쿨… 피로가 모두 풀렸어요 ✦';
   if (event.type === 'act') $('tgBubble').textContent = `${TOOLS[event.tool]?.done || item.label} ${event.count}`;

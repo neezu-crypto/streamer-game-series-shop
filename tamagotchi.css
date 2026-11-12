@@ -95,9 +95,9 @@
 .tg-admin-status.is-error { color: #c0334f; }
 
 /* 로딩바: 글자색을 따라가는 움직이는 막대(상점 공용 표기) */
-.loading-bar::after { content: ""; display: block; width: min(240px, 100%); height: 6px; margin: 12px auto 0; border-radius: 999px; background: linear-gradient(90deg, transparent 0, currentColor 50%, transparent 100%) -70% 0 / 40% 100% no-repeat, color-mix(in srgb, currentColor 18%, transparent); animation: tg-loading-slide 1.2s ease-in-out infinite; }
+.tg-page .loading-bar::after { content: ""; display: block; width: min(240px, 100%); height: 6px; margin: 12px auto 0; border-radius: 999px; background: linear-gradient(90deg, transparent 0, currentColor 50%, transparent 100%) -70% 0 / 40% 100% no-repeat, color-mix(in srgb, currentColor 18%, transparent); animation: tg-loading-slide 1.2s ease-in-out infinite; }
 @keyframes tg-loading-slide { to { background-position: 170% 0, 0 0; } }
-@media (prefers-reduced-motion: reduce) { .loading-bar::after { animation: none; background: color-mix(in srgb, currentColor 45%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .tg-page .loading-bar::after { animation: none; background: color-mix(in srgb, currentColor 45%, transparent); } }
 
 @media (max-width: 720px) {
   .tg-main { padding-top: 28px; }
@@ -108,7 +108,7 @@
   .tg-facts { grid-template-columns: 1fr; gap: 2px; }
   .tg-facts dd { margin-bottom: 8px; }
 }
-.main-nav a { white-space: nowrap; }
+.tg-page .main-nav a { white-space: nowrap; }
 
 /* 상호작용 도구(마우스·터치) */
 .tg-action.is-selected { border-color: var(--violet); background: #ece6fb; box-shadow: 0 0 0 2px #cfc3f7; }
@@ -269,3 +269,10 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-sound-btn[aria-pressed="false"] { color: #a08a78; }
 .tg-stage.is-tool-mode .tg-sound-btn { cursor: none !important; }
 @media (max-width: 560px) { .tg-sound-btn { left: auto; right: 14px; bottom: 14px; padding: 6px 10px; font-size: 11.5px; } }
+
+/* 누르고 있기 20초 만족: 머리 위 이모지 */
+.tg-satisfied { position: absolute; z-index: 6; transform: translate(-50%, -40%); font-size: clamp(28px, 6vw, 44px); pointer-events: none; animation: tg-satisfied 1.2s ease-out forwards; }
+.tg-satisfied.is-reduced { animation: tg-satisfied-fade 1.2s ease forwards; }
+@keyframes tg-satisfied { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.7); } 25% { opacity: 1; transform: translate(-50%, -70%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -140%) scale(1); } }
+@keyframes tg-satisfied-fade { 0%, 100% { opacity: 0; } 25%, 70% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tg-satisfied { animation: tg-satisfied-fade 1.2s ease forwards; } }

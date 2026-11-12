@@ -1,7 +1,8 @@
 // 상호작용 효과음(Web Audio). 출처: Pixabay(상업 이용 가능, 표기 불필요) — docs/다마고치_사운드.md
 // 규칙: 자연스러운 페이드 인/아웃, 루프는 파일에 크로스페이드를 구워 넣어 이음매 없이, 도구를 고를 때만 해당 소리를 받아 온다.
-const BASE = 'assets/tamagotchi/sfx/';
-const V = '?v=20261112-tg-shop45';
+// 모듈 기준 경로: 팬페이지에서 불러와도 상점의 소리 파일을 찾는다
+const BASE = new URL('assets/tamagotchi/sfx/', import.meta.url).href;
+const V = '?v=20261112-tg-care1';
 // dur: 인코더 앞뒤 여백을 걷어 내고 정확히 반복하기 위한 원래 길이(초)
 export const SOUNDS = {
   pet: { vol: 0.3, loop: true, dur: 8 },

@@ -1,7 +1,7 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop45';
-import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop45';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-care1';
+import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-care1';
 
 export const TOOLS = {
   pet: {
@@ -37,7 +37,7 @@ export const TOOLS = {
     hint: '펫 위에서 누른 채 움직여 샤워해 주세요. 다시 누르면 선택이 풀려요.',
   },
   nap: {
-    id: 'nap', label: '낮잠', src: 'assets/tamagotchi/tools/nap.svg', hotspot: [205, 176], mode: 'once', restEvery: 1000, restStep: 5,
+    id: 'nap', label: '낮잠', src: 'assets/tamagotchi/tools/nap.svg', hotspot: [205, 176], mode: 'once', restEvery: 12000, restStep: 1,
     preset: '잠', fx: null, tip: '펫을 한 번 눌러 재워 주세요', done: '쿨쿨… 포근하게 잠들었어요 z',
     hint: '펫을 한 번 누르면 낮잠을 자요. 자는 동안 피로가 조금씩 풀려요. 다른 상호작용을 하면 깨어나요.',
   },
@@ -64,9 +64,14 @@ export const TOOLS = {
   cheer: {
     id: 'cheer', label: '응원', src: 'assets/tamagotchi/tools/cheer.svg', hotspot: [100, 80], mode: 'tap',
     preset: '응원', fx: 'spark', tip: '펫을 눌러 응원해 주세요', done: '힘이 솟아요! 파이팅 ✦',
-    hint: '펫을 눌러 응원봉을 흔들어 주세요. 누르고 있으면 계속 응원해요. 다시 누르면 선택이 풀려요.',
+    hint: '펫을 눌러 응원봉을 흔들어 주세요. 응원은 한 번에 한 번씩이에요. 다시 누르면 선택이 풀려요.',
   },
 };
+// 모듈 기준 경로: 팬페이지에서 불러와도 상점의 도구 그림을 찾는다
+for (const tool of Object.values(TOOLS)) tool.src = new URL(tool.src, import.meta.url).href;
+// 움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
+export const HOLDABLE = ['feed', 'play', 'talk', 'sing', 'dance'];
+export const HOLD_DELAY_MS = 600; export const HOLD_MAX_MS = 20000; const HOLD_TICK_MS = 250;
 const DESKTOP_SIZE = 72; const TOUCH_SIZE = 88;
 
 // 상호작용별 소리: keep = 하는 동안 반복(멈추면 서서히 꺼짐), once = 한 번(gap 안에서는 겹치지 않음)
@@ -164,12 +169,35 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     rubCount += 1; petApi.hold(tool.preset, 1.6, { quiet: !!tool.quiet }); if (tool.fx) petApi.fx(tool.fx); popDone(); sfx(selected);
     onChange?.({ type: 'act', tool: selected, count: rubCount });
   }
+  // 누르고 있기: 톡 도구 중 HOLDABLE만 0.6초 뒤부터 HOLD_TICK_MS마다 'hold' 이벤트(ms)를 보낸다. 20초가 차면 만족 이모지.
+  let heldMs = 0; let holdStarted = 0;
+  function satisfied() {
+    stopHold(); onChange?.({ type: 'holdDone', tool: selected, ms: heldMs });
+    const r = petApi.bodyRect(); const host = stage.getBoundingClientRect();
+    const emoji = document.createElement('span'); emoji.className = `tg-satisfied${reduced ? ' is-reduced' : ''}`; emoji.textContent = '😊'; emoji.setAttribute('aria-hidden', 'true');
+    emoji.style.left = `${r.left - host.left + r.width / 2}px`; emoji.style.top = `${r.top - host.top}px`;
+    stage.append(emoji); setTimeout(() => emoji.remove(), 1300);
+  }
   function startHold(tool) {
     stopHold();
+    if (tool.mode === 'tap') {
+      if (!HOLDABLE.includes(selected)) return;
+      heldMs = 0; holdStarted = performance.now();
+      holdTimer = setInterval(() => {
+        if (!pressed || !selected || !overPet()) return;
+        if (performance.now() - holdStarted < HOLD_DELAY_MS) return;
+        const ms = Math.min(HOLD_TICK_MS, HOLD_MAX_MS - heldMs); heldMs += ms;
+        petApi.hold(tool.preset, 0.6, { quiet: !!tool.quiet }); sfx(selected);
+        if (tool.fx && Math.random() < 0.12) petApi.fx(tool.fx);
+        onChange?.({ type: 'hold', tool: selected, ms, total: heldMs });
+        if (heldMs >= HOLD_MAX_MS) satisfied();
+      }, HOLD_TICK_MS);
+      return;
+    }
     holdTimer = setInterval(() => {
       if (!pressed || !selected || !overPet()) return;
-      if (tool.mode === 'tap') tapAct(); else { petApi.hold(tool.preset, 1.1); bathTick(tool); sfx(selected); if (tool.holdFx && Math.random() < 0.35) petApi.fx(tool.holdFx); }
-    }, tool.mode === 'tap' ? REPEAT_MS : 500);
+      petApi.hold(tool.preset, 1.1); bathTick(tool); sfx(selected); if (tool.holdFx && Math.random() < 0.35) petApi.fx(tool.holdFx);
+    }, 500);
   }
 
   function popDone() {

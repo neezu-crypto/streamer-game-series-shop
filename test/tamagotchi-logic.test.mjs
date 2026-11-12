@@ -106,7 +106,7 @@ test('도구: 카탈로그의 tool 항목마다 도구 정의·일러스트·프
     const tool = TOOLS[item.tool];
     assert.ok(tool, item.tool);
     assert.ok(PRESET_NAMES.includes(tool.preset), tool.preset);
-    const svg = readFileSync(new URL(`../${tool.src}`, import.meta.url), 'utf8');
+    const svg = readFileSync(new URL(tool.src, import.meta.url), "utf8");
     assert.ok(svg.includes('<svg') && svg.includes('tool-base'), tool.src);
     assert.equal(tool.hotspot.length, 2);
   }
