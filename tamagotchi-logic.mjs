@@ -72,3 +72,49 @@ export function catalogsAgree(serverSpecies, publicSpecies) {
 export function farmUrl(streamerId) {
   return `https://neezu-crypto.github.io/streamer-fanpage/#/p/${encodeURIComponent(streamerId)}`;
 }
+
+// ---------- 훈련소(3-B) ----------
+// 호출자 상태 → 훈련 분기. login / verify / admin(테스트 훈련) / ready
+export function resolveTrainState({ isAnonymous, viewer }) {
+  if (viewer && viewer.isVerifiedStreamer === true && viewer.streamer && viewer.streamer.id) return 'ready';
+  if (viewer && viewer.isAdmin === true) return 'admin';
+  if (isAnonymous !== false) return 'login';
+  return 'verify';
+}
+
+// 고른 상호작용의 합계(서버 카탈로그 가격만 사용). trainable: [{ id, cash }]
+export function trainTotal(trainable, selected) {
+  const price = new Map((trainable || []).map((t) => [t.id, Number(t.cash) || 0]));
+  return [...new Set(selected || [])].reduce((sum, id) => sum + (price.get(id) || 0), 0);
+}
+
+// 아직 배우지 않은 훈련 상호작용만
+export function learnableIds(trainable, learned) {
+  const have = new Set(learned || []);
+  return (trainable || []).map((t) => t.id).filter((id) => !have.has(id));
+}
+
+// 훈련 요청 번호: 같은 펫·같은 선택의 재시도에만 같은 번호를 쓴다(선택이 바뀌면 새 번호).
+export function trainSignature(petId, selected) { return `${petId}|${[...new Set(selected || [])].sort().join(',')}`; }
+export function getTrainRequestId(storage, key, signature, randomBytes) {
+  let saved = null;
+  try { saved = JSON.parse(storage.getItem(key) || 'null'); } catch (_) { saved = null; }
+  if (saved && saved.sig === signature && REQUEST_ID_RE.test(saved.id)) return saved.id;
+  const bytes = randomBytes(18);
+  const id = `tr_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+  try { storage.setItem(key, JSON.stringify({ sig: signature, id })); } catch (_) { /* 이번 시도에만 사용 */ }
+  return id;
+}
+
+export function trainErrorMessage(error) {
+  const code = codeOf(error);
+  const message = String((error && error.message) || '');
+  if (code === 'unauthenticated') return '로그인이 필요해요.';
+  if (code === 'unavailable') return message || '서비스 점검 중에는 훈련할 수 없어요.';
+  if (code === 'resource-exhausted') return '잠시 후 다시 시도해 주세요.';
+  if (['failed-precondition', 'permission-denied', 'invalid-argument', 'already-exists', 'aborted', 'not-found'].includes(code) && message) return message;
+  return '훈련을 마치지 못했어요. 차감된 캐시가 있다면 자동으로 확인돼요. 잠시 후 다시 시도해 주세요.';
+}
+
+// 팬페이지 다마고치 훈련소 주소(팬페이지 잠금 도구에서 연결)
+export const TRAIN_URL = 'https://neezu-crypto.github.io/streamer-game-series-shop/tamagotchi-world.html#train';

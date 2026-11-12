@@ -276,3 +276,7 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 @keyframes tg-satisfied { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.7); } 25% { opacity: 1; transform: translate(-50%, -70%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -140%) scale(1); } }
 @keyframes tg-satisfied-fade { 0%, 100% { opacity: 0; } 25%, 70% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tg-satisfied { animation: tg-satisfied-fade 1.2s ease forwards; } }
+
+/* 분양소 → 다마고치 마을 돌아가기 */
+.tg-world-link { display: inline-flex; align-items: center; min-height: 36px; margin-bottom: 8px; padding: 6px 14px; border: 1px solid #ddd6cc; border-radius: 999px; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 750; text-decoration: none; }
+.tg-world-link:hover { border-color: var(--violet); background: #f6f2fd; }

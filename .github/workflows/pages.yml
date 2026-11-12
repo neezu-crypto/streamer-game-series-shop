@@ -28,12 +28,15 @@ jobs:
       - name: Assemble site files
         run: |
           mkdir -p _site/assets/tamagotchi _site/catalog
-          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html maintenance-admin-gate.js tamagotchi.html tamagotchi.js tamagotchi-logic.mjs tamagotchi-pet.js tamagotchi-tools.js tamagotchi-walk.js tamagotchi-sound.js tamagotchi-scene.js tamagotchi-gestures.mjs tamagotchi.css _site/
-          cp catalog/stickers.json catalog/tamagotchi.json _site/catalog/
+          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html maintenance-admin-gate.js tamagotchi.html tamagotchi.js tamagotchi-logic.mjs tamagotchi-pet.js tamagotchi-tools.js tamagotchi-walk.js tamagotchi-sound.js tamagotchi-scene.js tamagotchi-gestures.mjs tamagotchi.css tamagotchi-world.html tamagotchi-world.js tamagotchi-world.css tamagotchi-train.js _site/
+          cp catalog/stickers.json catalog/tamagotchi.json catalog/tamagotchi-world.json _site/catalog/
           cp assets/sticker-pack-01.png assets/admin-star-balloon-qr.png _site/assets/
           cp assets/tamagotchi/*.svg assets/tamagotchi/*.webp _site/assets/tamagotchi/
           mkdir -p _site/assets/tamagotchi/tools
           cp assets/tamagotchi/tools/*.svg _site/assets/tamagotchi/tools/
+          mkdir -p _site/assets/tamagotchi/world _site/assets/tamagotchi/train
+          cp assets/tamagotchi/world/*.webp _site/assets/tamagotchi/world/ 2>/dev/null || true
+          cp assets/tamagotchi/train/*.webp _site/assets/tamagotchi/train/ 2>/dev/null || true
           mkdir -p _site/assets/tamagotchi/sfx
           cp assets/tamagotchi/sfx/*.mp3 _site/assets/tamagotchi/sfx/
       - name: Upload static site

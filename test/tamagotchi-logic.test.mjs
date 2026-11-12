@@ -111,3 +111,21 @@ test('도구: 카탈로그의 tool 항목마다 도구 정의·일러스트·프
     assert.equal(tool.hotspot.length, 2);
   }
 });
+
+import * as L from '../tamagotchi-logic.mjs';
+test('훈련소: 상태 분기·합계·배울 수 있는 목록·요청 번호', () => {
+  assert.equal(L.resolveTrainState({ isAnonymous: true, viewer: null }), 'login');
+  assert.equal(L.resolveTrainState({ isAnonymous: false, viewer: { isVerifiedStreamer: false } }), 'verify');
+  assert.equal(L.resolveTrainState({ isAnonymous: false, viewer: { isAdmin: true } }), 'admin');
+  assert.equal(L.resolveTrainState({ isAnonymous: false, viewer: { isVerifiedStreamer: true, streamer: { id: 'a' } } }), 'ready');
+  const tr = [{ id: 'play', cash: 10 }, { id: 'walk', cash: 10 }, { id: 'sing', cash: 10 }];
+  assert.equal(L.trainTotal(tr, ['play', 'walk', 'walk', 'nope']), 20);
+  assert.deepEqual(L.learnableIds(tr, ['pet', 'walk']), ['play', 'sing']);
+  const store = new Map(); const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const rb = (n) => new Uint8Array(n).fill(7);
+  const a = L.getTrainRequestId(storage, 'k', L.trainSignature('p1', ['walk', 'play']), rb);
+  assert.equal(L.getTrainRequestId(storage, 'k', L.trainSignature('p1', ['play', 'walk']), rb), a);
+  const rb2 = (n) => new Uint8Array(n).fill(9);
+  assert.notEqual(L.getTrainRequestId(storage, 'k', L.trainSignature('p1', ['play']), rb2), a);
+  assert.match(a, L.REQUEST_ID_RE);
+});
