@@ -21,6 +21,12 @@ function el(tag, className, text) {
 }
 function randomBytes(n) { const b = new Uint8Array(n); crypto.getRandomValues(b); return b; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 받침 유무로 조사 고르기(을/를, 은/는)
+function josa(word, withFinal, withoutFinal) {
+  const c = String(word || '').trim().slice(-1).charCodeAt(0);
+  if (c < 0xac00 || c > 0xd7a3) return withoutFinal;
+  return (c - 0xac00) % 28 ? withFinal : withoutFinal;
+}
 
 export function mountTrainPanel(host, ctx) {
   const { shopCall, reduced, cashText } = ctx;
@@ -140,11 +146,12 @@ export function mountTrainPanel(host, ctx) {
       b.addEventListener('click', () => { if (st.busy || p.petId === st.petId) return; st.petId = p.petId; st.selected.clear(); toolCtl?.clear(); setStatus(''); render(); });
       return b;
     }));
-    petsRow.hidden = st.pets.length < 2;
   }
 
   function renderLearned(pet) {
-    learnedRow.replaceChildren(el('span', 'tw-train-caption', '배운 재주'), ...pet.learned.map((id) => {
+    const order = (pubSpecies(pet.speciesId)?.interactions || []).map((i) => i.id);
+    const sorted = [...pet.learned].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+    learnedRow.replaceChildren(el('span', 'tw-train-caption', '배운 재주'), ...sorted.map((id) => {
       const chip = el('span', 'tw-learned-chip'); const icon = TOOLS[id]?.src;
       if (icon) { const i = document.createElement('img'); i.src = icon; i.alt = ''; chip.append(i); }
       chip.append(el('span', '', label(pet, id)), el('b', '', '✓')); return chip;
@@ -164,7 +171,7 @@ export function mountTrainPanel(host, ctx) {
       tryBtn.append(el('strong', '', label(pet, t.id)), el('small', '', interactionOf(pet, t.id)?.desc || '눌러서 체험'));
       tryBtn.addEventListener('click', () => { if (!toolCtl) return; if (toolCtl.selected() === t.id) toolCtl.clear(); else toolCtl.select(t.id); });
       const pick = el('label', 'tw-skill-pick'); const box = el('input'); box.type = 'checkbox'; box.checked = st.selected.has(t.id); box.disabled = st.busy;
-      box.addEventListener('change', () => { if (box.checked) st.selected.add(t.id); else st.selected.delete(t.id); card.classList.toggle('is-picked', box.checked); renderSummary(pet); });
+      box.addEventListener('change', () => { if (box.checked) st.selected.add(t.id); else st.selected.delete(t.id); card.classList.toggle('is-picked', box.checked); renderSummary(pet); renderAdmin(pet); });
       pick.append(box, el('span', '', `배우기 · ${cashText(t.cash)}`));
       card.classList.toggle('is-picked', box.checked);
       card.append(tryBtn, pick); return card;
@@ -270,7 +277,7 @@ export function mountTrainPanel(host, ctx) {
     for (const id of items) {
       if (st.destroyed) return;
       const it = interactionOf(pet, id);
-      setBubble(`✨ ${label(pet, id)}을(를) 배웠어요!`);
+      setBubble(`✨ ${label(pet, id)}${josa(label(pet, id), '을', '를')} 배웠어요!`);
       if (!reduced && it?.preset) petApi?.play(it.preset, { hop: it.hop === true });
       await sleep(reduced ? 900 : 1800);
     }
