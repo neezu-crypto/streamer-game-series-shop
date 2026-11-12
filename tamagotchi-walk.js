@@ -1,7 +1,7 @@
 // 산책 모드(분양소 미리보기). 배경이 탑다운 산책로 지도로 바뀌고, 펫이 28% 크기로 지도 위를 걷는다.
 // 클릭하면 그 지점까지 걸어가고, 누르는 동안은 포인터를 목줄 길이만큼 뒤에서 따라온다.
 // 펫 크기·위치는 #tgPet 컨테이너의 CSS transform으로 바꾼다(리그 내부는 건드리지 않는다).
-import { stepToward, followTarget, clampToBox, isClick } from './tamagotchi-gestures.mjs?v=20261112-tg-shop36';
+import { stepToward, followTarget, clampToBox, isClick, createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop38';
 
 const SCALE = 0.28;
 const LEASH_PX = 60;
@@ -20,6 +20,7 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
   let active = false; let raf = 0; let last = 0;
   let base = { x: 0, y: 0 }; let pos = { x: 0, y: 0 }; let target = { x: 0, y: 0 };
   let pointer = null; let pressed = false; let downAt = 0; let downPt = null; let travel = 0;
+  let lowPower = false; const gate = createFrameGate(30);
   let facing = 1; let meters = 0; let footAcc = 0; let footSide = 1; let reported = 0;
 
   let boxCache = null;
@@ -60,6 +61,8 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
 
   function frame(now) {
     raf = 0; if (!active) return;
+    // 저전력(크게 보기 가로): 초당 30번만 갱신한다(이동 거리는 경과 시간으로 계산해 속도는 같다).
+    if (lowPower && !gate.shouldDraw(now / 1000)) { raf = requestAnimationFrame(frame); return; }
     const dt = Math.min(0.05, (now - last) / 1000 || 0.016); last = now;
     if (pressed && pointer) target = clampToBox(followTarget(pos, pointer, LEASH_PX), box());
     const prev = pos;
@@ -81,6 +84,7 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
 
   return {
     active: () => active,
+    setLowPower(on) { lowPower = !!on; gate.reset(); },
     enter() {
       if (active) return;
       active = true; meters = 0; reported = 0; facing = 1; boxCache = null;

@@ -1,12 +1,12 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop36';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop36';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop38';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop38';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop36';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop38';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -135,7 +135,7 @@ async function applyOrientation() {
 // 크게 보기 가로에서만 가벼운 모드(초당 30번 숨쉬기, 흐림 필터 없음). 기본·세로는 원본 화질.
 function syncPowerMode() {
   const lite = expanded && window.matchMedia('(orientation: landscape)').matches;
-  petApi?.setLowPower?.(lite);
+  petApi?.setLowPower?.(lite); toolCtl?.setLowPower?.(lite);
   document.querySelector('.tg-tool-cursor')?.classList.toggle('is-lite', lite);
 }
 function relayoutStage() {

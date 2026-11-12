@@ -2,6 +2,8 @@
 // 원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
 // PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
 
+import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop38';
+
 export const PRESETS={
  '기본':{eye:'normal',mouth:'normal',arm:0},
  '기쁨':{eye:'happy',mouth:'open',armPose:'up',fx:'spark'},
@@ -176,10 +178,10 @@ let hopT=-9, petT=-9;
 let chaseT=[0,0], chaseC=[0,0];
 let prev=performance.now()/1000, prevY=0, prevS=1, blinkAt=1;
 const setRot=(id,a)=>{const p=parts[id];p.g.setAttribute('transform',`rotate(${a.toFixed(2)} ${p.pivot[0]} ${p.pivot[1]})`);};
-let lastDraw=0, rectCache=null, rectAt=-1, lowPower=false;
-// 저전력(크게 보기 가로)일 때만: 상호작용이 없으면 초당 30번만 그린다. 기본·세로는 항상 매 프레임(원본 화질).
+let rectCache=null, rectAt=-1, lowPower=false; const gate=createFrameGate(30);
+// 저전력(크게 보기 가로)일 때는 상호작용 중에도 초당 30번만 그린다. 기본·세로는 매 프레임(원본 화질).
 function step(){const t=performance.now()/1000;
- if(lowPower&&t>activeUntil&&t-lastDraw<0.031&&!reduced){requestAnimationFrame(step);return;} lastDraw=t; rectAt=-1;
+ if(lowPower&&!reduced&&!gate.shouldDraw(t)){requestAnimationFrame(step);return;} rectAt=-1;
  const dt=Math.min(0.05,t-prev);prev=t;
  // body: breathing squash + hop (anticipation squash -> jump -> landing squash)
  const br=cond==='down'||cond==='hospital'?0.9:cond==='ok'?2.4:1.6; let s=1+P.breathe/100*Math.sin(t*br), y=0;
@@ -263,7 +265,7 @@ const api={
     zzzTimer=setInterval(()=>{if(!sleeping)return;wake(3);burst('zzz');},2600);
   },
   wakeUp(){if(sleeping)startWake();},
-  setLowPower(on){lowPower=!!on;},
+  setLowPower(on){lowPower=!!on;gate.reset();},
   condition(){return cond;},
   setCondition(next){
     if(!COND[next])return;cond=next;sleeping=false;clearInterval(zzzTimer);clearInterval(condTimer);afterWake=null;wakingUntil=0;holdName='';clearTimeout(backTimer);

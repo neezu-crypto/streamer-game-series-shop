@@ -71,3 +71,18 @@ export function clampToBox(p, box, margin = 40) {
 export function isClick(downAt, upAt, travel, { maxMs = 220, maxTravel = 10 } = {}) {
   return upAt - downAt <= maxMs && travel <= maxTravel;
 }
+
+// 프레임 제한(가변 주사율 대응): 화면이 60·90·120·144Hz 어느 것이든 목표 fps 박자에 맞춰 그릴지 정한다.
+// 직전 그림과의 간격만 보면 144Hz에서 프레임이 31ms·38ms로 들쭉날쭉해진다. 대신 다음 그릴 시각을 박자로 쌓고,
+// 반 프레임(tolerance) 이내로 일찍 온 프레임도 그 박자로 인정한다. 오래 멈췄다 돌아오면 박자를 지금으로 맞춘다.
+export function createFrameGate(fps = 30, tolerance = 0.004) {
+  const step = 1 / fps; let next = 0;
+  return {
+    shouldDraw(t) {
+      if (t + tolerance < next) return false;
+      next = (t - next > step) ? t + step : next + step;
+      return true;
+    },
+    reset() { next = 0; },
+  };
+}

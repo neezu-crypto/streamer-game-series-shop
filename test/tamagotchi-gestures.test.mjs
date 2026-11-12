@@ -73,3 +73,23 @@ test('산책: 무대 경계 안으로 제한, 클릭 판정', () => {
   assert.equal(isClick(0, 600, 4), false);
   assert.equal(isClick(0, 100, 40), false);
 });
+
+import { createFrameGate } from '../tamagotchi-gestures.mjs';
+test('프레임 제한: 60·90·120·144Hz 모두 초당 약 30번 그린다', () => {
+  for (const hz of [60, 90, 120, 144]) {
+    const gate = createFrameGate(30); let draws = 0;
+    for (let i = 0; i < hz * 2; i++) {
+      const jitter = (i % 3 - 1) * 0.0008; // 실제 화면처럼 약간 흔들리는 간격
+      if (gate.shouldDraw(i / hz + jitter)) draws++;
+    }
+    assert.ok(draws >= 58 && draws <= 62, `${hz}Hz → ${draws}/2초`);
+  }
+});
+test('프레임 제한: 오래 멈췄다 돌아오면 바로 그리고 박자를 다시 맞춘다', () => {
+  const gate = createFrameGate(30);
+  assert.equal(gate.shouldDraw(0), true);
+  assert.equal(gate.shouldDraw(0.01), false);
+  assert.equal(gate.shouldDraw(5), true);
+  assert.equal(gate.shouldDraw(5.01), false);
+  assert.equal(gate.shouldDraw(5.034), true);
+});
