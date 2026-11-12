@@ -1,12 +1,13 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop44';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop44';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop45';
+import { createSound } from './tamagotchi-sound.js?v=20261112-tg-shop45';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop45';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop44';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop45';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -83,6 +84,12 @@ function renderList() {
   renderShowcase(serverSpecies(state.speciesId), publicSpecies(state.speciesId));
 }
 
+// ---------- 소리: 상호작용 효과음(켜기/끄기는 이 기기에 저장) ----------
+const sound = createSound();
+function renderSoundBtn() { const b = $('tgSound'); if (!b) return; const on = sound.enabled(); b.textContent = on ? '🔊 소리' : '🔇 소리'; b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? '소리 끄기' : '소리 켜기'); }
+$('tgSound')?.addEventListener('click', () => { sound.setEnabled(!sound.enabled()); renderSoundBtn(); const t = toolCtl?.selected?.(); if (sound.enabled() && t === 'walk') sound.start('walk'); });
+renderSoundBtn();
+
 // ---------- 화면: 미리보기 무대 ----------
 function renderShowcase(server, pub) {
   if (!pub.colors.some((c) => c.id === state.color)) state.color = pub.colors[0].id;
@@ -91,7 +98,7 @@ function renderShowcase(server, pub) {
     petApi = createMongsil($('tgPet'), { color: state.color, reduced: reducedMotion });
     petSpeciesId = server.id;
     toolCtl = createToolController({
-      stage: $('tgStage'), petApi, petEl: $('tgPet'), ignoreOutside: [$('tgActions')], reduced: reducedMotion,
+      stage: $('tgStage'), petApi, petEl: $('tgPet'), ignoreOutside: [$('tgActions')], reduced: reducedMotion, sound,
       onChange: (event) => onToolChange(event),
     });
   }

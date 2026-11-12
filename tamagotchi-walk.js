@@ -1,7 +1,7 @@
 // 산책 모드(분양소 미리보기). 배경이 탑다운 산책로 지도로 바뀌고, 펫이 28% 크기로 지도 위를 걷는다.
 // 클릭하면 그 지점까지 걸어가고, 누르는 동안은 포인터를 목줄 길이만큼 뒤에서 따라온다.
 // 펫 크기·위치는 #tgPet 컨테이너의 CSS transform으로 바꾼다(리그 내부는 건드리지 않는다).
-import { stepToward, followTarget, clampToBox, isClick, createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop44';
+import { stepToward, followTarget, clampToBox, isClick, createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop45';
 
 const SCALE = 0.35; // 기본 펫이 80% 크기라 이전 0.28과 같은 화면 크기
 const LEASH_PX = 60;
@@ -74,7 +74,7 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
       petApi.hold('산책', 0.9);
       meters += next.moved / PX_PER_M;
       footAcc += next.moved;
-      if (footAcc > 22) { footAcc = 0; dropFoot(dx, dy); }
+      if (footAcc > 22) { footAcc = 0; dropFoot(dx, dy); onChange?.({ type: 'step' }); }
       if (Math.floor(meters) !== reported) { reported = Math.floor(meters); onChange?.({ type: 'walk', meters: reported }); }
     }
     applyTransform(); drawLeash();

@@ -263,3 +263,9 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-stage.is-bath::after { opacity: 0; }
 .tg-bath-front { position: absolute; inset: 0; z-index: 1; border-radius: inherit; background: url("assets/tamagotchi/bath-front.webp") center / cover no-repeat; pointer-events: none; display: none; }
 .tg-stage.is-bath .tg-bath-front { display: block; }
+
+/* 소리 켜기/끄기(왼쪽 아래, 크게 보기 버튼과 같은 모양) */
+.tg-sound-btn { position: absolute; left: 16px; bottom: 16px; z-index: 3; padding: 7px 12px; border: 1px solid #ecd9bd; border-radius: 999px; background: rgba(255, 255, 255, .9); color: #6b4a33; font-size: 12px; font-weight: 700; cursor: pointer; }
+.tg-sound-btn[aria-pressed="false"] { color: #a08a78; }
+.tg-stage.is-tool-mode .tg-sound-btn { cursor: none !important; }
+@media (max-width: 560px) { .tg-sound-btn { left: auto; right: 14px; bottom: 14px; padding: 6px 10px; font-size: 11.5px; } }

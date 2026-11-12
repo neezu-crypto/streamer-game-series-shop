@@ -2,7 +2,7 @@
 // 원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
 // PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
 
-import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop44';
+import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop45';
 
 export const PRESETS={
  '기본':{eye:'normal',mouth:'normal',arm:0},

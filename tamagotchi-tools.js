@@ -1,7 +1,7 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop44';
-import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop44';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop45';
+import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop45';
 
 export const TOOLS = {
   pet: {
@@ -69,7 +69,10 @@ export const TOOLS = {
 };
 const DESKTOP_SIZE = 72; const TOUCH_SIZE = 88;
 
-export function createToolController({ stage, petApi, petEl, ignoreOutside = [], onChange, reduced = false }) {
+// 상호작용별 소리: keep = 하는 동안 반복(멈추면 서서히 꺼짐), once = 한 번(gap 안에서는 겹치지 않음)
+const SFX = { pet: 'keep', feed: 'keep', groom: 'keep', bath: 'keep', sing: 'keep', dance: 'keep', cheer: 'keep', play: 'once', gem: 'once', talk: 'once' };
+const ONCE_GAP = { talk: 2300, play: 300, gem: 600 };
+export function createToolController({ stage, petApi, petEl, ignoreOutside = [], onChange, reduced = false, sound = null }) {
   const cursor = document.createElement('div');
   cursor.className = 'tg-tool-cursor'; cursor.hidden = true; cursor.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img'); img.alt = ''; img.draggable = false;
@@ -77,7 +80,11 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   const water = document.createElement('div'); water.className = 'tg-water';
   water.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
   cursor.append(img, water); document.body.append(cursor);
-  const walk = petEl ? createWalkMode({ stage, petEl, petApi, onChange, reduced }) : null;
+  const walk = petEl ? createWalkMode({ stage, petEl, petApi, reduced, onChange: (e) => { if (e.type === 'step') sound?.once('step', 900); else onChange?.(e); } }) : null;
+  function sfx(id) {
+    if (!sound || !SFX[id]) return;
+    if (SFX[id] === 'keep') sound.keep(id, REPEAT_MS + 450); else sound.once(id, ONCE_GAP[id]);
+  }
 
   let selected = null; let pressed = false; let activePointer = null; let rubCount = 0;
   let tracker = createRubTracker();
@@ -146,6 +153,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
       if (!petApi.isSleeping?.()) { clearInterval(restTimer); return; }
       if (fatigue <= 0) return;
       fatigue = Math.max(0, fatigue - tool.restStep);
+      if (fatigue === 0) sound?.once('bonus');
       onChange?.({ type: 'stat', tool: 'nap', stat: 'fatigue', value: fatigue, delta: -tool.restStep });
     }, tool.restEvery);
   }
@@ -153,14 +161,14 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   // 누르고 있는 동안: 탭 도구는 일정 간격으로 계속 반복하고, 문지르기 도구는 가만히 눌러도 표정을 유지한다.
   function tapAct() {
     const tool = TOOLS[selected]; if (!tool) return;
-    rubCount += 1; petApi.hold(tool.preset, 1.6, { quiet: !!tool.quiet }); if (tool.fx) petApi.fx(tool.fx); popDone();
+    rubCount += 1; petApi.hold(tool.preset, 1.6, { quiet: !!tool.quiet }); if (tool.fx) petApi.fx(tool.fx); popDone(); sfx(selected);
     onChange?.({ type: 'act', tool: selected, count: rubCount });
   }
   function startHold(tool) {
     stopHold();
     holdTimer = setInterval(() => {
       if (!pressed || !selected || !overPet()) return;
-      if (tool.mode === 'tap') tapAct(); else { petApi.hold(tool.preset, 1.1); bathTick(tool); if (tool.holdFx && Math.random() < 0.35) petApi.fx(tool.holdFx); }
+      if (tool.mode === 'tap') tapAct(); else { petApi.hold(tool.preset, 1.1); bathTick(tool); sfx(selected); if (tool.holdFx && Math.random() < 0.35) petApi.fx(tool.holdFx); }
     }, tool.mode === 'tap' ? REPEAT_MS : 500);
   }
 
@@ -171,7 +179,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
 
   function onDown(event) {
     if (!selected || (event.pointerType === 'mouse' && event.button !== 0)) return;
-    if (event.target.closest && event.target.closest('.tg-stage-colors')) return; // 색상 점은 그대로 누를 수 있게
+    if (event.target.closest && event.target.closest('.tg-stage-colors, .tg-sound-btn')) return; // 색상 점은 그대로 누를 수 있게
     const tool = TOOLS[selected];
     pressed = true; activePointer = event.pointerId;
     try { stage.setPointerCapture(event.pointerId); } catch (_) { /* 무시 */ }
@@ -201,7 +209,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     if (tool.mode !== 'rub') return;
     const inside = insideEllipse(event.clientX, event.clientY, petApi.bodyRect());
     const result = tracker.move(event.clientX, event.clientY, inside);
-    if (inside) petApi.hold(tool.preset, 1.1);
+    if (inside) { petApi.hold(tool.preset, 1.1); sfx(selected); }
     if (result.rubbed) {
       rubCount += 1; if (tool.fx) petApi.fx(tool.fx); bathTick(tool); popDone();
       onChange?.({ type: 'act', tool: selected, count: rubCount });
@@ -221,7 +229,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     if (stage.contains(target) || ignoreOutside.some((node) => node && node.contains(target))) return;
     clear();
   }
-  function onBlur() { restChase(); stopHold(); pressed = false; activePointer = null; tracker.end(); cursor.classList.remove('is-active'); cursor.hidden = true; }
+  function onBlur() { if (selected !== 'walk') sound?.stopAll(); restChase(); stopHold(); pressed = false; activePointer = null; tracker.end(); cursor.classList.remove('is-active'); cursor.hidden = true; }
 
   stage.addEventListener('pointerdown', onDown);
   stage.addEventListener('pointermove', onMove);
@@ -239,7 +247,9 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const allow = ALLOWED[petApi.condition?.() || 'ok'];
     if (allow && !allow.includes(id)) { onChange?.({ type: 'blocked', tool: id, condition: petApi.condition() }); return false; }
     if (selected && selected !== id && TOOLS[selected].mode === 'walk') walk?.exit();
+    if (selected !== id) sound?.stopAll();
     selected = id; img.src = tool.src; rubCount = 0;
+    sound?.load(id); if (id === 'walk') { sound?.load('step'); sound?.start('walk'); } if (id === 'nap') sound?.load('bonus');
     if (tool.mode === 'walk') walk?.enter();
     cursor.classList.toggle('has-water', !!tool.water);
     water.style.left = `${(tool.hotspot[0] / 256) * 100}%`; water.style.top = `${(tool.hotspot[1] / 256) * 100}%`;
@@ -250,7 +260,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   }
   function clear() {
     if (!selected) return;
-    const was = selected; walk?.exit(); stopHold(); selected = null; pressed = false; activePointer = null; tracker.reset();
+    const was = selected; sound?.stopAll(); walk?.exit(); stopHold(); selected = null; pressed = false; activePointer = null; tracker.reset();
     cursor.hidden = true; cursor.classList.remove('is-active', 'is-done'); restChase();
     stage.classList.remove('is-tool-mode');
     onChange?.({ type: 'clear', tool: was });
