@@ -15,7 +15,7 @@
 .tg-showcase { display: grid; gap: 18px; }
 .tg-stage { position: relative; display: grid; place-items: center; min-height: min(62vh, 520px); padding: 28px 16px 64px; border: 1px solid var(--line); border-radius: 28px; background: radial-gradient(ellipse at 50% 38%, #fffaf0 0, #fff3df 55%, #f9e8d0 100%); box-shadow: var(--shadow); overflow: hidden; }
 .tg-stage::after { content: ""; position: absolute; left: 50%; bottom: 58px; width: min(300px, 55%); height: 22px; transform: translateX(-50%); border-radius: 50%; background: rgba(120, 76, 55, .12); filter: blur(6px); }
-.tg-stage-pet { position: relative; z-index: 1; width: min(440px, 82%); }
+.tg-stage-pet { position: relative; z-index: 1; width: min(352px, 66%); } /* 방 배경이 보이도록 80% 크기 */
 .tg-pet-svg { display: block; width: 100%; height: auto; overflow: visible; --body: #FCECD4; --ein: #FCB5B5; }
 .tg-pet-svg .bf { fill: var(--body); }
 .tg-pet-svg .ein { fill: var(--ein); }
@@ -102,7 +102,7 @@
 @media (max-width: 720px) {
   .tg-main { padding-top: 28px; }
   .tg-stage { min-height: 400px; border-radius: 22px; }
-  .tg-stage-pet { width: min(340px, 88%); }
+  .tg-stage-pet { width: min(272px, 70%); }
   .tg-info { padding: 20px 18px; }
   .tg-interaction-list { grid-template-columns: 1fr; }
   .tg-facts { grid-template-columns: 1fr; gap: 2px; }
@@ -185,7 +185,7 @@
 html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior: none; }
 .tg-showcase.is-expanded { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px); height: 100dvh; background: #f6efe6; }
 .tg-showcase.is-expanded .tg-stage { flex: 1 1 auto; min-height: 0; border-radius: 20px; padding: 10px 10px 54px; }
-.tg-showcase.is-expanded .tg-stage-pet { width: min(440px, 78%, 58dvh); }
+.tg-showcase.is-expanded .tg-stage-pet { width: min(352px, 62%, 46dvh); }
 .tg-showcase.is-expanded .tg-info { display: none; }
 .tg-showcase.is-expanded .tg-stats { margin: 0; gap: 6px; }
 .tg-showcase.is-expanded .tg-stat { padding: 5px 7px; }
@@ -255,3 +255,11 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-ps { position: relative; display: grid; place-items: center; width: 2.25em; height: 1.7em; font-size: .32em; border: .15em solid #764C37; border-radius: .45em; background: #fff; line-height: 1;
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .tg-ps::before { content: ""; position: absolute; left: 30%; bottom: -.32em; width: .45em; height: .45em; background: #fff; border-right: .15em solid #764C37; border-bottom: .15em solid #764C37; transform: rotate(45deg); }
+
+/* 평상시 방 배경(방석이 펫 발밑에 오도록 JS가 크기·위치를 맞춤). 입원·욕실은 각자 배경 */
+.tg-stage.has-home:not(.is-hospital):not(.is-bath) { background: #f7e9dc url("assets/tamagotchi/home-room.webp") var(--home-pos, center 80%) / var(--home-size, cover) no-repeat; }
+/* 욕실: 배경 + 욕조 앞면·물 덮개(펫 아랫몸이 물에 잠겨 보임) */
+.tg-stage.is-bath { background: #cfe9e4 url("assets/tamagotchi/bath-room.webp") center / cover no-repeat; }
+.tg-stage.is-bath::after { opacity: 0; }
+.tg-bath-front { position: absolute; inset: 0; z-index: 1; border-radius: inherit; background: url("assets/tamagotchi/bath-front.webp") center / cover no-repeat; pointer-events: none; display: none; }
+.tg-stage.is-bath .tg-bath-front { display: block; }

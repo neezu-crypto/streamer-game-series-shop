@@ -1,7 +1,7 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop39';
-import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop39';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop43';
+import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop43';
 
 export const TOOLS = {
   pet: {
@@ -13,6 +13,8 @@ export const TOOLS = {
     id: 'feed', label: '밥주기', src: 'assets/tamagotchi/tools/feed.svg', hotspot: [88, 86], mode: 'tap', target: 'mouth', nudge: [24, 18],
     preset: '먹기', fx: 'heart', tip: '입 근처를 눌러 먹여 보세요', done: '냠냠, 맛있게 먹었어요 ♥',
     hint: '펫의 입 근처를 눌러 한 입씩 먹여 보세요. 다시 누르면 선택이 풀려요.',
+    // 터치 기기 문구(손가락이 입을 가리므로 펫 어디든 눌러도 먹는다)
+    tipTouch: '펫을 누르고 있으면 먹어요', hintTouch: '펫을 누르고 있으면 한 입씩 계속 먹어요. 다시 누르면 선택이 풀려요.',
   },
   groom: {
     id: 'groom', label: '털갈이', src: 'assets/tamagotchi/tools/groom.svg', hotspot: [78, 68], mode: 'rub', threshold: 200,
@@ -97,11 +99,13 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const host = document.fullscreenElement || stage.closest('.is-expanded') || document.body;
     if (cursor.parentNode !== host) host.append(cursor);
   }
-  function show(event) { if (!selected) return; lastX = event.clientX; lastY = event.clientY; ensureHost(); cursor.hidden = false; place(event); }
+  let lastType = 'mouse';
+  function show(event) { if (!selected) return; lastX = event.clientX; lastY = event.clientY; lastType = event.pointerType || 'mouse'; ensureHost(); cursor.hidden = false; place(event); }
   function overPet() {
     const tool = TOOLS[selected];
     if (tool && tool.anywhere) return true; // 무대 어디를 눌러도 인정(포인터 이벤트가 무대에서만 들어온다)
-    if (tool && tool.target === 'mouth') return insideEllipse(lastX, lastY, petApi.mouthRect(), 1);
+    // 밥주기: 마우스는 입 근처만, 터치는 손가락이 입을 가리므로 펫 어디를 눌러도 먹는다.
+    if (tool && tool.target === 'mouth' && lastType !== 'touch') return insideEllipse(lastX, lastY, petApi.mouthRect(), 1);
     return insideEllipse(lastX, lastY, petApi.bodyRect());
   }
   // 공 놀이: 펫이 포인터 쪽으로 몸을 기울이고 따라온다.
