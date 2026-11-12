@@ -1,7 +1,7 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop32';
-import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop32';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop33';
+import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop33';
 
 export const TOOLS = {
   pet: {
@@ -92,7 +92,12 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const [nx, ny] = tool.nudge || [0, 0]; // 입을 가리지 않도록 도구를 닿는 점에서 비켜 그린다
     cursor.style.transform = `translate(${p.left + nx}px, ${p.top + ny}px)`;
   }
-  function show(event) { if (!selected) return; lastX = event.clientX; lastY = event.clientY; cursor.hidden = false; place(event); }
+  // 크게 보기(전체화면)에서는 전체화면 요소 바깥이 그려지지 않으므로 도구 그림을 그 안으로 옮긴다.
+  function ensureHost() {
+    const host = document.fullscreenElement || stage.closest('.is-expanded') || document.body;
+    if (cursor.parentNode !== host) host.append(cursor);
+  }
+  function show(event) { if (!selected) return; lastX = event.clientX; lastY = event.clientY; ensureHost(); cursor.hidden = false; place(event); }
   function overPet() {
     const tool = TOOLS[selected];
     if (tool && tool.anywhere) return true; // 무대 어디를 눌러도 인정(포인터 이벤트가 무대에서만 들어온다)

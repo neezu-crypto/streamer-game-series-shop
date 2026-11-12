@@ -1,12 +1,12 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop32';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop32';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop33';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop33';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop32';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop33';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',

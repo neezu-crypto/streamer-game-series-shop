@@ -113,7 +113,7 @@
 /* 상호작용 도구(마우스·터치) */
 .tg-action.is-selected { border-color: var(--violet); background: #ece6fb; box-shadow: 0 0 0 2px #cfc3f7; }
 .tg-stage.is-tool-mode, .tg-stage.is-tool-mode * { cursor: none !important; touch-action: none; user-select: none; -webkit-user-select: none; }
-.tg-tool-cursor { position: fixed; left: 0; top: 0; z-index: 80; width: 72px; height: 72px; pointer-events: none; will-change: transform; }
+.tg-tool-cursor { position: fixed; left: 0; top: 0; z-index: 1000; width: 72px; height: 72px; pointer-events: none; will-change: transform; }
 .tg-tool-cursor[hidden] { display: none; }
 .tg-tool-cursor img { display: block; width: 100%; height: 100%; transform-origin: 70% 82%; filter: drop-shadow(0 4px 6px rgba(80, 50, 30, .18)); }
 .tg-tool-cursor.is-active img { animation: tg-tool-rub .42s ease-in-out infinite alternate; }
