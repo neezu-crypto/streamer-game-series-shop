@@ -2,7 +2,7 @@
 // 원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
 // PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
 
-import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261113-tg-care2';
+import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261113-tg-opt1';
 
 export const PRESETS={
  '기본':{eye:'normal',mouth:'normal',arm:0},
@@ -201,7 +201,8 @@ let prev=performance.now()/1000, prevY=0, prevS=1, blinkAt=1;
 const setRot=(id,a)=>{const p=parts[id];p.g.setAttribute('transform',`rotate(${a.toFixed(2)} ${p.pivot[0]} ${p.pivot[1]})`);};
 let rectCache=null, rectAt=-1, lowPower=false; const gate=createFrameGate(30);
 // 저전력(크게 보기 가로)일 때는 상호작용 중에도 초당 30번만 그린다. 기본·세로는 매 프레임(원본 화질).
-function step(){const t=performance.now()/1000;
+let paused=false; // 화면에 안 보이면 그리기를 멈춘다(setPaused)
+function step(){if(paused||stopped){running=false;return;}const t=performance.now()/1000;
  if(lowPower&&!reduced&&!gate.shouldDraw(t)){requestAnimationFrame(step);return;} rectAt=-1;
  const dt=Math.min(0.05,t-prev);prev=t;
  // body: breathing squash + hop (anticipation squash -> jump -> landing squash)
@@ -286,6 +287,7 @@ const api={
   },
   wakeUp(){if(sleeping)startWake();},
   setLowPower(on){lowPower=!!on;gate.reset();},
+  setPaused(on){const was=paused;paused=!!on;if(was&&!paused){running=false;wake(3.5);}},
   condition(){return cond;},
   setCondition(next){
     if(!COND[next])return;cond=next;sleeping=false;clearInterval(zzzTimer);clearInterval(condTimer);afterWake=null;wakingUntil=0;holdName='';clearTimeout(backTimer);
