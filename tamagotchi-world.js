@@ -5,7 +5,7 @@ import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261113-tg-world2';
+const V = '?v=20261113-tg-world3';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -89,7 +89,7 @@ function renderMap() {
     const lot = lots[place.lot]; if (!lot) continue;
     const [x, y, w] = lot;
     const b = el('button', `tw-bld tw-bld-${place.id}`); b.type = 'button';
-    b.style.left = `${x}%`; b.style.top = `${y}%`; b.style.width = `${w}%`;
+    b.style.left = `${x}%`; b.style.top = `${y}%`; b.style.width = `${w * (kind === 'm' ? 0.7 : 1)}%`; // 세로 지도는 자리 사이가 좁아 건물을 줄인다
     b.setAttribute('aria-label', `${place.name} — ${place.desc}`);
     const art = el('span', 'tw-bld-art');
     const sprite = img(place.sprite, 'tw-bld-img', (i) => { i.replaceWith(el('span', 'tw-bld-emoji', place.emoji)); });
