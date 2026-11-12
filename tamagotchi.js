@@ -1,12 +1,12 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop43';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop43';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop44';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop44';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop43';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop44';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -219,15 +219,30 @@ function applyHealth(id) {
 const ROOM = { w: 1585, h: 992, pillow: [712, 690], petWidth: 330 };
 
 // ---------- 평상시 방 배경: 방석이 펫 발밑에 오도록 배경 크기·위치를 맞춘다(펫은 움직이지 않음) ----------
-const HOME = { w: 1585, h: 992, seat: [795, 792] };
+const HOME = { w: 1585, h: 992, seat: [795, 792], petUnits: 590 }; // petUnits: 기본 보기(무대 944px·펫 352px)에서 펫 너비를 그림 좌표로 잰 값
+// 일반·크게 보기의 구도(펫 : 방석 : 방)가 같도록 배경 배율 k에 맞춰 펫 너비도 정한다(펫 너비 = petUnits × k).
 function alignHome() {
   const stage = $('tgStage'); const pet = $('tgPet');
   if (!stage || !pet || pet.style.transform) return; // 산책·입원·욕실처럼 펫이 옮겨진 동안은 그대로
+  let k = 0;
+  for (let i = 0; i < 3; i += 1) { // 펫 크기가 바뀌면 발 위치도 바뀌므로 몇 번 맞춰 수렴시킨다
+    const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
+    if (!s.width || !p.width) return;
+    const fx = p.left - s.left + p.width / 2; const fy = p.top - s.top + p.height * 0.95;
+    // 방석 점을 발밑에 맞추면서 그림이 무대를 빈틈없이 덮는 가장 작은 배율
+    k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
+      fy / HOME.seat[1], (s.height - fy) / (HOME.h - HOME.seat[1]));
+    const want = Math.min(HOME.petUnits * k, s.height * 0.62); // 세로가 짧은 무대에서 펫이 잘리지 않게 상한
+    if (Math.abs(want - p.width) < 2) {
+      stage.style.setProperty('--home-size', `${(HOME.w * k).toFixed(1)}px ${(HOME.h * k).toFixed(1)}px`);
+      stage.style.setProperty('--home-pos', `${(fx - HOME.seat[0] * k).toFixed(1)}px ${(fy - HOME.seat[1] * k).toFixed(1)}px`);
+      return;
+    }
+    pet.style.width = `${want.toFixed(1)}px`;
+  }
   const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
-  if (!s.width || !p.width) return;
   const fx = p.left - s.left + p.width / 2; const fy = p.top - s.top + p.height * 0.95;
-  // 방석 점을 발밑에 맞추면서 그림이 무대를 빈틈없이 덮는 가장 작은 배율
-  const k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
+  k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
     fy / HOME.seat[1], (s.height - fy) / (HOME.h - HOME.seat[1]));
   stage.style.setProperty('--home-size', `${(HOME.w * k).toFixed(1)}px ${(HOME.h * k).toFixed(1)}px`);
   stage.style.setProperty('--home-pos', `${(fx - HOME.seat[0] * k).toFixed(1)}px ${(fy - HOME.seat[1] * k).toFixed(1)}px`);
