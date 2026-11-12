@@ -162,7 +162,7 @@ function burst(kind){const items={heart:['#FF8FA3',6],note:[OUT,4],zzz:[OUT,3],s
   if(kind==='bubble'){x=left?340+Math.random()*160:820+Math.random()*160;y0=560+Math.random()*260;}
   const born=performance.now()/1000+n*(kind==='bubble'?0.12:0.22), life=kind==='sweat'?1.4:1.8, dx=kind==='zzz'?50+n*30:(left?-50:50)*Math.random(), sx=kind==='sweat'?905:x, sy=kind==='sweat'?380:y0, base=kind==='zzz'?[900,300-n*30]:null;
   g.dataset.anim=JSON.stringify({born,life,dx,sx:base?base[0]:sx,sy:base?base[1]:sy});}}
-function stepFx(t){for(const g of [...fx.children]){const a=JSON.parse(g.dataset.anim);const u=(t-a.born)/a.life;if(u<0){g.style.opacity=0;continue;}if(u>1){g.remove();continue;}
+function stepFx(t){for(const g of [...fx.children]){const a=g._anim||(g._anim=JSON.parse(g.dataset.anim));const u=(t-a.born)/a.life;if(u<0){g.style.opacity=0;continue;}if(u>1){g.remove();continue;}
  const e=1-(1-u)*(1-u); const rise=a.rise!=null?a.rise:(a.sx===905?-60:200); g.setAttribute('transform',`translate(${a.sx+a.dx*e} ${a.sy-rise*e}) scale(${(1.4+1.2*Math.min(1,u*4)).toFixed(3)})`); g.style.opacity=u<0.15?u/0.15:1-Math.max(0,(u-0.6)/0.4);}}
 let chewShown='', cur=PRESETS['기본'], swapAt=-9, pending=null, armK=1, armFrom=null, armPrev=[0,0,0], armNow=[0,0,0];
 function show(id,v){for(const n of parts[id].g.children)n.style.display=n.dataset.v===v?'':'none';}
@@ -176,7 +176,11 @@ let hopT=-9, petT=-9;
 let chaseT=[0,0], chaseC=[0,0];
 let prev=performance.now()/1000, prevY=0, prevS=1, blinkAt=1;
 const setRot=(id,a)=>{const p=parts[id];p.g.setAttribute('transform',`rotate(${a.toFixed(2)} ${p.pivot[0]} ${p.pivot[1]})`);};
-function step(){const t=performance.now()/1000;const dt=Math.min(0.05,t-prev);prev=t;
+let lastDraw=0, rectCache=null, rectAt=-1, lowPower=false;
+// 저전력(크게 보기 가로)일 때만: 상호작용이 없으면 초당 30번만 그린다. 기본·세로는 항상 매 프레임(원본 화질).
+function step(){const t=performance.now()/1000;
+ if(lowPower&&t>activeUntil&&t-lastDraw<0.031&&!reduced){requestAnimationFrame(step);return;} lastDraw=t; rectAt=-1;
+ const dt=Math.min(0.05,t-prev);prev=t;
  // body: breathing squash + hop (anticipation squash -> jump -> landing squash)
  const br=cond==='down'||cond==='hospital'?0.9:cond==='ok'?2.4:1.6; let s=1+P.breathe/100*Math.sin(t*br), y=0;
  const h=t-hopT; if(h>=0&&h<1.1){ if(h<0.15){s-=0.10*Math.sin(h/0.15*Math.PI/2);} else if(h<0.75){const u=(h-0.15)/0.6;y=-150*Math.sin(u*Math.PI);s+=0.06*Math.sin(u*Math.PI);} else {const u=(h-0.75)/0.35;s-=0.12*Math.sin(u*Math.PI);} }
@@ -259,6 +263,7 @@ const api={
     zzzTimer=setInterval(()=>{if(!sleeping)return;wake(3);burst('zzz');},2600);
   },
   wakeUp(){if(sleeping)startWake();},
+  setLowPower(on){lowPower=!!on;},
   condition(){return cond;},
   setCondition(next){
     if(!COND[next])return;cond=next;sleeping=false;clearInterval(zzzTimer);clearInterval(condTimer);afterWake=null;wakingUntil=0;holdName='';clearTimeout(backTimer);
@@ -292,7 +297,8 @@ const api={
     chaseT=[ux,uy];wake(1.5);
   },
   // 몸통 영역(화면 좌표). 도구 동작이 인정되는 곳을 판정할 때 쓴다.
-  bodyRect(){return parts.body.g.getBoundingClientRect();},
+  // 포인터 이동마다 레이아웃을 다시 읽지 않도록 프레임 안에서는 한 번만 잰다.
+  bodyRect(){if(rectAt<0||!rectCache){rectCache=parts.body.g.getBoundingClientRect();rectAt=1;}return rectCache;},
   // 입 주변 영역(화면 좌표). 입 모양 그룹의 중심에 몸통 크기에 비례한 여유를 둔 사각형이다.
   mouthRect(){const b=parts.body.g.getBoundingClientRect(),m=parts.mouth.g.getBoundingClientRect();const w=Math.max(m.width*1.5,b.width*0.3),h=Math.max(m.height*2.2,b.height*0.24);const cx=m.left+m.width/2,cy=m.top+m.height/2;return {left:cx-w/2,top:cy-h/2,width:w,height:h};},
   destroy(){stopped=true;clearTimeout(backTimer);clearInterval(zzzTimer);clearInterval(condTimer);svg.remove();},

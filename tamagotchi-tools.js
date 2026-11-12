@@ -1,7 +1,7 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop33';
-import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop33';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261112-tg-shop36';
+import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261112-tg-shop36';
 
 export const TOOLS = {
   pet: {
@@ -130,9 +130,9 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     if (!tool.foam) return;
     petApi.foam?.();
     steamLevel = Math.min(0.85, steamLevel + 0.05);
-    steam.style.transition = 'opacity 1s ease'; steam.style.opacity = String(steamLevel);
+    steam.classList.add('is-on'); steam.style.transition = 'opacity 1s ease'; steam.style.opacity = String(steamLevel);
     clearTimeout(steamTimer);
-    steamTimer = setTimeout(() => { steamLevel = 0; steam.style.transition = 'opacity 7s ease'; steam.style.opacity = '0'; }, 2000);
+    steamTimer = setTimeout(() => { steamLevel = 0; steam.style.transition = 'opacity 7s ease'; steam.style.opacity = '0'; steamTimer = setTimeout(() => steam.classList.remove('is-on'), 7100); }, 2000);
   }
   // 낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
   let restTimer = 0;

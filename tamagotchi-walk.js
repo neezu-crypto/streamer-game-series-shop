@@ -1,7 +1,7 @@
 // 산책 모드(분양소 미리보기). 배경이 탑다운 산책로 지도로 바뀌고, 펫이 28% 크기로 지도 위를 걷는다.
 // 클릭하면 그 지점까지 걸어가고, 누르는 동안은 포인터를 목줄 길이만큼 뒤에서 따라온다.
 // 펫 크기·위치는 #tgPet 컨테이너의 CSS transform으로 바꾼다(리그 내부는 건드리지 않는다).
-import { stepToward, followTarget, clampToBox, isClick } from './tamagotchi-gestures.mjs?v=20261112-tg-shop33';
+import { stepToward, followTarget, clampToBox, isClick } from './tamagotchi-gestures.mjs?v=20261112-tg-shop36';
 
 const SCALE = 0.28;
 const LEASH_PX = 60;
@@ -22,7 +22,10 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
   let pointer = null; let pressed = false; let downAt = 0; let downPt = null; let travel = 0;
   let facing = 1; let meters = 0; let footAcc = 0; let footSide = 1; let reported = 0;
 
-  const box = () => stage.getBoundingClientRect();
+  let boxCache = null;
+  const box = () => boxCache || (boxCache = stage.getBoundingClientRect());
+  const resetBox = () => { boxCache = null; };
+  window.addEventListener('resize', resetBox); window.addEventListener('scroll', resetBox, { passive: true });
   const toStage = (event) => { const b = box(); return { x: event.clientX - b.left, y: event.clientY - b.top }; };
   const petSize = () => ({ w: petEl.offsetWidth * SCALE, h: petEl.offsetHeight * SCALE });
 
@@ -80,7 +83,7 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
     active: () => active,
     enter() {
       if (active) return;
-      active = true; meters = 0; reported = 0; facing = 1;
+      active = true; meters = 0; reported = 0; facing = 1; boxCache = null;
       petApi.wakeUp?.();
       petEl.style.transform = '';
       const s = box(); const p = petEl.getBoundingClientRect();
@@ -127,6 +130,6 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
       kick(); drawLeash();
     },
     leave() { if (!pressed) { pointer = null; drawLeash(); } },
-    destroy() { this.exit(); bg.remove(); leash.remove(); feet.remove(); },
+    destroy() { this.exit(); bg.remove(); leash.remove(); feet.remove(); window.removeEventListener('resize', resetBox); window.removeEventListener('scroll', resetBox); },
   };
 }

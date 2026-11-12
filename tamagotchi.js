@@ -1,12 +1,12 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop33';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop33';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop36';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop36';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop33';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop36';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -103,7 +103,7 @@ function renderShowcase(server, pub) {
 // 모든 기기: 무대를 화면 전체에 띄우는 오버레이. 지원 기기(안드로이드 등): 실제 전체화면 + 방향 고정.
 // 방향: 자동(산책·입원일 때 가로) / 세로 / 가로. 고정을 지원하지 않으면(아이폰 등) 돌려 달라는 안내만 보인다.
 const ORIENT_KEY = 'tgOrientPref';
-let expanded = false; let orientHintTimer = 0;
+let expanded = false; let orientHintTimer = 0; let lockedAs = ''; let resizeTimer = 0;
 function orientPref() { try { return localStorage.getItem(ORIENT_KEY) || 'auto'; } catch (_) { return 'auto'; } }
 function wantedOrientation() {
   const pref = orientPref();
@@ -116,10 +116,13 @@ async function applyOrientation() {
   document.querySelectorAll('[data-orient]').forEach((n) => n.setAttribute('aria-checked', String(n.dataset.orient === orientPref())));
   const o = screen.orientation;
   let locked = false;
+  // 같은 요청을 반복하지 않는다(가로 화면에서 잦은 크기 변경 → 고정 요청 → 다시 크기 변경 반복 방지).
   try {
-    if (want && o && o.lock && document.fullscreenElement) { await o.lock(want); locked = true; }
-    else if (!want && o && o.unlock && document.fullscreenElement) o.unlock();
-  } catch (_) { locked = false; }
+    if (want && o && o.lock && document.fullscreenElement) {
+      if (lockedAs !== want) { await o.lock(want); lockedAs = want; }
+      locked = true;
+    } else if (!want && lockedAs && o && o.unlock && document.fullscreenElement) { o.unlock(); lockedAs = ''; }
+  } catch (_) { locked = false; lockedAs = ''; }
   const isLandscape = window.matchMedia('(orientation: landscape)').matches;
   const mismatch = want && !locked && ((want === 'landscape') !== isLandscape);
   const hint = $('tgOrientHint');
@@ -129,7 +132,14 @@ async function applyOrientation() {
     hint.hidden = false; orientHintTimer = setTimeout(() => { hint.hidden = true; }, 3500);
   } else hint.hidden = true;
 }
-function relayoutStage() { requestAnimationFrame(() => { if (healthState === 'hospital') placeOnBed(true); }); }
+// 크게 보기 가로에서만 가벼운 모드(초당 30번 숨쉬기, 흐림 필터 없음). 기본·세로는 원본 화질.
+function syncPowerMode() {
+  const lite = expanded && window.matchMedia('(orientation: landscape)').matches;
+  petApi?.setLowPower?.(lite);
+  document.querySelector('.tg-tool-cursor')?.classList.toggle('is-lite', lite);
+}
+function relayoutStage() {
+  syncPowerMode(); requestAnimationFrame(() => { if (healthState === 'hospital') placeOnBed(true); }); }
 async function setExpanded(on, { fromHistory = false } = {}) {
   if (on === expanded) return;
   expanded = on; toolCtl?.clear();
@@ -142,7 +152,7 @@ async function setExpanded(on, { fromHistory = false } = {}) {
     await applyOrientation();
   } else {
     $('tgOrientHint').hidden = true;
-    try { screen.orientation?.unlock?.(); } catch (_) { /* 무시 */ }
+    try { screen.orientation?.unlock?.(); } catch (_) { /* 무시 */ } lockedAs = '';
     if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) { /* 무시 */ } }
     if (!fromHistory && history.state && history.state.tgExpanded) history.back();
   }
@@ -158,7 +168,8 @@ function bindExpand() {
   window.addEventListener('popstate', () => { if (expanded) setExpanded(false, { fromHistory: true }); });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && expanded) setExpanded(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && expanded && !document.fullscreenElement) setExpanded(false); });
-  window.addEventListener('resize', () => { if (expanded) { relayoutStage(); applyOrientation(); } });
+  // 크기 변경은 멈춘 뒤 한 번만 처리한다(주소창이 접혔다 펴질 때 연속 발생).
+  window.addEventListener('resize', () => { if (!expanded) return; clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { relayoutStage(); applyOrientation(); }, 200); });
 }
 bindExpand();
 
@@ -218,7 +229,8 @@ function placeOnBed(on) {
   pet.style.transform = `translate(${(tx - cx).toFixed(1)}px, ${(ty - cy).toFixed(1)}px) scale(${scale.toFixed(3)})`;
   window.addEventListener('resize', bedResize);
 }
-function bedResize() { if (healthState === 'hospital') placeOnBed(true); }
+let bedTimer = 0;
+function bedResize() { clearTimeout(bedTimer); bedTimer = setTimeout(() => { if (healthState === 'hospital') placeOnBed(true); }, 200); }
 function renderHealth() {
   $('tgHealth').replaceChildren(...HEALTH_STATES.map((h) => {
     const b = el('button', 'tg-health-chip'); b.type = 'button'; b.dataset.health = h.id; b.textContent = h.label;
