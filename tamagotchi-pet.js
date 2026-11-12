@@ -2,7 +2,7 @@
 // 원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
 // PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
 
-import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop38';
+import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261112-tg-shop39';
 
 export const PRESETS={
  '기본':{eye:'normal',mouth:'normal',arm:0},
@@ -147,25 +147,46 @@ function addFoam(){
   el('circle',{cx:-r*0.3,cy:-r*0.3,r:r*0.18,fill:'#EAF7FB'},g);
 }
 // effects layer (above everything, not squashed)
-const fx=el('g',{id:'fx'},svg);
-function burst(kind){const items={heart:['#FF8FA3',6],note:[OUT,4],zzz:[OUT,3],spark:['#FFD45E',6],sweat:['#9FD3F0',1],bubble:['#FFFFFF',3],cloud:['#B9B4C2',2],speech:['#FFFFFF',1]}[kind];
- for(let n=0;n<items[1];n++){const g=el('g',{},fx);const left=n%2===0; let x=left?360+Math.random()*120:840+Math.random()*120;let y0=300+Math.random()*80;
-  if(kind==='heart')el('path',{d:'M0 22 C -18 8 -22 0 -22 -6 C -22 -14 -15 -18 -9 -18 C -4 -18 -1 -15 0 -11 C 1 -15 4 -18 9 -18 C 15 -18 22 -14 22 -6 C 22 0 18 8 0 22Z',fill:items[0],stroke:OUT,'stroke-width':4},g);
-  if(kind==='note'){el('path',{d:'M6 -26 L6 10',stroke:OUT,'stroke-width':6,'stroke-linecap':'round'},g);el('ellipse',{cx:-2,cy:12,rx:10,ry:8,fill:OUT},g);el('path',{d:'M6 -26 Q 20 -20 18 -6',fill:'none',stroke:OUT,'stroke-width':6,'stroke-linecap':'round'},g);}
-  if(kind==='zzz'){const t=el('text',{x:0,y:0,'font-size':46+n*12,'font-weight':800,'font-family':'Arial Rounded MT Bold, sans-serif',fill:'#FFFFFF',stroke:OUT,'stroke-width':6,'paint-order':'stroke'},g);t.textContent='Z';}
-  if(kind==='spark')sparkle(g,0,0,18,items[0]);
-  if(kind==='bubble'){const r=6+Math.random()*6;el('circle',{r,fill:'rgba(255,255,255,.75)',stroke:'#8FC8D6','stroke-width':2.5},g);el('path',{d:`M${-r*0.5} ${-r*0.1} Q ${-r*0.45} ${-r*0.5} ${-r*0.05} ${-r*0.6}`,fill:'none',stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round'},g);}
-  if(kind==='speech'){const words=['😊','💕','🎵','😆','✨','🍀','😮','👍','🌸','😋'];const w=words[Math.floor(Math.random()*words.length)];const bw=44;
-   el('path',{d:`M${-bw/2} -30 H ${bw/2} Q ${bw/2+14} -30 ${bw/2+14} -16 V 10 Q ${bw/2+14} 24 ${bw/2} 24 H 8 L -6 40 L -4 24 H ${-bw/2} Q ${-bw/2-14} 24 ${-bw/2-14} 10 V -16 Q ${-bw/2-14} -30 ${-bw/2} -30 Z`,fill:'#FFFFFF',stroke:OUT,'stroke-width':5,'stroke-linejoin':'round'},g);
-   const t=el('text',{x:0,y:8,'text-anchor':'middle','dominant-baseline':'middle','font-size':32,'font-family':'Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif'},g);t.textContent=w;}
-  if(kind==='cloud'){el('path',{d:'M-34 10 Q -40 -12 -18 -14 Q -12 -32 8 -26 Q 24 -36 34 -18 Q 50 -14 44 6 Q 46 20 28 20 L -26 20 Q -42 22 -34 10 Z',fill:items[0],stroke:OUT,'stroke-width':5,opacity:.85},g);}
-  if(kind==='sweat'){el('path',{d:'M0 -20 Q 14 0 10 10 Q 0 20 -10 10 Q -14 0 0 -20Z',fill:items[0],stroke:OUT,'stroke-width':4},g);}
-  if(kind==='speech'){x=Math.random()<0.5?380+Math.random()*80:880+Math.random()*80;y0=260+Math.random()*60;}
-  if(kind==='bubble'){x=left?340+Math.random()*160:820+Math.random()*160;y0=560+Math.random()*260;}
-  const born=performance.now()/1000+n*(kind==='bubble'?0.12:0.22), life=kind==='sweat'?1.4:1.8, dx=kind==='zzz'?50+n*30:(left?-50:50)*Math.random(), sx=kind==='sweat'?905:x, sy=kind==='sweat'?380:y0, base=kind==='zzz'?[900,300-n*30]:null;
-  g.dataset.anim=JSON.stringify({born,life,dx,sx:base?base[0]:sx,sy:base?base[1]:sy});}}
-function stepFx(t){for(const g of [...fx.children]){const a=g._anim||(g._anim=JSON.parse(g.dataset.anim));const u=(t-a.born)/a.life;if(u<0){g.style.opacity=0;continue;}if(u>1){g.remove();continue;}
- const e=1-(1-u)*(1-u); const rise=a.rise!=null?a.rise:(a.sx===905?-60:200); g.setAttribute('transform',`translate(${a.sx+a.dx*e} ${a.sy-rise*e}) scale(${(1.4+1.2*Math.min(1,u*4)).toFixed(3)})`); g.style.opacity=u<0.15?u/0.15:1-Math.max(0,(u-0.6)/0.4);}}
+// 이펙트 층: 펫 SVG 밖의 HTML 층. 입자는 CSS 애니메이션(이동·투명도·크기)으로 움직여 GPU가 처리하고,
+// 펫 SVG를 매 프레임 다시 그리지 않는다. 1em = 펫 좌표 100단위(SVG 너비에 맞춰 글자 크기를 갱신).
+const fx=document.createElement('div');fx.className='tg-fx';fx.setAttribute('aria-hidden','true');container.append(fx);
+const fitFx=()=>{const w=svg.getBoundingClientRect().width;if(w>0)fx.style.fontSize=(w/12.5).toFixed(2)+'px';};
+fitFx();const fxRO=typeof ResizeObserver==='function'?new ResizeObserver(fitFx):null;fxRO&&fxRO.observe(svg);
+const HEART_D='M0 22 C -18 8 -22 0 -22 -6 C -22 -14 -15 -18 -9 -18 C -4 -18 -1 -15 0 -11 C 1 -15 4 -18 9 -18 C 15 -18 22 -14 22 -6 C 22 0 18 8 0 22Z';
+const sparkD=(r)=>`M0 ${-r} Q${r*0.18} ${-r*0.18} ${r} 0 Q${r*0.18} ${r*0.18} 0 ${r} Q${-r*0.18} ${r*0.18} ${-r} 0 Q${-r*0.18} ${-r*0.18} 0 ${-r}Z`;
+const svgBox=(vb,inner)=>`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+function particleHTML(kind,n){
+  if(kind==='heart')return [0.52,svgBox('-26 -22 52 48',`<path d="${HEART_D}" fill="#FF8FA3" stroke="${OUT}" stroke-width="4"/>`)];
+  if(kind==='note')return [0.4,svgBox('-16 -32 40 54',`<path d="M6 -26 L6 10" stroke="${OUT}" stroke-width="6" stroke-linecap="round"/><ellipse cx="-2" cy="12" rx="10" ry="8" fill="${OUT}"/><path d="M6 -26 Q 20 -20 18 -6" fill="none" stroke="${OUT}" stroke-width="6" stroke-linecap="round"/>`)];
+  if(kind==='spark')return [0.4,svgBox('-20 -20 40 40',`<path d="${sparkD(18)}" fill="#FFD45E"/>`)];
+  if(kind==='sweat')return [0.32,svgBox('-16 -24 32 40',`<path d="M0 -20 Q 14 0 10 10 Q 0 20 -10 10 Q -14 0 0 -20Z" fill="#9FD3F0" stroke="${OUT}" stroke-width="4"/>`)];
+  if(kind==='cloud')return [0.96,svgBox('-48 -40 96 64',`<path d="M-34 10 Q -40 -12 -18 -14 Q -12 -32 8 -26 Q 24 -36 34 -18 Q 50 -14 44 6 Q 46 20 28 20 L -26 20 Q -42 22 -34 10 Z" fill="#B9B4C2" stroke="${OUT}" stroke-width="5" opacity=".85"/>`)];
+  if(kind==='bubble'){const r=6+Math.random()*6;return [(r*2+6)/100,svgBox(`${-r-3} ${-r-3} ${r*2+6} ${r*2+6}`,`<circle r="${r.toFixed(1)}" fill="rgba(255,255,255,.75)" stroke="#8FC8D6" stroke-width="2.5"/><path d="M${(-r*0.5).toFixed(1)} ${(-r*0.1).toFixed(1)} Q ${(-r*0.45).toFixed(1)} ${(-r*0.5).toFixed(1)} ${(-r*0.05).toFixed(1)} ${(-r*0.6).toFixed(1)}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`)];}
+  if(kind==='zzz')return [0,`<span class="tg-pz" style="font-size:${((46+n*12)/100).toFixed(2)}em">Z</span>`];
+  if(kind==='speech'){const words=['😊','💕','🎵','😆','✨','🍀','😮','👍','🌸','😋'];return [0,`<span class="tg-ps">${words[Math.floor(Math.random()*words.length)]}</span>`];}
+  return [0.4,''];
+}
+// x,y: 펫 좌표. dx·rise: 펫 좌표 단위. life·delay: 초.
+function spawn(kind,{x,y,dx,rise,life,delay=0,scale=1,n=0}){
+  // 동시에 떠 있는 입자는 36개까지(가장 오래된 것부터 지운다)
+  while(fx.childElementCount>=36)fx.firstElementChild.remove();
+  const [w,html]=particleHTML(kind,n);
+  const p=document.createElement('div');p.className='tg-p';
+  p.style.cssText=`left:${((x-80)/12.5).toFixed(2)}%;top:${((y-20)/11).toFixed(2)}%;--dx:${(dx/100).toFixed(3)}em;--rise:${(rise/100).toFixed(3)}em;--life:${life}s;--delay:${delay.toFixed(2)}s;--sc:${scale}`;
+  const inner=document.createElement('div');inner.className='tg-pi';if(w)inner.style.width=`${w}em`;inner.innerHTML=html;
+  p.append(inner);p.addEventListener('animationend',(e)=>{if(e.target===p)p.remove();});fx.append(p);
+}
+// 같은 종류를 0.4초 안에 다시 터뜨리면(문지르기·연타) 절반만 낸다. 화면의 풍성함은 비슷하고 입자 수는 줄어든다.
+const lastBurst={};
+function burst(kind){let count={heart:6,note:4,zzz:3,spark:6,sweat:1,bubble:3,cloud:2,speech:1}[kind];if(!count)return;
+ const now=performance.now();if(now-(lastBurst[kind]||0)<400)count=Math.max(1,Math.ceil(count/2));lastBurst[kind]=now;
+ for(let n=0;n<count;n++){const left=n%2===0;let x=left?360+Math.random()*120:840+Math.random()*120;let y=300+Math.random()*80;
+  if(kind==='speech'){x=Math.random()<0.5?380+Math.random()*80:880+Math.random()*80;y=260+Math.random()*60;}
+  if(kind==='bubble'){x=left?340+Math.random()*160:820+Math.random()*160;y=560+Math.random()*260;}
+  if(kind==='sweat'){x=905;y=380;}
+  if(kind==='zzz'){x=900;y=300-n*30;}
+  const dx=kind==='zzz'?50+n*30:(left?-50:50)*Math.random();
+  spawn(kind,{x,y,dx,rise:kind==='sweat'?-60:200,life:kind==='sweat'?1.4:1.8,delay:n*(kind==='bubble'?0.12:0.22),n});}}
 let chewShown='', cur=PRESETS['기본'], swapAt=-9, pending=null, armK=1, armFrom=null, armPrev=[0,0,0], armNow=[0,0,0];
 function show(id,v){for(const n of parts[id].g.children)n.style.display=n.dataset.v===v?'':'none';}
 function applyPreset(name,quiet=false){pending=PRESETS[name];swapAt=performance.now()/1000;if(!quiet){fx.replaceChildren();if(pending.fx)burst(pending.fx);}}
@@ -193,7 +214,7 @@ function step(){const t=performance.now()/1000;
  const gx=Math.max(-1,Math.min(1,chaseC[0]/130)), gy=Math.max(-1,Math.min(1,chaseC[1]/40));
  lieA+=(lieT-lieA)*Math.min(1,dt*4); const shiver=cond==='sick'?3*Math.sin(t*38):0;
  root.setAttribute('transform',`translate(${(chaseC[0]+shiver).toFixed(1)} ${(y+chaseC[1]+Math.abs(lieA)*0.9).toFixed(1)}) rotate(${(gx*3).toFixed(2)} 661 1075) rotate(${lieA.toFixed(2)} 661 640)`);
- fx.setAttribute('transform',`translate(${chaseC[0].toFixed(1)} ${chaseC[1].toFixed(1)})`); // 반짝이·하트도 펫과 함께 이동
+ { const tf=`translate(${(chaseC[0]/100).toFixed(3)}em, ${(chaseC[1]/100).toFixed(3)}em)`; if(fx._tf!==tf){fx._tf=tf;fx.style.transform=tf;} } // 이펙트도 펫과 함께 이동(값이 바뀔 때만)
  squash.setAttribute('transform',`translate(661 1075) scale(${(2-s).toFixed(4)} ${s.toFixed(4)}) translate(-661 -1075)`);
  // springs
  const drive={earL:-1,earR:1,tuft:0.7,tail:0};
@@ -217,7 +238,6 @@ function step(){const t=performance.now()/1000;
  squash.setAttribute('transform',squash.getAttribute('transform')+` rotate(${sway} 661 1075)`);
  // 거품: 마지막으로 더한 뒤 2초가 지나면 6초에 걸쳐 옅어진다
  if(foamG.children.length){const idle=t-foamAt;foamLevel=idle<2?1:Math.max(0,1-(idle-2)/6);foamG.style.opacity=foamLevel.toFixed(3);if(foamLevel<=0)foamG.replaceChildren();else wake(0.5);}
- stepFx(t);
  // blink
  const b=((t%3.4)<0.13&&cur.eye==='normal'?0.12:1)*faceS; for(const id of ['eyeL','eyeR']){const p=parts[id];p.g.setAttribute('transform',`translate(${(gx*16).toFixed(1)} ${(gy*10).toFixed(1)}) translate(${p.pivot[0]} ${p.pivot[1]}) scale(1 ${b}) translate(${-p.pivot[0]} ${-p.pivot[1]})`);}
 running=false; if(!stopped&&(!reduced||performance.now()/1000<activeUntil)){running=true;requestAnimationFrame(step);}}
@@ -281,10 +301,7 @@ const api={
   // 화면 좌표 위치에 하트 하나를 띄운다(도구가 지나간 자리 표시).
   heartAt(clientX,clientY){
     const m=svg.getScreenCTM();if(!m)return;const p=new DOMPoint(clientX,clientY).matrixTransform(m.inverse());
-    if(fx.children.length>40)fx.firstChild.remove();
-    const g=el('g',{},fx);const inner=el('g',{transform:'scale(0.55)'},g);
-    el('path',{d:'M0 22 C -18 8 -22 0 -22 -6 C -22 -14 -15 -18 -9 -18 C -4 -18 -1 -15 0 -11 C 1 -15 4 -18 9 -18 C 15 -18 22 -14 22 -6 C 22 0 18 8 0 22Z',fill:'#FF8FA3',stroke:OUT,'stroke-width':5},inner);
-    g.dataset.anim=JSON.stringify({born:performance.now()/1000,life:1.1,rise:45,dx:(Math.random()-0.5)*24,sx:p.x-chaseC[0],sy:p.y-chaseC[1]});wake(1.5);
+    spawn('heart',{x:p.x-chaseC[0],y:p.y-chaseC[1],dx:(Math.random()-0.5)*24,rise:45,life:1.1,scale:0.55});
   },
   foam(){addFoam();foamAt=performance.now()/1000;wake(9);},
   // 화면 좌표(클라이언트)의 포인터를 향해 최대 maxPx만큼 다가간다. 인자를 비우면 제자리로 돌아온다.
@@ -303,7 +320,7 @@ const api={
   bodyRect(){if(rectAt<0||!rectCache){rectCache=parts.body.g.getBoundingClientRect();rectAt=1;}return rectCache;},
   // 입 주변 영역(화면 좌표). 입 모양 그룹의 중심에 몸통 크기에 비례한 여유를 둔 사각형이다.
   mouthRect(){const b=parts.body.g.getBoundingClientRect(),m=parts.mouth.g.getBoundingClientRect();const w=Math.max(m.width*1.5,b.width*0.3),h=Math.max(m.height*2.2,b.height*0.24);const cx=m.left+m.width/2,cy=m.top+m.height/2;return {left:cx-w/2,top:cy-h/2,width:w,height:h};},
-  destroy(){stopped=true;clearTimeout(backTimer);clearInterval(zzzTimer);clearInterval(condTimer);svg.remove();},
+  destroy(){stopped=true;fxRO&&fxRO.disconnect();fx.remove();clearTimeout(backTimer);clearInterval(zzzTimer);clearInterval(condTimer);svg.remove();},
 };
 return api;
 

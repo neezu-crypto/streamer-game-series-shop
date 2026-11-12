@@ -1,12 +1,12 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop38';
-import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop38';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261112-tg-shop39';
+import { createMongsil } from './tamagotchi-pet.js?v=20261112-tg-shop39';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261112-tg-shop38';
+} from './tamagotchi-logic.mjs?v=20261112-tg-shop39';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -132,10 +132,11 @@ async function applyOrientation() {
     hint.hidden = false; orientHintTimer = setTimeout(() => { hint.hidden = true; }, 3500);
   } else hint.hidden = true;
 }
-// 크게 보기 가로에서만 가벼운 모드(초당 30번 숨쉬기, 흐림 필터 없음). 기본·세로는 원본 화질.
+// 크게 보기 가로에서만 흐림 필터를 끈다(가벼운 표현). 기본·세로는 원본 화질.
 function syncPowerMode() {
   const lite = expanded && window.matchMedia('(orientation: landscape)').matches;
-  petApi?.setLowPower?.(lite); toolCtl?.setLowPower?.(lite);
+  // 프레임은 모든 화면 60fps(주사율 그대로). 가로는 흐림 필터만 끈다. 프레임 제한 기능은 남겨 두고 쓰지 않는다.
+  petApi?.setLowPower?.(false); toolCtl?.setLowPower?.(false);
   document.querySelector('.tg-tool-cursor')?.classList.toggle('is-lite', lite);
 }
 function relayoutStage() {

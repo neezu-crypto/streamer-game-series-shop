@@ -238,3 +238,20 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
   .tg-showcase.is-expanded .tg-steam { filter: none; }
   .tg-showcase.is-expanded .tg-tool-cursor img, .tg-tool-cursor.is-lite img { filter: none; }
 }
+/* 이펙트 입자(하트·반짝이·음표·거품 등): 펫 SVG 밖 HTML 층에서 CSS 애니메이션으로 움직인다(합성 레이어 처리) */
+.tg-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: visible; }
+.tg-p { position: absolute; left: 0; top: 0; opacity: 0; transform: translate(-50%, -50%); will-change: transform, opacity;
+  animation: tg-p-move var(--life) cubic-bezier(.33, 1, .68, 1) var(--delay) forwards; }
+@keyframes tg-p-move {
+  0% { opacity: 0; transform: translate(-50%, -50%); }
+  15% { opacity: 1; }
+  60% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% - var(--rise))); }
+}
+.tg-pi { transform: scale(calc(1.4 * var(--sc, 1))); animation: tg-p-pop calc(var(--life) * .25) ease-out var(--delay) forwards; }
+@keyframes tg-p-pop { to { transform: scale(calc(2.6 * var(--sc, 1))); } }
+.tg-pi svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tg-pz { display: block; font-family: "Arial Rounded MT Bold", sans-serif; font-weight: 800; line-height: 1; color: #fff; -webkit-text-stroke: .06em #764C37; paint-order: stroke fill; }
+.tg-ps { position: relative; display: grid; place-items: center; width: 2.25em; height: 1.7em; font-size: .32em; border: .15em solid #764C37; border-radius: .45em; background: #fff; line-height: 1;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.tg-ps::before { content: ""; position: absolute; left: 30%; bottom: -.32em; width: .45em; height: .45em; background: #fff; border-right: .15em solid #764C37; border-bottom: .15em solid #764C37; transform: rotate(45deg); }
