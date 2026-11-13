@@ -501,7 +501,7 @@ exports.gameSeriesWalletGetAdminState = onCall({ region: REGION, maxInstances: 1
   };
 });
 
-exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10, enforceAppCheck: true }, async (request) => {
   const uid = await requireWalletUser(request);
   const data = request.data || {};
   const requestId = walletSafeId(data.requestId, '충전 요청 번호');
@@ -552,7 +552,7 @@ exports.gameSeriesWalletSubmitCharge = onCall({ region: REGION, maxInstances: 10
   return { ok: true, requestId, status: String((saved.snapshot.val() || {}).status || 'pending') };
 });
 
-exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInstances: 10, enforceAppCheck: true }, async (request) => {
   const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId, '충전 요청 번호');
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
@@ -571,7 +571,7 @@ exports.gameSeriesWalletMarkDonationComplete = onCall({ region: REGION, maxInsta
   return { ok: true, status: String((result.snapshot.val() || {}).status || '') };
 });
 
-exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10, enforceAppCheck: true }, async (request) => {
   const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId);
   const chargeRef = db.ref(`${WALLET_ROOT}/chargeRequests/${requestId}`);
@@ -591,7 +591,7 @@ exports.gameSeriesWalletCancelCharge = onCall({ region: REGION, maxInstances: 10
   return { ok: true };
 });
 
-exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10, enforceAppCheck: true }, async (request) => {
   const uid = await requireWalletUser(request);
   const requestId = walletSafeId((request.data || {}).requestId);
   const reason = walletText((request.data || {}).reason, 500, '환불 사유');
@@ -682,7 +682,7 @@ exports.gameSeriesWalletSubmitRefund = onCall({ region: REGION, maxInstances: 10
   return { ok: true, cashAmount: refundCashAmount, starCount: refundCashAmount };
 });
 
-exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 10 }, async (request) => {
+exports.gameSeriesWalletSubmitSupport = onCall({ region: REGION, maxInstances: 10, enforceAppCheck: true }, async (request) => {
   const uid = await requireWalletUser(request);
   const data = request.data || {};
   const category = String(data.category || '');
