@@ -1,4 +1,5 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-walkfix2';
@@ -20,6 +21,7 @@ const FIREBASE_CONFIG = {
   appId: '1:997788925900:web:cdddfe20075aa199a3a769',
 };
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
+ensureAppCheck(app);
 const auth = getAuth(app);
 const shopCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop');
 

@@ -1,4 +1,5 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import {
   getAuth, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, signInAnonymously,
   signInWithCustomToken, signInWithPopup,
@@ -16,6 +17,7 @@ const FIREBASE_CONFIG = {
 };
 
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
+ensureAppCheck(app);
 const auth = getAuth(app);
 const functions = getFunctions(app, 'us-central1');
 const callable = (name) => httpsCallable(functions, name);

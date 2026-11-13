@@ -2,6 +2,7 @@
 // 장소 추가 = catalog/tamagotchi-world.json에 항목 1개 + 패널 모듈(PANELS) 1개.
 // 그림(바닥·건물·앞 덮개)이 아직 없으면 코드로 그린 임시 지도와 이모지 건물로 대신한다.
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
@@ -18,6 +19,7 @@ const FIREBASE_CONFIG = {
   appId: '1:997788925900:web:cdddfe20075aa199a3a769',
 };
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
+ensureAppCheck(app);
 const auth = getAuth(app);
 const shopCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop');
 const careCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiCare'); // 보석 상점(금고·꾸미기)

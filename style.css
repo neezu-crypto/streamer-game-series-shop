@@ -419,3 +419,6 @@ button { color: inherit; }
   .dialog-heading h2 { font-size: 22px; }
   .hero-caption { right: 1%; bottom: -1%; font-size: 9px; }
 }
+
+/* 하단 저작권 표시(2026-11-14) */
+.footer-copyright{display:inline-block;margin-top:4px;font-size:9px;letter-spacing:.02em;opacity:.75}
