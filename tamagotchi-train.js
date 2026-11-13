@@ -1,7 +1,7 @@
 // 훈련소 패널(월드맵 장소). 내 다마고치 고르기 → 무대에서 체험 → 배울 재주 고르기 → 합계·환불 불가 확인 → 결제.
 // 가격·판매 여부·배운 목록은 서버 응답만 믿는다. 체험은 서버를 부르지 않는다.
 import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-opt1';
-import { createSound } from './tamagotchi-sound.js?v=20261113-tg-opt1';
+import { createSound, SOUNDS } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261113-tg-opt1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-trainm1';
 import {
@@ -12,6 +12,8 @@ import {
 const REQUEST_KEY = 'tamagotchiTrainRequest';
 const ADMIN_TARGET_KEY = 'tamagotchiTrainAdminTarget';
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
+const SHOW_EVERY = 4000; // 훈련 중 연출(동작) 간격
+const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -30,7 +32,8 @@ function josa(word, withFinal, withoutFinal) {
 
 export function mountTrainPanel(host, ctx) {
   const { shopCall, reduced, cashText } = ctx;
-  const st = { flow: '', streamerId: '', pets: [], petId: '', selected: new Set(), busy: false, loading: false, error: '', destroyed: false };
+  const st = { flow: '', streamerId: '', pets: [], petId: '', selected: new Set(), busy: false, loading: false, error: '', destroyed: false, skew: 0, celebrating: false };
+  let ticker = 0; let lastShow = 0; let showing = '';
   let petApi = null; let toolCtl = null; let scene = null; let sound = null;
 
   const root = el('div', 'tw-train');
@@ -62,6 +65,12 @@ export function mountTrainPanel(host, ctx) {
   const label = (pet, id) => interactionOf(pet, id)?.label || TOOLS[id]?.label || id;
   const setBubble = (text) => { bubble.textContent = text; };
   const IDLE = '재주 카드를 누르면 미리 해 볼 수 있어요';
+  const serverNow = () => Date.now() + st.skew;
+  const trainingOf = (pet) => (pet && pet.training && typeof pet.training === 'object' ? pet.training : {});
+  // 훈련 중인 것까지 포함한 재주(다시 고를 수 없음)
+  const knownIds = (pet) => [...(pet?.learned || []), ...Object.keys(trainingOf(pet))];
+  const queueOf = (pet) => Object.entries(trainingOf(pet)).map(([id, t]) => ({ id, startAt: Number(t.startAt) || 0, endAt: Number(t.endAt) || 0 })).sort((a, b) => a.endAt - b.endAt);
+  const setSkew = (n) => { if (Number(n) > 0) st.skew = Number(n) - Date.now(); };
 
   // ---------- 무대(펫·도구 체험) ----------
   function ensureStage(pet) {
@@ -146,7 +155,7 @@ export function mountTrainPanel(host, ctx) {
     petsRow.replaceChildren(...st.pets.map((p) => {
       const b = el('button', 'tw-pet-chip'); b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(p.petId === st.petId));
       b.append(el('strong', '', p.nickname || '이름 없음'), el('small', '', `${COLOR_LABELS[p.color] || p.color}${p.test ? ' · 테스트' : ''}`));
-      b.addEventListener('click', () => { if (st.busy || p.petId === st.petId) return; st.petId = p.petId; st.selected.clear(); toolCtl?.clear(); setStatus(''); render(); });
+      b.addEventListener('click', () => { if (st.busy || p.petId === st.petId) return; stopShow(); st.petId = p.petId; st.selected.clear(); toolCtl?.clear(); setStatus(''); setBubble(IDLE); render(); startShow(); });
       return b;
     }));
   }
@@ -158,14 +167,27 @@ export function mountTrainPanel(host, ctx) {
       const chip = el('span', 'tw-learned-chip'); const icon = TOOLS[id]?.src;
       if (icon) { const i = document.createElement('img'); i.src = icon; i.alt = ''; chip.append(i); }
       chip.append(el('span', '', label(pet, id)), el('b', '', '✓')); return chip;
+    }), ...queueOf(pet).map((t) => {
+      const chip = el('span', 'tw-learned-chip is-training'); chip.dataset.training = t.id; const icon = TOOLS[t.id]?.src;
+      if (icon) { const i = document.createElement('img'); i.src = icon; i.alt = ''; chip.append(i); }
+      chip.append(el('span', '', label(pet, t.id)), el('b', 'tw-train-left', '⏳')); return chip;
     }));
+    tickChips(pet);
+  }
+  function tickChips(pet) {
+    const now = serverNow();
+    learnedRow.querySelectorAll('[data-training]').forEach((chip) => {
+      const t = trainingOf(pet)[chip.dataset.training]; if (!t) return;
+      const left = chip.querySelector('.tw-train-left');
+      left.textContent = now < t.startAt ? `대기 ${mmss(t.endAt - now)}` : `⏳ ${mmss(t.endAt - now)}`;
+    });
   }
 
   function renderGrid(pet) {
     const sp = species(pet.speciesId);
     const trainable = sp?.trainable || [];
-    const open = learnableIds(trainable, pet.learned);
-    if (!open.length) { grid.replaceChildren(el('p', 'tw-train-done', '모든 재주를 배웠어요 🎉 팬페이지에서 마음껏 함께 놀아 주세요.')); return; }
+    const open = learnableIds(trainable, knownIds(pet));
+    if (!open.length) { grid.replaceChildren(el('p', 'tw-train-done', Object.keys(trainingOf(pet)).length ? '남은 재주를 모두 훈련하고 있어요. 끝나면 팬페이지에서 바로 쓸 수 있어요.' : '모든 재주를 배웠어요 🎉 팬페이지에서 마음껏 함께 놀아 주세요.')); return; }
     grid.replaceChildren(...trainable.filter((t) => open.includes(t.id)).map((t) => {
       const card = el('div', 'tw-skill'); card.dataset.skill = t.id;
       const tryBtn = el('button', 'tw-skill-try'); tryBtn.type = 'button'; tryBtn.dataset.try = t.id; tryBtn.setAttribute('aria-pressed', 'false');
@@ -184,7 +206,7 @@ export function mountTrainPanel(host, ctx) {
 
   function renderSummary(pet) {
     const sp = species(pet.speciesId); const trainable = sp?.trainable || [];
-    const open = learnableIds(trainable, pet.learned);
+    const open = learnableIds(trainable, knownIds(pet));
     if (!open.length) { summary.replaceChildren(); return; }
     const picked = [...st.selected].filter((id) => open.includes(id));
     const total = trainTotal(trainable, picked);
@@ -226,26 +248,26 @@ export function mountTrainPanel(host, ctx) {
     }
     const balance = Number(ctx.server?.balanceCash) || 0;
     const sum = el('p', 'tg-summary'); sum.append('합계 ', el('strong', '', cashText(total)), ` · 결제 후 ${cashText(balance - total)}`);
-    const notice = el('p', 'tg-notice', '배운 재주는 되돌릴 수 없어서 훈련비는 환불되지 않아요. 결제 오류나 이중 차감은 자동으로 환불돼요. 배운 재주는 이 다마고치에게만 적용돼요.');
+    const notice = el('p', 'tg-notice', `결제하면 바로 훈련이 시작되고 취소할 수 없어요. 재주 하나에 5분씩 차례로 훈련해요(이번 훈련 약 ${picked.length * 5}분). 훈련비는 환불되지 않아요. 결제 오류나 이중 차감은 자동으로 환불돼요. 배운 재주는 이 다마고치에게만 적용돼요.`);
     const agreeLabel = el('label', 'tg-agree'); const agree = el('input'); agree.type = 'checkbox';
-    agreeLabel.append(agree, el('span', '', '훈련비는 환불되지 않는다는 안내를 확인했어요'));
+    agreeLabel.append(agree, el('span', '', '훈련은 취소할 수 없고 훈련비는 환불되지 않는다는 안내를 확인했어요'));
     const st2 = el('p', 'tg-status'); st2.setAttribute('role', 'status'); st2.setAttribute('aria-live', 'polite');
     const pay = el('button', 'tg-button tg-button-primary', `${cashText(total)} 결제하고 훈련하기`); pay.type = 'button'; pay.disabled = true;
     agree.addEventListener('change', () => { pay.disabled = st.busy || !agree.checked; });
     pay.addEventListener('click', async () => {
       if (st.busy || !agree.checked) return;
       st.busy = true; pay.disabled = true; agree.disabled = true; closeBtn.disabled = true;
-      st2.className = 'tg-status loading-bar'; st2.textContent = '훈련하는 중이에요…';
+      st2.className = 'tg-status loading-bar'; st2.textContent = '훈련을 시작하는 중이에요…';
       const requestId = getTrainRequestId(sessionStorage, REQUEST_KEY, trainSignature(pet.petId, picked), randomBytes);
       try {
         const result = (await shopCall({ action: 'train', streamerId: st.streamerId, petId: pet.petId, interactions: picked, requestId })).data || {};
         if (result.status !== 'trained') throw new Error('훈련 결과를 확인하지 못했어요.');
         clearRequestId(sessionStorage, REQUEST_KEY);
         ctx.setBalance(result.remainingCash);
-        pet.learned = Array.isArray(result.learned) ? result.learned : [...pet.learned, ...picked];
+        applyResult(pet, result);
         st.selected.clear(); st.busy = false; closeBtn.disabled = false;
         dialog.close();
-        render(); void celebrate(pet, picked);
+        render(); startShow();
       } catch (error) {
         if (shouldDiscardRequestId(error)) clearRequestId(sessionStorage, REQUEST_KEY);
         st.busy = false; closeBtn.disabled = false; agree.disabled = false; pay.disabled = !agree.checked;
@@ -267,15 +289,58 @@ export function mountTrainPanel(host, ctx) {
       const picked = [...st.selected];
       const requestId = `at_${Array.from(randomBytes(18), (b) => b.toString(16).padStart(2, '0')).join('')}`;
       const result = (await shopCall({ action: 'admin-train', streamerId: st.streamerId, petId: pet.petId, interactions: picked, requestId })).data || {};
-      pet.learned = result.learned || pet.learned; st.selected.clear(); st.busy = false;
-      setStatus(`테스트 훈련: ${(result.items || []).map((id) => label(pet, id)).join(', ') || '새로 배운 재주 없음'}`);
-      render(); if (result.items?.length) void celebrate(pet, result.items);
+      applyResult(pet, result); st.selected.clear(); st.busy = false;
+      setStatus(`테스트 훈련 시작: ${(result.items || []).map((id) => label(pet, id)).join(', ') || '새로 배울 재주 없음'}`);
+      render(); startShow();
     } catch (error) { st.busy = false; render(); setStatus(trainErrorMessage(error), true); }
   }
 
-  // 성공: 배운 재주를 차례로 한 번씩 보여 준다(모션 줄이기면 문구만)
+  function applyResult(pet, result) {
+    setSkew(result.serverNow);
+    if (Array.isArray(result.learned)) pet.learned = result.learned;
+    if (result.training && typeof result.training === 'object') pet.training = result.training;
+  }
+
+  // ---------- 훈련 시간(재주당 5분): 무대에서 그 재주를 연습하는 모습을 보여 주고, 끝나면 메달 ----------
+  function startShow() {
+    if (ticker || st.destroyed) return;
+    lastShow = 0; tick(); ticker = setInterval(tick, 1000);
+  }
+  function stopShow() {
+    clearInterval(ticker); ticker = 0;
+    if (showing) { sound?.stop(showing); showing = ''; }
+  }
+  function tick() {
+    const pet = currentPet();
+    if (st.destroyed || !pet) { stopShow(); return; }
+    const now = serverNow();
+    // 끝난 훈련은 배운 재주로 옮기고 축하
+    const done = queueOf(pet).filter((t) => t.endAt <= now);
+    if (done.length) {
+      done.forEach((t) => { delete pet.training[t.id]; if (!pet.learned.includes(t.id)) pet.learned = [...pet.learned, t.id]; });
+      if (showing) { sound?.stop(showing); showing = ''; }
+      render(); void celebrate(pet, done.map((t) => t.id));
+    }
+    const queue = queueOf(pet);
+    if (!queue.length) { stopShow(); return; }
+    tickChips(pet);
+    if (st.celebrating || toolCtl?.selected()) return; // 축하 중이거나 체험 중이면 연출을 잠시 쉰다
+    const cur = queue.find((t) => t.startAt <= now) || queue[0];
+    const next = queue.filter((t) => t !== cur);
+    setBubble(`🎓 ${label(pet, cur.id)} 훈련 중 · ${mmss(cur.endAt - now)} 남음${next.length ? ` · 다음: ${next.map((t) => label(pet, t.id)).join(', ')}` : ''}`);
+    if (showing !== cur.id) { if (showing) sound?.stop(showing); showing = cur.id; lastShow = 0; }
+    if (SOUNDS[cur.id]?.loop) sound?.keep(cur.id, 2500);
+    if (now - lastShow >= SHOW_EVERY) {
+      lastShow = now;
+      const it = interactionOf(pet, cur.id);
+      if (!reduced && it?.preset) petApi?.play(it.preset, { hop: it.hop === true });
+      if (SOUNDS[cur.id] && !SOUNDS[cur.id].loop) sound?.once(cur.id);
+    }
+  }
+
+  // 훈련이 끝난 재주를 메달과 함께 보여 준다(모션 줄이기면 문구만)
   async function celebrate(pet, items) {
-    toolCtl?.clear();
+    st.celebrating = true; toolCtl?.clear();
     medal.hidden = false; medal.classList.remove('is-in'); void medal.offsetWidth; medal.classList.add('is-in');
     sound?.once('bonus'); // 메달이 붙을 때 축하 소리(펫 소리 버튼 설정을 따른다)
     for (const id of items) {
@@ -285,10 +350,10 @@ export function mountTrainPanel(host, ctx) {
       if (!reduced && it?.preset) petApi?.play(it.preset, { hop: it.hop === true });
       await sleep(reduced ? 900 : 1800);
     }
-    medal.hidden = true;
+    medal.hidden = true; st.celebrating = false;
     const link = el('a', 'tw-train-link', '팬페이지에서 바로 쓸 수 있어요 →'); link.href = farmUrl(st.streamerId);
     setStatus(''); status.replaceChildren(link);
-    setBubble(IDLE);
+    if (!queueOf(pet).length) setBubble(IDLE);
   }
 
   // ---------- 불러오기 ----------
@@ -296,13 +361,14 @@ export function mountTrainPanel(host, ctx) {
     st.streamerId = streamerId; st.loading = true; st.error = ''; render();
     try {
       const data = (await shopCall({ action: 'pets', streamerId })).data || {};
+      setSkew(data.serverNow);
       st.pets = Array.isArray(data.pets) ? data.pets : [];
       if (!keepPet || !st.pets.some((p) => p.petId === st.petId)) st.petId = st.pets[0]?.petId || '';
     } catch (error) {
       st.pets = []; st.petId = '';
       st.error = error?.code === 'functions/not-found' ? '인증된 스트리머 팬페이지를 찾을 수 없어요.' : '다마고치를 불러오지 못했어요.';
     }
-    st.loading = false; setBubble(IDLE); render();
+    st.loading = false; setBubble(IDLE); render(); startShow();
   }
   function start() {
     const flow = resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
@@ -318,7 +384,7 @@ export function mountTrainPanel(host, ctx) {
     busy: () => st.busy,
     onAuthChange() { if (!st.busy) start(); },
     destroy() {
-      st.destroyed = true; window.removeEventListener('resize', onResize);
+      st.destroyed = true; stopShow(); window.removeEventListener('resize', onResize);
       toolCtl?.destroy(); petApi?.destroy(); scene?.destroy?.(); sound?.stopAll?.();
       root.remove();
     },

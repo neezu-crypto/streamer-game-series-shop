@@ -73,6 +73,8 @@ svg.tw-ground { display: block; }
 .tw-learned-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; background: #eef7ea; color: #4b6a3f; font-size: 12px; font-weight: 750; }
 .tw-learned-chip img { width: 20px; height: 20px; }
 .tw-learned-chip b { color: #5aa05a; }
+.tw-learned-chip.is-training { background: #fff3d6; color: #8a6420; }
+.tw-learned-chip.is-training b { color: #b07a1c; font-variant-numeric: tabular-nums; }
 .tw-train-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tw-skill { display: grid; grid-template-rows: 1fr auto; overflow: hidden; border: 1.5px solid #e6dccc; border-radius: 18px; background: #fff; transition: border-color .15s, box-shadow .15s; }
 .tw-skill.is-picked { border-color: var(--violet); box-shadow: 0 0 0 2px #d8cdf8; }
