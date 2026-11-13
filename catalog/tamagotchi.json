@@ -91,7 +91,7 @@
           "id": "nap",
           "label": "낮잠",
           "group": "training",
-          "desc": "새근새근 낮잠을 자요.",
+          "desc": "원할 때 재울 수 있고, 스스로 잘 때보다 피로가 빨리 풀려요.",
           "preset": "잠",
           "tool": "nap"
         },

@@ -71,13 +71,15 @@ export const TOOLS = {
 for (const tool of Object.values(TOOLS)) tool.src = new URL(tool.src, import.meta.url).href;
 // 움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
 export const HOLDABLE = ['feed', 'play', 'talk', 'sing', 'dance'];
-export const HOLD_DELAY_MS = 600; export const HOLD_MAX_MS = 20000; const HOLD_TICK_MS = 250;
+export const TAP_GAP_MS = 1000; // 톡 도구 1회 후 대기(연타 방지)
+export const HOLD_DELAY_MS = 600; export const HOLD_MAX_MS = 20000; const HOLD_TICK_MS = 250; const HOLD_UNIT_MS = 4000; // 서버: 4초 누르기 = 1회
 const DESKTOP_SIZE = 72; const TOUCH_SIZE = 88;
 
 // 상호작용별 소리: keep = 하는 동안 반복(멈추면 서서히 꺼짐), once = 한 번(gap 안에서는 겹치지 않음)
 const SFX = { pet: 'keep', feed: 'keep', groom: 'keep', bath: 'keep', sing: 'keep', dance: 'keep', cheer: 'keep', play: 'once', gem: 'once', talk: 'once' };
 const ONCE_GAP = { talk: 2300, play: 300, gem: 600 };
-export function createToolController({ stage, petApi, petEl, ignoreOutside = [], onChange, reduced = false, sound = null }) {
+// gate(kind, units): 서버 적용 속도를 화면에서 미리 맞추는 선택 훅. 이유 문자열을 돌려주면 그 동작을 하지 않고 'limited' 이벤트를 보낸다.
+export function createToolController({ stage, petApi, petEl, ignoreOutside = [], onChange, reduced = false, sound = null, gate = null }) {
   const cursor = document.createElement('div');
   cursor.className = 'tg-tool-cursor'; cursor.hidden = true; cursor.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img'); img.alt = ''; img.draggable = false;
@@ -163,9 +165,25 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     }, tool.restEvery);
   }
   function stopHold() { clearInterval(holdTimer); holdTimer = 0; }
+  function shake() { cursor.classList.remove('is-wait'); void cursor.offsetWidth; cursor.classList.add('is-wait'); }
+  let lastLimited = 0;
+  function limited(kind, units) {
+    const reason = gate?.(kind, units);
+    if (!reason) return false;
+    shake();
+    const t = performance.now();
+    if (t - lastLimited > 600) { lastLimited = t; onChange?.({ type: 'limited', tool: kind, reason }); }
+    return true;
+  }
   // 누르고 있는 동안: 탭 도구는 일정 간격으로 계속 반복하고, 문지르기 도구는 가만히 눌러도 표정을 유지한다.
+  // 연타 방지: 톡 도구는 한 번 누른 뒤 TAP_GAP_MS 동안 다음 톡을 받지 않는다(서버도 같은 간격으로 센다).
+  let lastTap = 0;
   function tapAct() {
     const tool = TOOLS[selected]; if (!tool) return;
+    const t = performance.now();
+    if (t - lastTap < TAP_GAP_MS) { shake(); return; }
+    if (limited(selected, 1)) return;
+    lastTap = t;
     rubCount += 1; petApi.hold(tool.preset, 1.6, { quiet: !!tool.quiet }); if (tool.fx) petApi.fx(tool.fx); popDone(); sfx(selected);
     onChange?.({ type: 'act', tool: selected, count: rubCount });
   }
@@ -186,7 +204,9 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
       holdTimer = setInterval(() => {
         if (!pressed || !selected || !overPet()) return;
         if (performance.now() - holdStarted < HOLD_DELAY_MS) return;
-        const ms = Math.min(HOLD_TICK_MS, HOLD_MAX_MS - heldMs); heldMs += ms;
+        const ms = Math.min(HOLD_TICK_MS, HOLD_MAX_MS - heldMs);
+        if (limited(selected, ms / HOLD_UNIT_MS)) return;
+        heldMs += ms;
         petApi.hold(tool.preset, 0.6, { quiet: !!tool.quiet }); sfx(selected);
         if (tool.fx && Math.random() < 0.12) petApi.fx(tool.fx);
         onChange?.({ type: 'hold', tool: selected, ms, total: heldMs });
@@ -214,7 +234,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     show(event); followPointer(event); event.preventDefault();
     if (tool.mode === 'walk') { walk?.down(event); return; }
     if (tool.mode === 'once') {
-      if (overPet() && !petApi.isSleeping?.()) {
+      if (overPet() && !petApi.isSleeping?.() && !limited(selected, 1)) {
         petApi.sleep(); rubCount += 1; popDone();
         onChange?.({ type: 'act', tool: selected, count: rubCount });
         startRest(tool);
@@ -238,7 +258,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const inside = insideEllipse(event.clientX, event.clientY, petApi.bodyRect());
     const result = tracker.move(event.clientX, event.clientY, inside);
     if (inside) { petApi.hold(tool.preset, 1.1); sfx(selected); }
-    if (result.rubbed) {
+    if (result.rubbed && !limited(selected, 1)) {
       rubCount += 1; if (tool.fx) petApi.fx(tool.fx); bathTick(tool); popDone();
       onChange?.({ type: 'act', tool: selected, count: rubCount });
     }

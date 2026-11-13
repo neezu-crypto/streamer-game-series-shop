@@ -119,9 +119,11 @@
 .tg-tool-cursor.is-active img { animation: tg-tool-rub .42s ease-in-out infinite alternate; }
 .tg-tool-cursor.is-done img { animation: tg-tool-pop .28s ease-out; }
 .tg-tool-cursor.is-active.is-done img { animation: tg-tool-rub .42s ease-in-out infinite alternate; }
+.tg-tool-cursor.is-wait img { animation: tg-tool-wait .3s ease-out; }
+@keyframes tg-tool-wait { 0%, 100% { transform: translateX(0); opacity: 1; } 30% { transform: translateX(-3px); opacity: .55; } 70% { transform: translateX(3px); opacity: .55; } }
 @keyframes tg-tool-rub { from { transform: rotate(-9deg) scale(.96); } to { transform: rotate(9deg) scale(.96); } }
 @keyframes tg-tool-pop { 0% { transform: scale(1); } 45% { transform: scale(1.16); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .tg-tool-cursor.is-active img, .tg-tool-cursor.is-done img { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .tg-tool-cursor.is-active img, .tg-tool-cursor.is-done img, .tg-tool-cursor.is-wait img { animation: none; } }
 
 /* 목욕 물줄기: 샤워기 끝(핫스팟)에서 아래·왼쪽으로 떨어지는 물방울 */
 .tg-water { position: absolute; width: 0; height: 0; display: none; }

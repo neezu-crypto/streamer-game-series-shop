@@ -1,6 +1,6 @@
 // 훈련소 패널(월드맵 장소). 내 다마고치 고르기 → 무대에서 체험 → 배울 재주 고르기 → 합계·환불 불가 확인 → 결제.
 // 가격·판매 여부·배운 목록은 서버 응답만 믿는다. 체험은 서버를 부르지 않는다.
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-opt1';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-rate1';
 import { createSound, SOUNDS } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261113-tg-opt1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-trainm1';
