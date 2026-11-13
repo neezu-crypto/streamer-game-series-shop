@@ -179,7 +179,7 @@ export function mountTrainPanel(host, ctx) {
     learnedRow.querySelectorAll('[data-training]').forEach((chip) => {
       const t = trainingOf(pet)[chip.dataset.training]; if (!t) return;
       const left = chip.querySelector('.tw-train-left');
-      left.textContent = now < t.startAt ? `대기 ${mmss(t.endAt - now)}` : `⏳ ${mmss(t.endAt - now)}`;
+      left.textContent = now < t.startAt ? `${mmss(t.startAt - now)} 뒤 시작` : `⏳ ${mmss(t.endAt - now)}`;
     });
   }
 
