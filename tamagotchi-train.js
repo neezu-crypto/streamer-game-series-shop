@@ -277,6 +277,7 @@ export function mountTrainPanel(host, ctx) {
   async function celebrate(pet, items) {
     toolCtl?.clear();
     medal.hidden = false; medal.classList.remove('is-in'); void medal.offsetWidth; medal.classList.add('is-in');
+    sound?.once('bonus'); // 메달이 붙을 때 축하 소리(펫 소리 버튼 설정을 따른다)
     for (const id of items) {
       if (st.destroyed) return;
       const it = interactionOf(pet, id);
