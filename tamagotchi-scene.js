@@ -4,16 +4,19 @@ const ROOM = { w: 1585, h: 992, pillow: [712, 690], petWidth: 330 }; // 병실: 
 const HOME = { w: 1585, h: 992, seat: [795, 792], petUnits: 590 };
 const BATH = { w: 1585, h: 992, water: [785, 606], scale: 0.875, sink: 0.6 };
 
-export function createScene({ stage, pet, reduced = false, maxPetRatio = Infinity }) { // maxPetRatio: 무대 너비 대비 펫 최대 비율(좁은 화면용)
+export function createScene({ stage, pet, reduced = false, maxPetRatio = Infinity, home = null }) { // home: 다른 방 그림 좌표(객체 또는 무대마다 고르는 함수) // maxPetRatio: 무대 너비 대비 펫 최대 비율(좁은 화면용)
   let inBath = false; let onBed = false; let bedTimer = 0;
   function front(cls) { if (!stage.querySelector(`.${cls}`)) { const f = document.createElement('div'); f.className = cls; f.setAttribute('aria-hidden', 'true'); stage.append(f); } }
+  const H = () => (typeof home === 'function' ? home() : home) || HOME;
   function homeK(s, p) {
+    const HOME = H();
     const fx = p.left - s.left + p.width / 2; const fy = p.top - s.top + p.height * 0.95;
     const k = Math.max(s.width / HOME.w, s.height / HOME.h, fx / HOME.seat[0], (s.width - fx) / (HOME.w - HOME.seat[0]),
       fy / HOME.seat[1], (s.height - fy) / (HOME.h - HOME.seat[1]));
     return { k, fx, fy };
   }
   function setHome(k, fx, fy) {
+    const HOME = H();
     stage.style.setProperty('--home-size', `${(HOME.w * k).toFixed(1)}px ${(HOME.h * k).toFixed(1)}px`);
     stage.style.setProperty('--home-pos', `${(fx - HOME.seat[0] * k).toFixed(1)}px ${(fy - HOME.seat[1] * k).toFixed(1)}px`);
   }
@@ -24,7 +27,7 @@ export function createScene({ stage, pet, reduced = false, maxPetRatio = Infinit
       const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
       if (!s.width || !p.width) return;
       const { k, fx, fy } = homeK(s, p);
-      const want = Math.min(HOME.petUnits * k, s.height * 0.62, s.width * maxPetRatio);
+      const want = Math.min(H().petUnits * k, s.height * 0.62, s.width * maxPetRatio);
       if (Math.abs(want - p.width) < 2) { setHome(k, fx, fy); return; }
       pet.style.width = `${want.toFixed(1)}px`;
     }

@@ -1,24 +1,88 @@
 {
   "version": 1,
   "layers": {
-    "d": { "ground": "assets/tamagotchi/world/world-ground-d.webp", "front": "assets/tamagotchi/world/world-front-d.webp", "ratio": [16, 10] },
-    "m": { "ground": "assets/tamagotchi/world/world-ground-m.webp", "front": "assets/tamagotchi/world/world-front-m.webp", "ratio": [9, 16] }
+    "d": {
+      "ground": "assets/tamagotchi/world/world-ground-d.webp",
+      "ratio": [
+        16,
+        10
+      ]
+    },
+    "m": {
+      "ground": "assets/tamagotchi/world/world-ground-m.webp",
+      "ratio": [
+        9,
+        16
+      ]
+    }
   },
-  "clouds": ["assets/tamagotchi/world/world-cloud-1.webp", "assets/tamagotchi/world/world-cloud-2.webp"],
+  "clouds": [],
   "lots": {
-    "d": [[27, 66, 22], [70, 44, 22], [46, 26, 18], [84, 76, 18]],
-    "m": [[50, 82, 56], [50, 56, 56], [30, 32, 44], [70, 14, 44]]
+    "d": [
+      [
+        28.8,
+        71.5,
+        26
+      ],
+      [
+        74.5,
+        43,
+        26
+      ],
+      [
+        39.8,
+        32,
+        16
+      ],
+      [
+        74.5,
+        76.5,
+        16
+      ]
+    ],
+    "m": [
+      [
+        53.7,
+        79.3,
+        50
+      ],
+      [
+        56.6,
+        45.7,
+        46
+      ],
+      [
+        29.8,
+        20.7,
+        26
+      ],
+      [
+        71,
+        13.8,
+        26
+      ]
+    ]
   },
   "places": [
     {
-      "id": "adopt", "name": "분양소", "emoji": "🏠", "desc": "새 가족을 맞이해요",
-      "kind": "link", "href": "tamagotchi.html",
-      "sprite": "assets/tamagotchi/world/bld-adopt.webp", "lot": 0
+      "id": "adopt",
+      "name": "분양소",
+      "emoji": "🏠",
+      "desc": "새 가족을 맞이해요",
+      "kind": "link",
+      "href": "tamagotchi.html",
+      "sprite": "assets/tamagotchi/world/bld-adopt.webp",
+      "lot": 0
     },
     {
-      "id": "train", "name": "훈련소", "emoji": "🎓", "desc": "새로운 재주를 배워요",
-      "kind": "panel", "module": "train",
-      "sprite": "assets/tamagotchi/world/bld-train.webp", "lot": 1
+      "id": "train",
+      "name": "훈련소",
+      "emoji": "🎓",
+      "desc": "새로운 재주를 배워요",
+      "kind": "panel",
+      "module": "train",
+      "sprite": "assets/tamagotchi/world/bld-train.webp",
+      "lot": 1
     }
   ]
 }

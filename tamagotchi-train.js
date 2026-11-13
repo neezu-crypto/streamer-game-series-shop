@@ -3,7 +3,7 @@
 import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-opt1';
 import { createSound } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261113-tg-opt1';
-import { createScene } from './tamagotchi-scene.js?v=20261113-tg-opt1';
+import { createScene } from './tamagotchi-scene.js?v=20261113-tg-trainm1';
 import {
   resolveTrainState, trainTotal, learnableIds, trainSignature, getTrainRequestId, clearRequestId,
   shouldDiscardRequestId, trainErrorMessage, farmUrl, COLOR_LABELS,
@@ -69,7 +69,10 @@ export function mountTrainPanel(host, ctx) {
     if (!petApi) {
       sound = createSound();
       petApi = createMongsil(petBox, { color: pet.color, reduced });
-      scene = createScene({ stage, pet: petBox, reduced, maxPetRatio: 0.5 });
+      // 좁은 무대는 세로형 훈련실(1200×1000) 그림·좌표를 쓴다. petUnits는 매트 폭 대비 데스크탑과 같은 비율.
+      const TRAIN_M = { w: 1200, h: 1000, seat: [600, 800], petUnits: 510 };
+      const narrow = () => { const r = stage.getBoundingClientRect(); const m = r.width > 0 && r.width / Math.max(1, r.height) < 1.4; stage.classList.toggle('is-narrow', m); return m; };
+      scene = createScene({ stage, pet: petBox, reduced, maxPetRatio: 0.5, home: () => (narrow() ? TRAIN_M : null) });
       toolCtl = createToolController({ stage, petApi, petEl: petBox, ignoreOutside: [grid], reduced, sound, onChange: onTool });
       stage.classList.add('has-home');
       renderSound();
