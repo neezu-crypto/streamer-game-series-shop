@@ -83,6 +83,16 @@
       "module": "train",
       "sprite": "assets/tamagotchi/world/bld-train.webp",
       "lot": 1
+    },
+    {
+      "id": "gem-shop",
+      "name": "보석 상점",
+      "emoji": "💎",
+      "desc": "하트 보석으로 펫을 꾸며요",
+      "kind": "panel",
+      "module": "gemShop",
+      "sprite": "assets/tamagotchi/world/bld-gem-shop.webp",
+      "lot": 2
     }
   ]
 }

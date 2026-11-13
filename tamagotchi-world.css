@@ -107,3 +107,10 @@ svg.tw-ground { display: block; }
   .tw-train-summary .tg-button { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .tw-medal.is-in, .tw-cloud { animation: none; } }
+
+/* 월드맵 보석 상점 패널(2026-11-14) */
+.tw-gem{display:grid;gap:10px}
+.tw-gem-who{display:grid;gap:6px;justify-items:start}
+.tw-gem-back{font-size:13px}
+/* 가게 안 그림(제미나이): 펫이 가운데 아래 러그 위에 서도록 위·옆을 비운다 */
+.tw-gem-shop .tg-shop-preview{box-sizing:border-box;width:min(300px,78vw);aspect-ratio:1;padding:30% 19% 3%;border-radius:18px;background:url('assets/tamagotchi/world/gem-shop-room.webp') center/cover no-repeat,#fdf1f4}

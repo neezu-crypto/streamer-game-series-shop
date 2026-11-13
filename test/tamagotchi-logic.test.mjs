@@ -129,3 +129,23 @@ test('훈련소: 상태 분기·합계·배울 수 있는 목록·요청 번호'
   assert.notEqual(L.getTrainRequestId(storage, 'k', L.trainSignature('p1', ['play']), rb2), a);
   assert.match(a, L.REQUEST_ID_RE);
 });
+
+test('보석 상점: 팬페이지에서 들어오면 그 스트리머 펫, 아니면 훈련소 흐름', async () => {
+  const { resolveGemShopTarget } = await import('../tamagotchi-logic.mjs');
+  assert.deepEqual(resolveGemShopTarget({ search: '?s=Kafu1234&p=pet_1', isAnonymous: true, viewer: {} }), { flow: 'fanpage', streamerId: 'kafu1234', petId: 'pet_1' });
+  assert.deepEqual(resolveGemShopTarget({ search: '?s=kafu&p=../x', isAnonymous: true, viewer: {} }), { flow: 'fanpage', streamerId: 'kafu', petId: '' });
+  assert.equal(resolveGemShopTarget({ search: '?s=<bad>', isAnonymous: true, viewer: {} }).flow, 'login');
+  assert.deepEqual(resolveGemShopTarget({ search: '', isAnonymous: false, viewer: { isVerifiedStreamer: true, streamer: { id: 'me' } } }), { flow: 'ready', streamerId: 'me', petId: '' });
+  assert.equal(resolveGemShopTarget({ search: '', isAnonymous: false, viewer: { isAdmin: true } }).flow, 'admin');
+  assert.equal(resolveGemShopTarget({ search: '', isAnonymous: false, viewer: {} }).flow, 'verify');
+});
+
+test('보석 상점 카드 상태: 관리 권한·보석·두 번 누르기', async () => {
+  const { cardState, snackState } = await import('../tamagotchi-gem-shop-ui.js');
+  assert.equal(cardState({ id: 'hat', price: 5 }, { manage: false, gems: 60 }).kind, 'view');
+  assert.equal(cardState({ id: 'hat', price: 5 }, { manage: true, gems: 4 }).disabled, true);
+  assert.equal(cardState({ id: 'hat', price: 5 }, { manage: true, gems: 5, armed: 'buy:hat' }).label, '한 번 더 누르면 사요');
+  assert.equal(cardState({ id: 'hat', price: 5, owned: true, equipped: true }, { manage: true, gems: 0 }).label, '벗기기');
+  assert.equal(snackState({ price: 2, leftToday: 0 }, { gems: 60 }).disabled, true);
+  assert.equal(snackState({ price: 2, leftToday: 1 }, { gems: 2 }).disabled, false);
+});

@@ -5,7 +5,7 @@ import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261113-tg-world10';
+const V = '?v=20261114-tg-wear1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
 const FIREBASE_CONFIG = {
@@ -20,9 +20,13 @@ const FIREBASE_CONFIG = {
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
 const shopCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop');
+const careCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiCare'); // 보석 상점(금고·꾸미기)
 
 // 장소 패널 모듈. 규약: mount(host, ctx) → { destroy(), onAuthChange?() }
-const PANELS = { train: () => import(`./tamagotchi-train.js${V}`).then((m) => m.mountTrainPanel) };
+const PANELS = {
+  train: () => import(`./tamagotchi-train.js${V}`).then((m) => m.mountTrainPanel),
+  gemShop: () => import(`./tamagotchi-gem-shop.js${V}`).then((m) => m.mountGemShopPanel),
+};
 
 const $ = (id) => document.getElementById(id);
 const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -179,7 +183,7 @@ function syncHash() {
 }
 function panelContext() {
   return {
-    shopCall, reduced, toast, cashText,
+    shopCall, careCall, reduced, toast, cashText,
     get user() { return state.user; },
     get server() { return state.server; },
     get publicSpecies() { return state.publicSpecies; },

@@ -31,7 +31,18 @@ export const PRESETS={
 export const PRESET_NAMES = Object.keys(PRESETS);
 export const COLORS_BY_ID = { cream: ['#FCECD4', '#FCB5B5'], pink: ['#FFD9DF', '#F7A3B1'], mint: ['#D3F0E1', '#FCB5B5'], lavender: ['#E4DBFB', '#FCB5B5'] };
 
-export function createMongsil(container, { color = 'cream', reduced = false } = {}) {
+// 보석 상점 꾸미기(제미나이 일러스트, assets/tamagotchi/wear). 슬롯 → 아이템 → 펫 좌표(viewBox 80 20 1250 1100) 위치·크기.
+// 망토(back)는 몸 뒤, 나머지는 얼굴·소품 위에 그린다. 아파서 붕대를 감으면 머리 꾸미기는 잠시 숨긴다.
+export const WEAR_ITEMS = Object.freeze({
+  ribbon: { slot: 'head', x: 690, y: 70, w: 300, h: 237, rot: 14 },
+  hat: { slot: 'head', x: 455, y: 40, w: 420, h: 292, rot: -6 },
+  glasses: { slot: 'face', x: 393, y: 405, w: 557, h: 233 },
+  necklace: { slot: 'neck', x: 541, y: 675, w: 260, h: 359 },
+  cape: { slot: 'back', x: 86, y: 360, w: 1150, h: 772 },
+});
+export const wearImageUrl = (id) => new URL(`./assets/tamagotchi/wear/${id}.png`, import.meta.url).href;
+
+export function createMongsil(container, { color = 'cream', reduced = false, wear = null } = {}) {
 const OUT='#764C37', CREAM='#FCECD4', SW=17;
 const NS='http://www.w3.org/2000/svg';
 const el=(tag,attrs,parent)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.append(e);return e;};
@@ -56,6 +67,7 @@ function tickPath([a,r]){ // short fur tick pointing inward at each notch
 // ---- parts ----
 const parts={};
 const root=el('g',{id:'root'},svg), squash=el('g',{id:'squash'},root);
+const wearBack=el('g',{class:'tg-wear-back'},squash);
 function part(id,pivot,draw){const g=el('g',{id},squash);g.dataset.px=pivot[0];g.dataset.py=pivot[1];draw(g);parts[id]={g,pivot,a:0,v:0,target:0};return g;}
 // tail (behind)
 part('tail',[1112,756],g=>{
@@ -137,6 +149,17 @@ accItem('thermo',g=>{el('line',{x1:700,y1:582,x2:842,y2:656,stroke:OUT,'stroke-w
  el('line',{x1:705,y1:585,x2:770,y2:619,stroke:'#F27A7A','stroke-width':7,'stroke-linecap':'round'},g);});
 accItem('bandage',g=>{for(const r of [35,-35])el('rect',{x:770,y:330,width:130,height:40,rx:16,fill:'#F9D7B5',stroke:OUT,'stroke-width':9,transform:`rotate(${r} 835 350)`},g);
  el('rect',{x:818,y:337,width:34,height:26,rx:6,fill:'#F3C49A'},g);});
+const wearFront=el('g',{class:'tg-wear-front'},squash);
+let wearNow={};
+function setWear(next){
+  wearNow={};const src=next&&typeof next==='object'?next:{};
+  wearBack.replaceChildren();wearFront.replaceChildren();
+  for(const slot of ['back','neck','face','head']){const id=src[slot];const it=WEAR_ITEMS[id];if(!it||it.slot!==slot)continue;wearNow[slot]=id;
+   const img=el('image',{href:wearImageUrl(id),x:it.x,y:it.y,width:it.w,height:it.h,'data-slot':slot,preserveAspectRatio:'xMidYMid meet'},slot==='back'?wearBack:wearFront);
+   if(it.rot)img.setAttribute('transform',`rotate(${it.rot} ${it.x+it.w/2} ${it.y+it.h/2})`);}
+  syncWear();}
+function syncWear(){let hide=false;try{hide=COND[cond].acc.includes('bandage');}catch(_){/* 초기화 전 */}
+  for(const n of wearFront.children)if(n.dataset.slot==='head')n.style.display=hide?'none':'';}
 // 목욕 거품: 몸에 붙어 쌓이고, 목욕을 멈추면 천천히 사라진다(얼굴은 피한다).
 const foamG=el('g',{id:'foam'},squash); let foamLevel=0, foamAt=-9;
 function addFoam(){
@@ -248,6 +271,7 @@ const wake=(sec=3.5)=>{activeUntil=performance.now()/1000+sec;if(!running&&!stop
 let backTimer=0,holdName='';
 // 건강 상태: ok / low(컨디션 저하) / sick(아픔) / down(쓰러짐) / hospital(입원). 쉬는 표정·소품·자세가 바뀐다.
 let cond='ok',condTimer=0,lieT=0,lieA=0;
+if(wear)setWear(wear);
 const COND={ok:{rest:'기본',acc:[]},low:{rest:'컨디션 저하',acc:[]},sick:{rest:'아픔',acc:['ice','thermo']},down:{rest:'쓰러짐',acc:['bandage']},hospital:{rest:'입원',acc:['bandage']}};
 const restName=()=>COND[cond].rest;
 // 낮잠: 한 번 재우면 다른 상호작용이 올 때까지 계속 잔다. 깨울 때는 기지개 애니메이션 뒤 요청한 동작을 한다.
@@ -289,9 +313,12 @@ const api={
   setLowPower(on){lowPower=!!on;gate.reset();},
   setPaused(on){const was=paused;paused=!!on;if(was&&!paused){running=false;wake(3.5);}},
   condition(){return cond;},
+  setWear(next){setWear(next);},
+  wear(){return {...wearNow};},
   setCondition(next){
     if(!COND[next])return;cond=next;sleeping=false;clearInterval(zzzTimer);clearInterval(condTimer);afterWake=null;wakingUntil=0;holdName='';clearTimeout(backTimer);
     for(const k in accs)accs[k].style.display=COND[next].acc.includes(k)?'':'none';
+    syncWear();
     parts.cheeks.g.style.opacity=next==='ok'?'':next==='low'?'.35':'.15';
     svg.style.filter=next==='down'?'saturate(.4) brightness(.97)':next==='sick'?'saturate(.8)':'';
     lieT=next==='down'?-78:0;

@@ -2,7 +2,7 @@
 // 가격·판매 여부·배운 목록은 서버 응답만 믿는다. 체험은 서버를 부르지 않는다.
 import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-walkfix2';
 import { createSound, SOUNDS } from './tamagotchi-sound.js?v=20261113-tg-opt1';
-import { createMongsil } from './tamagotchi-pet.js?v=20261113-tg-opt1';
+import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
 import {
   resolveTrainState, trainTotal, learnableIds, trainSignature, getTrainRequestId, clearRequestId,
@@ -87,6 +87,7 @@ export function mountTrainPanel(host, ctx) {
       renderSound();
       soundBtn.addEventListener('click', () => { sound.setEnabled(!sound.enabled()); renderSound(); });
     } else petApi.setColor(pet.color);
+    petApi.setWear?.(pet.wear || {}); // 보석 상점 꾸미기
     requestAnimationFrame(() => scene?.alignHome());
   }
   function renderSound() { const on = sound?.enabled(); soundBtn.textContent = on ? '🔊 소리' : '🔇 소리'; soundBtn.setAttribute('aria-pressed', String(!!on)); }

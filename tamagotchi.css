@@ -282,3 +282,18 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 /* 분양소 → 다마고치 마을 돌아가기 */
 .tg-world-link { display: inline-flex; align-items: center; min-height: 36px; margin-bottom: 8px; padding: 6px 14px; border: 1px solid #ddd6cc; border-radius: 999px; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 750; text-decoration: none; }
 .tg-world-link:hover { border-color: var(--violet); background: #f6f2fd; }
+
+/* 보석 상점(공용: 팬페이지 상점 창·월드맵 보석 상점, 2026-11-14) */
+.tg-gem-shop{display:grid;gap:4px}
+.tg-gem-shop-gems{font-weight:700;margin:0}
+.tg-gem-shop-state{min-height:1.4em;margin:0;font-size:13px}
+.tg-gem-shop-foot{font-size:12px;opacity:.75;margin:4px 0 0;line-height:1.5}
+.tg-shop-preview{position:relative;width:min(220px,60vw);aspect-ratio:1250/1100;margin:4px auto 0}
+.tg-shop-preview .tg-pet-svg{width:100%;height:100%}
+.tg-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0}
+.tg-shop-card{display:grid;gap:6px;justify-items:center;align-content:start;text-align:center;padding:10px;border-radius:14px;background:rgba(127,127,127,.12);border:2px solid transparent}
+.tg-shop-card.is-on{border-color:#f7b4c6}
+.tg-shop-card img{width:84px;height:64px;object-fit:contain}
+.tg-shop-card small{font-size:12px;opacity:.8;line-height:1.4}
+.tg-shop-card .tg-button{width:100%;min-height:34px;font-size:13px}
+@media (max-width:560px){.tg-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

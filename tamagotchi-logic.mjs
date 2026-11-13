@@ -118,3 +118,14 @@ export function trainErrorMessage(error) {
 
 // 팬페이지 다마고치 훈련소 주소(팬페이지 잠금 도구에서 연결)
 export const TRAIN_URL = 'https://neezu-crypto.github.io/streamer-game-series-shop/tamagotchi-world.html#train';
+
+// 월드맵 보석 상점: 어느 펫을 연결할지(설계: 다마고치_월드맵_보석상점_설계.md 1-1).
+// 팬페이지에서 ?s=스트리머&p=펫 으로 들어오면 그 펫, 아니면 훈련소와 같은 흐름. 주소 값은 형식만 거르고 실제 확인은 서버 목록으로 한다.
+export function resolveGemShopTarget({ search = '', isAnonymous, viewer }) {
+  const q = new URLSearchParams(search);
+  const sid = String(q.get('s') || '').trim().toLowerCase();
+  const pid = String(q.get('p') || '').trim();
+  if (/^[a-z0-9_-]{1,64}$/.test(sid)) return { flow: 'fanpage', streamerId: sid, petId: /^[A-Za-z0-9_-]{1,64}$/.test(pid) ? pid : '' };
+  const flow = resolveTrainState({ isAnonymous, viewer });
+  return { flow, streamerId: flow === 'ready' ? String(viewer.streamer.id) : '', petId: '' };
+}
