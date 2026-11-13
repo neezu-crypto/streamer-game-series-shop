@@ -56,8 +56,10 @@ export function createScene({ stage, pet, reduced = false, maxPetRatio = Infinit
   }
   function bedResize() { clearTimeout(bedTimer); bedTimer = setTimeout(() => { if (onBed) placeOnBed(true); }, 200); }
   function placeOnBed(on) {
-    front('tg-hospital-front'); onBed = on;
-    if (!on) { pet.style.transform = ''; window.removeEventListener('resize', bedResize); return; }
+    front('tg-hospital-front');
+    // 침대에 없던 펫은 건드리지 않는다(산책처럼 다른 곳에서 옮긴 크기·위치를 지우지 않게)
+    if (!on) { if (onBed) pet.style.transform = ''; onBed = false; window.removeEventListener('resize', bedResize); return; }
+    onBed = true;
     pet.style.transform = '';
     const s = stage.getBoundingClientRect(); const p = pet.getBoundingClientRect();
     const k = Math.max(s.width / ROOM.w, s.height / ROOM.h);
