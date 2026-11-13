@@ -297,3 +297,6 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-shop-card small{font-size:12px;opacity:.8;line-height:1.4}
 .tg-shop-card .tg-button{width:100%;min-height:34px;font-size:13px}
 @media (max-width:560px){.tg-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 팬페이지처럼 --ink가 없는 곳에서도 버튼 글자가 보이게 */
+.tg-shop-card .tg-button{color:var(--ink,#2b2838)}
+.tg-shop-card .tg-button-primary{border-color:#e9799b;background:#e9799b;color:#fff}
