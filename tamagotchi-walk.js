@@ -89,7 +89,7 @@ export function createWalkMode({ stage, petEl, petApi, onChange, reduced = false
       if (active) return;
       active = true; meters = 0; reported = 0; facing = 1; boxCache = null;
       petApi.wakeUp?.();
-      petEl.style.transform = '';
+      petEl.style.transition = 'none'; petEl.style.transform = ''; void petEl.offsetWidth; // 목욕·입원 위치에서 와도 제자리 기준으로 잰다
       const s = box(); const p = petEl.getBoundingClientRect();
       base = { x: p.left - s.left + p.width / 2, y: p.top - s.top + p.height / 2 };
       pos = { ...base };

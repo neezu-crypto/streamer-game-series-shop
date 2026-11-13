@@ -50,9 +50,11 @@ export function createScene({ stage, pet, reduced = false, maxPetRatio = Infinit
   function setBath(on) {
     if (on === inBath) return;
     inBath = on; stage.classList.toggle('is-bath', on);
+    // 목욕에서 바로 산책으로 넘어가면 산책이 펫 크기·위치를 맡는다(지우지 않는다)
+    if (!on && pet.classList.contains('is-walking')) return;
     pet.style.transition = reduced ? 'none' : 'transform .5s ease';
     placeInBath(on);
-    setTimeout(() => { pet.style.transition = ''; if (!on) alignHome(); }, reduced ? 0 : 520);
+    setTimeout(() => { if (pet.classList.contains('is-walking')) return; pet.style.transition = ''; if (!on) alignHome(); }, reduced ? 0 : 520);
   }
   function bedResize() { clearTimeout(bedTimer); bedTimer = setTimeout(() => { if (onBed) placeOnBed(true); }, 200); }
   function placeOnBed(on) {

@@ -1,6 +1,6 @@
 // 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
 // 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
-import { createWalkMode } from './tamagotchi-walk.js?v=20261113-tg-opt1';
+import { createWalkMode } from './tamagotchi-walk.js?v=20261113-tg-walkfix2';
 import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261113-tg-opt1';
 
 export const TOOLS = {
