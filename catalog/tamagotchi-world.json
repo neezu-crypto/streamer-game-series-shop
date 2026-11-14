@@ -6,17 +6,22 @@
       "ratio": [
         16,
         10
-      ]
+      ],
+      "front": "assets/tamagotchi/world/world-front-d.webp"
     },
     "m": {
       "ground": "assets/tamagotchi/world/world-ground-m.webp",
       "ratio": [
         9,
         16
-      ]
+      ],
+      "front": "assets/tamagotchi/world/world-front-m.webp"
     }
   },
-  "clouds": [],
+  "clouds": [
+    "assets/tamagotchi/world/world-cloud-1.webp",
+    "assets/tamagotchi/world/world-cloud-2.webp"
+  ],
   "lots": {
     "d": [
       [

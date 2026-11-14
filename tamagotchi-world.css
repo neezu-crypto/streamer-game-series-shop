@@ -11,7 +11,12 @@ svg.tw-ground { display: block; }
 .tw-cloud { position: absolute; z-index: 4; width: 34%; opacity: .45; pointer-events: none; animation: tw-cloud 70s linear infinite; }
 .tw-cloud-1 { top: 8%; left: -40%; }
 .tw-cloud-2 { top: 52%; left: -40%; animation-duration: 95s; animation-delay: -40s; }
-@keyframes tw-cloud { to { transform: translateX(420%); } }
+@keyframes tw-cloud { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(420%, 0, 0); } }
+.tw-cloud { will-change: transform; backface-visibility: hidden; }
+.tw-map.tw-paused .tw-cloud { animation-play-state: paused; }
+.tw-map.is-m .tw-cloud { left: -62%; width: 60%; animation-duration: 110s; }
+.tw-map.is-m .tw-bld-art { transition-duration: .12s; }
+@media (hover: none) { .tw-bld:hover .tw-bld-art { transform: none; filter: none; } }
 
 /* 건물: 바닥 중심(스프라이트 아래 8%)을 자리 좌표에 맞춘다 */
 .tw-bld { position: absolute; z-index: 2; display: grid; justify-items: center; padding: 0; border: 0; background: none; cursor: pointer; transform: translate(-50%, -92%); -webkit-tap-highlight-color: transparent; }

@@ -81,6 +81,16 @@ function img(src, className, onFail) {
   i.src = src; return i;
 }
 
+// 보이지 않는 동안 구름 애니메이션 정지(배터리·발열 절약)
+let motionWatched = false;
+function watchMapMotion(map) {
+  if (motionWatched) return; motionWatched = true;
+  let onScreen = true;
+  const apply = () => map.classList.toggle('tw-paused', !onScreen || document.hidden);
+  if ('IntersectionObserver' in window) new IntersectionObserver((es) => { onScreen = es[0].isIntersecting; apply(); }).observe(map);
+  document.addEventListener('visibilitychange', apply);
+}
+
 // ---------- 지도 그리기 ----------
 function renderMap() {
   const world = state.world; if (!world) return;
@@ -108,7 +118,10 @@ function renderMap() {
     map.append(b);
   }
   if (world.layers[kind].front) map.append(img(world.layers[kind].front, 'tw-front', (i) => i.remove()));
-  if (!reduced) (world.clouds || []).forEach((src, n) => { const c = img(src, `tw-cloud tw-cloud-${n + 1}`, (i) => i.remove()); map.append(c); });
+  // 모바일은 구름 1개만(그리기 부담 줄이기), 지도가 화면 밖이거나 탭이 숨겨지면 움직임을 멈춘다
+  const clouds = (world.clouds || []).slice(0, kind === 'm' ? 1 : undefined);
+  if (!reduced) clouds.forEach((src, n) => { const c = img(src, `tw-cloud tw-cloud-${n + 1}`, (i) => i.remove()); c.decoding = 'async'; map.append(c); });
+  watchMapMotion(map);
   // 지도 아래 장소 목록(작은 화면·스크린 리더)
   $('twPlaces').replaceChildren(...visiblePlaces().map((place) => {
     const b = el('button', 'tw-place-btn'); b.type = 'button';
