@@ -8,10 +8,10 @@
   <meta name="description" content="스트리머와 팬이 함께 돌보며 정을 쌓는 다마고치, 새 가족을 만나 보세요.">
   <title>다마고치 분양소 — 게임 시리즈 상점</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="tamagotchi.css?v=20261113-tg-walkfix2">
+  <link rel="stylesheet" href="tamagotchi.css?v=20261115-tg-rh1">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261113-tg-opt1"></script>
-  <script type="module" src="tamagotchi.js?v=20261114-tg-wear1"></script>
+  <script type="module" src="tamagotchi.js?v=20261115-tg-rh1"></script>
 </head>
 <body class="tg-page">
   <header class="site-header">
@@ -85,6 +85,25 @@
           </div>
         </form>
         <p id="tgAdminStatus" class="tg-admin-status" role="status" aria-live="polite"></p>
+      </details>
+      <details id="tgRehearsal" class="tg-rehearsal">
+        <summary>관리자 도구 · 실결제 리허설</summary>
+        <p class="tg-admin-note">관리자 본인 통합 캐시로 진짜 결제 흐름(차감 → 원장 → 분양·훈련, 실패 시 자동 환불)을 그대로 거쳐 봐요. 리허설 펫은 관리자에게만 보이고, 정리하면 낸 캐시를 같은 환불 경로로 돌려받아요. 캐시가 부족하면 고객센터에서 충전 신청 → 후원 완료 알림 → 관리 센터 승인 순서로 충전해요.</p>
+        <div class="tg-admin-form">
+          <label for="tgRhStreamer">팬페이지 ID(SOOP 아이디)</label>
+          <input id="tgRhStreamer" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false">
+          <label for="tgRhColor">색</label>
+          <select id="tgRhColor"></select>
+          <label for="tgRhTrainItem">훈련할 재주</label>
+          <select id="tgRhTrainItem"></select>
+          <div class="tg-admin-actions">
+            <button id="tgRhStatusBtn" class="tg-button" type="button">상태 보기</button>
+            <button id="tgRhAdoptBtn" class="tg-button tg-button-primary" type="button">리허설 분양(실결제)</button>
+            <button id="tgRhTrainBtn" class="tg-button" type="button">리허설 훈련(실결제)</button>
+            <button id="tgRhClearBtn" class="tg-button" type="button">리허설 정리(환불·삭제)</button>
+          </div>
+        </div>
+        <pre id="tgRhOut" class="tg-rh-out" data-state="idle" aria-live="polite"></pre>
       </details>
     </section>
   </main>

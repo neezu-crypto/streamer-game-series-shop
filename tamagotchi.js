@@ -512,6 +512,7 @@ function showSuccess(pub, color, name, streamer, remaining) {
 function setupAdmin() {
   const admin = state.server?.viewer?.isAdmin === true && state.server.species.length > 0;
   $('tgAdmin').hidden = !admin;
+  setupRehearsal();
   if (!admin) return;
   const select = $('tgAdminColor');
   if (!select.options.length) {
@@ -540,6 +541,55 @@ $('tgAdminClear').addEventListener('click', async () => {
     const result = (await shopCall({ action: 'admin-clear-tests', streamerId })).data;
     adminStatus(`테스트 다마고치 ${result.removed}마리를 정리했어요. 분양받은 다마고치는 그대로예요.`);
   } catch (error) { adminStatus(error?.message || '정리하지 못했어요.', true); }
+});
+
+// ---------- 관리자 실결제 리허설 ----------
+// 화면 버튼과 같은 기능을 window.tgRehearsal 로도 연다(클로드 코드가 브라우저에서 직접 점검·결과 확인).
+// 결과는 #tgRhOut(JSON, data-state=idle|busy|ok|error)와 window.tgRehearsal.last 에 남는다.
+const rhRequestId = () => `rh_${Array.from(randomBytes(18), (b) => b.toString(16).padStart(2, '0')).join('')}`;
+const rhStreamer = (id) => String(id || $('tgRhStreamer').value || '').trim().toLowerCase();
+function rhShow(state, value) {
+  const out = $('tgRhOut'); out.dataset.state = state;
+  out.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+}
+async function rhRun(action, payload) {
+  const streamerId = rhStreamer(payload.streamerId);
+  if (!/^[a-z0-9_-]{1,64}$/.test(streamerId)) { const e = { ok: false, action, code: 'invalid-argument', message: '팬페이지 ID를 확인해 주세요.' }; rhShow('error', e); return (window.tgRehearsal.last = e); }
+  rhShow('busy', `${action} 처리 중…`);
+  try {
+    const data = (await shopCall({ ...payload, action, streamerId })).data;
+    const res = { ok: true, action, at: new Date().toISOString(), data };
+    rhShow('ok', res); return (window.tgRehearsal.last = res);
+  } catch (error) {
+    const res = { ok: false, action, code: String(error?.code || '').replace(/^functions\//, ''), message: error?.message || '실패했어요.' };
+    rhShow('error', res); return (window.tgRehearsal.last = res);
+  }
+}
+function setupRehearsal() {
+  const species = state.server?.species?.[0];
+  const admin = state.server?.viewer?.isAdmin === true && !!species;
+  $('tgRehearsal').hidden = !admin;
+  if (!admin) { delete window.tgRehearsal; return; }
+  const color = $('tgRhColor');
+  if (!color.options.length) for (const [id, label] of Object.entries(COLOR_LABELS)) { const o = document.createElement('option'); o.value = id; o.textContent = label; color.append(o); }
+  const item = $('tgRhTrainItem');
+  if (!item.options.length) for (const id of Object.keys(species.trainable || {})) { const o = document.createElement('option'); o.value = id; o.textContent = id; item.append(o); }
+  window.tgRehearsal = {
+    last: null,
+    status: (streamerId) => rhRun('rehearsal-status', { streamerId }),
+    adopt: ({ streamerId, color: c, nickname = '리허설', requestId } = {}) => rhRun('rehearsal-adopt', { streamerId, speciesId: species.id, color: c || $('tgRhColor').value, nickname, requestId: requestId || rhRequestId() }),
+    train: ({ streamerId, petId, interactions, requestId } = {}) => rhRun('rehearsal-train', { streamerId, petId, interactions: interactions || [$('tgRhTrainItem').value], requestId: requestId || rhRequestId() }),
+    clear: (streamerId) => rhRun('rehearsal-clear', { streamerId }),
+  };
+}
+$('tgRhStatusBtn').addEventListener('click', () => window.tgRehearsal?.status());
+$('tgRhAdoptBtn').addEventListener('click', () => window.tgRehearsal?.adopt());
+$('tgRhClearBtn').addEventListener('click', () => window.tgRehearsal?.clear());
+$('tgRhTrainBtn').addEventListener('click', async () => {
+  const st = await window.tgRehearsal?.status();
+  const pet = st?.ok && st.data.pets[0];
+  if (!pet) return rhShow('error', { ok: false, action: 'rehearsal-train', message: '먼저 리허설 분양을 해 주세요.' });
+  window.tgRehearsal.train({ petId: pet.petId });
 });
 
 // ---------- 불러오기·로그인 이어하기 ----------

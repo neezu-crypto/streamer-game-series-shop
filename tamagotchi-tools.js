@@ -1,5 +1,5 @@
 //  상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
-//  도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
+// 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
 import { createWalkMode } from './tamagotchi-walk.js?v=20261113-tg-walkfix2';
 import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261113-tg-opt1';
 
@@ -67,9 +67,9 @@ export const TOOLS = {
     hint: '펫을 눌러 응원봉을 흔들어 주세요. 응원은 한 번에 한 번씩이에요. 다시 누르면 선택이 풀려요.',
   },
 };
-// 모듈 기준 경로: 팬페이지에서 불러와도 상점의 도구 그림을 찾는다
+//  모듈 기준 경로: 팬페이지에서 불러와도 상점의 도구 그림을 찾는다
 for (const tool of Object.values(TOOLS)) tool.src = new URL(tool.src, import.meta.url).href;
-//  움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
+// 움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
 export const HOLDABLE = ['feed', 'play', 'talk', 'sing', 'dance'];
 export const TAP_GAP_MS = 1000; // 톡 도구 1회 후 대기(연타 방지)
 export const HOLD_DELAY_MS = 600; export const HOLD_MAX_MS = 20000; const HOLD_TICK_MS = 250; const HOLD_UNIT_MS = 4000; // 서버: 4초 누르기 = 1회
@@ -78,7 +78,7 @@ const DESKTOP_SIZE = 72; const TOUCH_SIZE = 88;
 // 상호작용별 소리: keep = 하는 동안 반복(멈추면 서서히 꺼짐), once = 한 번(gap 안에서는 겹치지 않음)
 const SFX = { pet: 'keep', feed: 'keep', groom: 'keep', bath: 'keep', sing: 'keep', dance: 'keep', cheer: 'keep', play: 'once', gem: 'once', talk: 'once' };
 const ONCE_GAP = { talk: 2300, play: 300, gem: 600 };
-// gate(kind, units): 서버 적용 속도를 화면에서 미리 맞추는 선택 훅. 이유 문자열을 돌려주면 그 동작을 하지 않고 'limited' 이벤트를 보낸다.
+//  gate(kind, units): 서버 적용 속도를 화면에서 미리 맞추는 선택 훅. 이유 문자열을 돌려주면 그 동작을 하지 않고 'limited' 이벤트를 보낸다.
 export function createToolController({ stage, petApi, petEl, ignoreOutside = [], onChange, reduced = false, sound = null, gate = null }) {
   const cursor = document.createElement('div');
   cursor.className = 'tg-tool-cursor'; cursor.hidden = true; cursor.setAttribute('aria-hidden', 'true');
@@ -118,7 +118,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   function overPet() {
     const tool = TOOLS[selected];
     if (tool && tool.anywhere) return true; // 무대 어디를 눌러도 인정(포인터 이벤트가 무대에서만 들어온다)
-    //  밥주기: 마우스는 입 근처만, 터치는 손가락이 입을 가리므로 펫 어디를 눌러도 먹는다.
+    // 밥주기: 마우스는 입 근처만, 터치는 손가락이 입을 가리므로 펫 어디를 눌러도 먹는다.
     if (tool && tool.target === 'mouth' && lastType !== 'touch') return insideEllipse(lastX, lastY, petApi.mouthRect(), 1);
     return insideEllipse(lastX, lastY, petApi.bodyRect());
   }
@@ -126,7 +126,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   function followPointer(event) {
     const tool = TOOLS[selected];
     if (!tool || !tool.chase || (event.pointerType === 'touch' && !pressed)) return;
-    // 누르는 동안은 포인터 바로 옆까지 다가오고, 누르지 않을 때는 살짝 기울어 쳐다본다.
+    //  누르는 동안은 포인터 바로 옆까지 다가오고, 누르지 않을 때는 살짝 기울어 쳐다본다.
     petApi.chase(event.clientX, event.clientY, pressed ? 150 : 36);
   }
   //  하트 보석: 도구가 펫 위를 지나간 자리에 하트를 남긴다(약 28px마다 하나).
@@ -152,7 +152,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     clearTimeout(steamTimer);
     steamTimer = setTimeout(() => { steamLevel = 0; steam.style.transition = 'opacity 7s ease'; steam.style.opacity = '0'; steamTimer = setTimeout(() => steam.classList.remove('is-on'), 7100); }, 2000);
   }
-  //  낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
+  // 낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
   let restTimer = 0;
   function startRest(tool) {
     clearInterval(restTimer);
@@ -175,8 +175,8 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     if (t - lastLimited > 600) { lastLimited = t; onChange?.({ type: 'limited', tool: kind, reason }); }
     return true;
   }
-  // 누르고 있는 동안: 탭 도구는 일정 간격으로 계속 반복하고, 문지르기 도구는 가만히 눌러도 표정을 유지한다.
-  //  연타 방지: 톡 도구는 한 번 누른 뒤 TAP_GAP_MS 동안 다음 톡을 받지 않는다(서버도 같은 간격으로 센다).
+  //  누르고 있는 동안: 탭 도구는 일정 간격으로 계속 반복하고, 문지르기 도구는 가만히 눌러도 표정을 유지한다.
+  // 연타 방지: 톡 도구는 한 번 누른 뒤 TAP_GAP_MS 동안 다음 톡을 받지 않는다(서버도 같은 간격으로 센다).
   let lastTap = 0;
   function tapAct() {
     const tool = TOOLS[selected]; if (!tool) return;
@@ -288,7 +288,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   document.addEventListener('pointerdown', onOutside, true);
   window.addEventListener('blur', onBlur);
 
-  // 건강 상태에 따라 할 수 있는 상호작용(설계 문서 2-2, 8절)
+  //  건강 상태에 따라 할 수 있는 상호작용(설계 문서 2-2, 8절)
   const ALLOWED = { sick: ['pet', 'feed', 'nap', 'talk'], down: ['pet'], hospital: ['pet', 'talk', 'cheer'] };
   function select(id) {
     const tool = TOOLS[id]; if (!tool) return false;

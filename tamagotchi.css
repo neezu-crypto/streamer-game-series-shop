@@ -300,3 +300,10 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 /*  팬페이지처럼 --ink가 없는 곳에서도 버튼 글자가 보이게 */
 .tg-shop-card .tg-button{color:var(--ink,#2b2838)}
 .tg-shop-card .tg-button-primary{border-color:#e9799b;background:#e9799b;color:#fff}
+
+/*  관리자 실결제 리허설 */
+.tg-rehearsal { margin-top: 14px; }
+.tg-rehearsal summary { font-size: 13px; font-weight: 800; cursor: pointer; }
+.tg-rh-out { max-height: 280px; margin: 12px 0 0; padding: 10px 12px; overflow: auto; border-radius: 8px; background: #2f2a2c; color: #f6efe6; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+.tg-rh-out:empty { display: none; }
+.tg-rh-out[data-state="error"] { background: #5a1f2b; }
