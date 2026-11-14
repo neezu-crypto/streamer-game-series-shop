@@ -573,7 +573,7 @@ function setupRehearsal() {
   const color = $('tgRhColor');
   if (!color.options.length) for (const [id, label] of Object.entries(COLOR_LABELS)) { const o = document.createElement('option'); o.value = id; o.textContent = label; color.append(o); }
   const item = $('tgRhTrainItem');
-  if (!item.options.length) for (const id of Object.keys(species.trainable || {})) { const o = document.createElement('option'); o.value = id; o.textContent = id; item.append(o); }
+  if (!item.options.length) for (const t of (Array.isArray(species.trainable) ? species.trainable : Object.entries(species.trainable || {}).map(([id, cash]) => ({ id, cash })))) { const o = document.createElement('option'); o.value = t.id; o.textContent = `${t.id} (${t.cash}캐시)`; item.append(o); }
   window.tgRehearsal = {
     last: null,
     status: (streamerId) => rhRun('rehearsal-status', { streamerId }),
