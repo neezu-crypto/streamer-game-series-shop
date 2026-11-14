@@ -1,4 +1,4 @@
-/* 다마고치 분양소: 기존 상점 변수(--ink, --coral …)와 톤을 그대로 쓴다. */
+/*  다마고치 분양소: 기존 상점 변수(--ink, --coral …)와 톤을 그대로 쓴다. */
 .tg-main { width: min(960px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0 72px; }
 .tg-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tg-head { text-align: center; margin-bottom: 18px; }
@@ -110,7 +110,7 @@
 }
 .tg-page .main-nav a { white-space: nowrap; }
 
-/* 상호작용 도구(마우스·터치) */
+/*  상호작용 도구(마우스·터치) */
 .tg-action.is-selected { border-color: var(--violet); background: #ece6fb; box-shadow: 0 0 0 2px #cfc3f7; }
 .tg-stage.is-tool-mode, .tg-stage.is-tool-mode * { cursor: none !important; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tg-tool-cursor { position: fixed; left: 0; top: 0; z-index: 1000; width: 72px; height: 72px; pointer-events: none; will-change: transform; }
@@ -125,7 +125,7 @@
 @keyframes tg-tool-pop { 0% { transform: scale(1); } 45% { transform: scale(1.16); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .tg-tool-cursor.is-active img, .tg-tool-cursor.is-done img, .tg-tool-cursor.is-wait img { animation: none; } }
 
-/* 목욕 물줄기: 샤워기 끝(핫스팟)에서 아래·왼쪽으로 떨어지는 물방울 */
+/*  목욕 물줄기: 샤워기 끝(핫스팟)에서 아래·왼쪽으로 떨어지는 물방울 */
 .tg-water { position: absolute; width: 0; height: 0; display: none; }
 .tg-tool-cursor.has-water.is-active .tg-water { display: block; }
 .tg-water i { position: absolute; left: -3px; top: 0; width: 8px; height: 14px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #9FD3F0; box-shadow: 0 0 0 1.5px #5FA9C9; opacity: 0; animation: tg-water-drop .55s linear infinite; }
@@ -136,7 +136,7 @@
 @keyframes tg-water-drop { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-18px, 70px); } }
 @media (prefers-reduced-motion: reduce) { .tg-water i { animation-duration: 1.2s; } }
 
-/* 목욕 김: 무대 위로 뿌옇게 서리는 수증기(포인터는 통과) */
+/*  목욕 김: 무대 위로 뿌옇게 서리는 수증기(포인터는 통과) */
 .tg-steam { position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; opacity: 0; overflow: hidden;
   background: radial-gradient(ellipse 45% 35% at 25% 30%, rgba(255,255,255,.7), rgba(255,255,255,0) 72%), radial-gradient(ellipse 50% 40% at 75% 40%, rgba(255,255,255,.65), rgba(255,255,255,0) 72%), radial-gradient(ellipse 65% 45% at 50% 85%, rgba(255,255,255,.6), rgba(255,255,255,0) 72%), rgba(255,255,255,.18); filter: blur(10px); }
 /* 김이 보일 때만 일렁인다(transform만 움직여 합성 레이어에서 처리, 필터 없음) */
@@ -162,7 +162,7 @@
 .tg-health { position: absolute; top: 16px; left: 16px; z-index: 2; display: flex; flex-wrap: wrap; gap: 4px; max-width: 46%; padding: 5px; border-radius: 16px; background: rgba(255, 255, 255, .8); }
 .tg-health-chip { padding: 5px 9px; border: 0; border-radius: 999px; background: transparent; color: #6b5a50; font-size: 11.5px; font-weight: 750; cursor: pointer; }
 .tg-health-chip[aria-checked="true"] { background: #764C37; color: #fff; }
-/* 스탯 막대+표정 */
+/*  스탯 막대+표정 */
 .tg-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 14px 0 4px; }
 .tg-stat { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 6px; row-gap: 4px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
 .tg-stat-face { grid-row: span 2; font-size: 20px; line-height: 1; }
@@ -200,7 +200,7 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-orient-chip[aria-checked="true"] { background: #764C37; color: #fff; }
 .tg-expand-close { width: 36px; height: 36px; border: 1px solid #e6dccf; border-radius: 50%; background: #fff; color: #5b4a40; font-size: 16px; font-weight: 800; cursor: pointer; }
 .tg-orient-hint { position: absolute; left: 50%; top: 50%; z-index: 4; margin: 0; padding: 10px 16px; transform: translate(-50%, -50%); border-radius: 14px; background: rgba(60,38,28,.88); color: #fff; font-size: 13px; font-weight: 800; pointer-events: none; }
-/* 가로로 낮은 화면: 스탯을 한 줄로 더 작게 */
+/*  가로로 낮은 화면: 스탯을 한 줄로 더 작게 */
 @media (orientation: landscape) and (max-height: 520px) {
   .tg-showcase.is-expanded { flex-direction: column; }
   .tg-showcase.is-expanded .tg-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -240,7 +240,7 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
   .tg-showcase.is-expanded .tg-steam { filter: none; }
   .tg-showcase.is-expanded .tg-tool-cursor img, .tg-tool-cursor.is-lite img { filter: none; }
 }
-/* 이펙트 입자(하트·반짝이·음표·거품 등): 펫 SVG 밖 HTML 층에서 CSS 애니메이션으로 움직인다(합성 레이어 처리) */
+/*  이펙트 입자(하트·반짝이·음표·거품 등): 펫 SVG 밖 HTML 층에서 CSS 애니메이션으로 움직인다(합성 레이어 처리) */
 .tg-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: visible; }
 .tg-p { position: absolute; left: 0; top: 0; opacity: 0; transform: translate(-50%, -50%); will-change: transform, opacity;
   animation: tg-p-move var(--life) cubic-bezier(.33, 1, .68, 1) var(--delay) forwards; }
@@ -258,9 +258,9 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .tg-ps::before { content: ""; position: absolute; left: 30%; bottom: -.32em; width: .45em; height: .45em; background: #fff; border-right: .15em solid #764C37; border-bottom: .15em solid #764C37; transform: rotate(45deg); }
 
-/* 평상시 방 배경(방석이 펫 발밑에 오도록 JS가 크기·위치를 맞춤). 입원·욕실은 각자 배경 */
+/*  평상시 방 배경(방석이 펫 발밑에 오도록 JS가 크기·위치를 맞춤). 입원·욕실은 각자 배경 */
 .tg-stage.has-home:not(.is-hospital):not(.is-bath) { background: #f7e9dc url("assets/tamagotchi/home-room.webp") var(--home-pos, center 80%) / var(--home-size, cover) no-repeat; }
-/* 욕실: 배경 + 욕조 앞면·물 덮개(펫 아랫몸이 물에 잠겨 보임) */
+/*  욕실: 배경 + 욕조 앞면·물 덮개(펫 아랫몸이 물에 잠겨 보임) */
 .tg-stage.is-bath { background: #cfe9e4 url("assets/tamagotchi/bath-room.webp") center / cover no-repeat; }
 .tg-stage.is-bath::after { opacity: 0; }
 .tg-bath-front { position: absolute; inset: 0; z-index: 1; border-radius: inherit; background: url("assets/tamagotchi/bath-front.webp") center / cover no-repeat; pointer-events: none; display: none; }
@@ -279,11 +279,11 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 @keyframes tg-satisfied-fade { 0%, 100% { opacity: 0; } 25%, 70% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tg-satisfied { animation: tg-satisfied-fade 1.2s ease forwards; } }
 
-/* 분양소 → 다마고치 마을 돌아가기 */
+/*  분양소 → 다마고치 마을 돌아가기 */
 .tg-world-link { display: inline-flex; align-items: center; min-height: 36px; margin-bottom: 8px; padding: 6px 14px; border: 1px solid #ddd6cc; border-radius: 999px; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 750; text-decoration: none; }
 .tg-world-link:hover { border-color: var(--violet); background: #f6f2fd; }
 
-/* 보석 상점(공용: 팬페이지 상점 창·월드맵 보석 상점, 2026-11-14) */
+/*  보석 상점(공용: 팬페이지 상점 창·월드맵 보석 상점, 2026-11-14) */
 .tg-gem-shop{display:grid;gap:4px}
 .tg-gem-shop-gems{font-weight:700;margin:0}
 .tg-gem-shop-state{min-height:1.4em;margin:0;font-size:13px}
@@ -297,6 +297,6 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-shop-card small{font-size:12px;opacity:.8;line-height:1.4}
 .tg-shop-card .tg-button{width:100%;min-height:34px;font-size:13px}
 @media (max-width:560px){.tg-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* 팬페이지처럼 --ink가 없는 곳에서도 버튼 글자가 보이게 */
+/*  팬페이지처럼 --ink가 없는 곳에서도 버튼 글자가 보이게 */
 .tg-shop-card .tg-button{color:var(--ink,#2b2838)}
 .tg-shop-card .tg-button-primary{border-color:#e9799b;background:#e9799b;color:#fff}

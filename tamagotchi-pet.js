@@ -1,6 +1,6 @@
-// 몽실이 SVG 리그(상점 분양소 미리보기용). 파츠별 SVG를 스프링으로 움직이고 표정 파츠를 갈아 끼운다.
-// 원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
-// PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
+//  몽실이 SVG 리그(상점 분양소 미리보기용). 파츠별 SVG를 스프링으로 움직이고 표정 파츠를 갈아 끼운다.
+//  원본 작업물: tamagotchi-art/mongsil/work/v2/mongsil_v3.html (색 4종·표정·효과).
+//  PRESETS·COLORS_BY_ID는 DOM 없이 읽을 수 있어 Node 테스트가 상호작용 매핑을 검증한다.
 
 import { createFrameGate } from './tamagotchi-gestures.mjs?v=20261113-tg-opt1';
 
@@ -52,7 +52,7 @@ const pt=(deg,r,c=C)=>[c[0]+r*Math.cos(deg*Math.PI/180),c[1]+r*Math.sin(deg*Math
 function circ3(a,b,c){const d=2*(a[0]*(b[1]-c[1])+b[0]*(c[1]-a[1])+c[0]*(a[1]-b[1]));
  const ux=((a[0]**2+a[1]**2)*(b[1]-c[1])+(b[0]**2+b[1]**2)*(c[1]-a[1])+(c[0]**2+c[1]**2)*(a[1]-b[1]))/d;
  const uy=((a[0]**2+a[1]**2)*(c[0]-b[0])+(b[0]**2+b[1]**2)*(a[0]-c[0])+(c[0]**2+c[1]**2)*(b[0]-a[0]))/d;return [ux,uy,Math.hypot(a[0]-ux,a[1]-uy)];}
-// ---- body: closed fluffy outline of bumps between notches (outer radii measured from the reference) ----
+//  ---- body: closed fluffy outline of bumps between notches (outer radii measured from the reference) ----
 const NOTCH=[[1,469],[20,452],[41,482],[55,470],[83,404],[102,407],[128,476],[141,487],[158,473],[178,444],[199,425],[218,407],[236,412],[252,430],[271,432],[291,435],[308,426],[321,421],[341,430]];
 const PEAK=[462,500,488,506,418,520,496,511,493,462,440,425,436,446,450,444,438,443,478];
 function bodyPath(){let d='';const ticks=[];
@@ -64,12 +64,12 @@ function bodyPath(){let d='';const ticks=[];
  return [d+'Z',ticks];}
 function tickPath([a,r]){ // short fur tick pointing inward at each notch
  const p=pt(a,r-SW/2),q=pt(a+3,r-SW/2-22);return `M${p[0].toFixed(1)} ${p[1].toFixed(1)} Q${pt(a+0.5,r-18)[0].toFixed(1)} ${pt(a+0.5,r-18)[1].toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`;}
-// ---- parts ----
+//  ---- parts ----
 const parts={};
 const root=el('g',{id:'root'},svg), squash=el('g',{id:'squash'},root);
 const wearBack=el('g',{class:'tg-wear-back'},squash);
 function part(id,pivot,draw){const g=el('g',{id},squash);g.dataset.px=pivot[0];g.dataset.py=pivot[1];draw(g);parts[id]={g,pivot,a:0,v:0,target:0};return g;}
-// tail (behind)
+//  tail (behind)
 part('tail',[1112,756],g=>{
  // chubby rounded star: soft rounded tips, gently filleted inner corners, slightly uneven arms like a hand drawing
  const c=[1196,750], rot=-104, arms=[116,110,113,108,112], inner=[72,70,73,69,71];
@@ -79,7 +79,7 @@ part('tail',[1112,756],g=>{
  for(let k=0;k<n;k++){const prv=P[(k-1+n)%n].p,cur=P[k].p,nxt=P[(k+1)%n].p;
   const L1=Math.hypot(cur[0]-prv[0],cur[1]-prv[1]),L2=Math.hypot(nxt[0]-cur[0],nxt[1]-cur[1]);
   const a=lerp(cur,prv,Math.min(0.48,P[k].cut/L1)), b=lerp(cur,nxt,Math.min(0.48,P[k].cut/L2));
-  // tips bulge a little outward (fuller, cuter); inner corners are a plain fillet
+  //  tips bulge a little outward (fuller, cuter); inner corners are a plain fillet
   const ctl=P[k].o?lerp(cur,[ (cur[0]*2-c[0]*0+c[0])/2, (cur[1]*2-c[1]*0+c[1])/2 ],0):cur;
   const c1=lerp(a,ctl,P[k].o?0.9:0.55), c2=lerp(b,ctl,P[k].o?0.9:0.55);
   d+=(k===0?`M${a[0].toFixed(1)} ${a[1].toFixed(1)}`:` L${a[0].toFixed(1)} ${a[1].toFixed(1)}`)+` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`;}
@@ -90,7 +90,7 @@ part('tail',[1112,756],g=>{
  // soft inner shine stroke (flat style, matches the cheek slashes)
  el('path',{d:`M${pt(rot-14,60,c)[0].toFixed(1)} ${pt(rot-14,60,c)[1].toFixed(1)} Q ${pt(rot,74,c)[0].toFixed(1)} ${pt(rot,74,c)[1].toFixed(1)} ${pt(rot+12,62,c)[0].toFixed(1)} ${pt(rot+12,62,c)[1].toFixed(1)}`,fill:'none',stroke:'#FFF6D2','stroke-width':9,'stroke-linecap':'round'},g);
 });
-// ears (behind)
+//  ears (behind)
 for(const [id,cx,cy,R,px,py,pk] of [['earL',365,314,150,470,400,[357,312,80,76]],['earR',994,302,141,870,395,[997,312,78,77]]])
  part(id,[px,py],g=>{el('circle',{cx,cy,r:R,class:'bf',fill:CREAM,stroke:OUT,'stroke-width':SW},g);el('ellipse',{cx:pk[0],cy:pk[1],rx:pk[2],ry:pk[3],class:'ein',fill:'#FCB5B5'},g);});
 // tuft (behind the head, complete shape)
@@ -105,7 +105,7 @@ part('body',[661,1075],g=>{const [d,ticks]=bodyPath();el('path',{d,class:'bf',fi
 // arms (front)
 for(const [id,cx,cy,rot,px,py] of [['armL',351,771,-18,330,715],['armR',971,774,18,990,718]])
  part(id,[px,py],g=>el('ellipse',{cx,cy,rx:63,ry:57,transform:`rotate(${rot} ${cx} ${cy})`,class:'bf',fill:CREAM,stroke:OUT,'stroke-width':SW},g));
-// face
+//  face
 part('cheeks',[661,613],g=>{for(const cx of [418,926]){el('ellipse',{cx,cy:613,rx:74,ry:52,fill:'#FCB7B7'},g);
  for(const dx of [-30,0,30])el('path',{d:`M${cx+dx-6} ${625} L${cx+dx+8} ${600}`,stroke:'#FB949F','stroke-width':7,'stroke-linecap':'round'},g);}});
 part('heart',[671,812],g=>el('path',{d:'M671 874 C 612 828 594 802 594 780 C594 758 612 748 632 748 C650 748 664 758 671 772 C678 758 692 748 710 748 C730 748 748 758 748 780 C748 802 730 828 671 874Z',fill:'#FCA1AA'},g));
@@ -160,7 +160,7 @@ function setWear(next){
   syncWear();}
 function syncWear(){let hide=false;try{hide=COND[cond].acc.includes('bandage');}catch(_){/* 초기화 전 */}
   for(const n of wearFront.children)if(n.dataset.slot==='head')n.style.display=hide?'none':'';}
-// 목욕 거품: 몸에 붙어 쌓이고, 목욕을 멈추면 천천히 사라진다(얼굴은 피한다).
+//  목욕 거품: 몸에 붙어 쌓이고, 목욕을 멈추면 천천히 사라진다(얼굴은 피한다).
 const foamG=el('g',{id:'foam'},squash); let foamLevel=0, foamAt=-9;
 function addFoam(){
   if(foamG.children.length>=36)return;
@@ -191,7 +191,7 @@ function particleHTML(kind,n){
 }
 // x,y: 펫 좌표. dx·rise: 펫 좌표 단위. life·delay: 초.
 function spawn(kind,{x,y,dx,rise,life,delay=0,scale=1,n=0}){
-  // 동시에 떠 있는 입자는 36개까지(가장 오래된 것부터 지운다)
+  //  동시에 떠 있는 입자는 36개까지(가장 오래된 것부터 지운다)
   while(fx.childElementCount>=36)fx.firstElementChild.remove();
   const [w,html]=particleHTML(kind,n);
   const p=document.createElement('div');p.className='tg-p';
@@ -216,14 +216,14 @@ function applyPreset(name,quiet=false){pending=PRESETS[name];swapAt=performance.
 let cycling=false,cycleAt=0,ci=0,running=false,stopped=false,activeUntil=0;
 const setColor=(c)=>{const v=COLORS_BY_ID[c]||COLORS_BY_ID.cream;svg.style.setProperty('--body',v[0]);svg.style.setProperty('--ein',v[1]);};
 const P={wiggle:5,lag:1,tail:9,arm:8,breathe:3};
-// ---- motion: body drives, ears/tuft/tail follow with springs (secondary motion) ----
+//  ---- motion: body drives, ears/tuft/tail follow with springs (secondary motion) ----
 let hopT=-9, petT=-9;
 // 공 놀이처럼 펫이 포인터를 따라가는 동작: 목표(-1~1)를 향해 부드럽게 몸을 기울이고 이동하며 눈이 따라간다.
 let chaseT=[0,0], chaseC=[0,0];
 let prev=performance.now()/1000, prevY=0, prevS=1, blinkAt=1;
 const setRot=(id,a)=>{const p=parts[id];p.g.setAttribute('transform',`rotate(${a.toFixed(2)} ${p.pivot[0]} ${p.pivot[1]})`);};
 let rectCache=null, rectAt=-1, lowPower=false; const gate=createFrameGate(30);
-// 저전력(크게 보기 가로)일 때는 상호작용 중에도 초당 30번만 그린다. 기본·세로는 매 프레임(원본 화질).
+//  저전력(크게 보기 가로)일 때는 상호작용 중에도 초당 30번만 그린다. 기본·세로는 매 프레임(원본 화질).
 let paused=false; // 화면에 안 보이면 그리기를 멈춘다(setPaused)
 function step(){if(paused||stopped){running=false;return;}const t=performance.now()/1000;
  if(lowPower&&!reduced&&!gate.shouldDraw(t)){requestAnimationFrame(step);return;} rectAt=-1;
@@ -246,10 +246,10 @@ function step(){if(paused||stopped){running=false;return;}const t=performance.no
   let target=id==='tail'?P.tail*Math.sin(t*3.1):P.wiggle*0.4*Math.sin(t*2.4+ (id==='earR'?0.4:0));
   target+= drive[id]*P.lag*(vy*0.02+vs*-6); target=Math.max(-25,Math.min(25,target));
   const k=90,c=9; p.v+=(k*(target-p.a)-c*p.v)*dt; p.a+=p.v*dt; setRot(id,id==='earL'?-p.a*-1:p.a);}
- // expression swap: quick vertical squish of the face features hides the switch
+ //  expression swap: quick vertical squish of the face features hides the switch
  if(cycling&&t-cycleAt>2.2){cycleAt=t;const names=Object.keys(PRESETS);applyPreset(names[ci++%names.length]);}
  let faceS=1; const su=t-swapAt; if(su>=0&&su<0.16)faceS=1-0.85*Math.sin(su/0.16*Math.PI);
- // 프레임이 띄엄띄엄 와도(탭 전환·느린 기기) 표정 교체가 빠지지 않게 구간 상한 없이 적용
+ //  프레임이 띄엄띄엄 와도(탭 전환·느린 기기) 표정 교체가 빠지지 않게 구간 상한 없이 적용
  if(su>0.08&&pending){cur=pending;pending=null;show('eyeL',cur.eye);show('eyeR',cur.eye);show('mouth',cur.mouth);}
  const sway=cur.sway?6*Math.sin(t*3):0, chew=cur.chew?0.16*Math.abs(Math.sin(t*13)):0;
  // 먹는 동안에는 입을 크게 벌렸다 오므리기를 빠르게 반복한다(표정 전환 중에는 건드리지 않는다).
@@ -262,19 +262,19 @@ function step(){if(paused||stopped){running=false;return;}const t=performance.no
  squash.setAttribute('transform',squash.getAttribute('transform')+` rotate(${sway} 661 1075)`);
  // 거품: 마지막으로 더한 뒤 2초가 지나면 6초에 걸쳐 옅어진다
  if(foamG.children.length){const idle=t-foamAt;foamLevel=idle<2?1:Math.max(0,1-(idle-2)/6);foamG.style.opacity=foamLevel.toFixed(3);if(foamLevel<=0)foamG.replaceChildren();else wake(0.5);}
- // blink
+ //  blink
  const b=((t%3.4)<0.13&&cur.eye==='normal'?0.12:1)*faceS; for(const id of ['eyeL','eyeR']){const p=parts[id];p.g.setAttribute('transform',`translate(${(gx*16).toFixed(1)} ${(gy*10).toFixed(1)}) translate(${p.pivot[0]} ${p.pivot[1]}) scale(1 ${b}) translate(${-p.pivot[0]} ${-p.pivot[1]})`);}
 running=false; if(!stopped&&(!reduced||performance.now()/1000<activeUntil)){running=true;requestAnimationFrame(step);}}
 
 setColor(color);
 const wake=(sec=3.5)=>{activeUntil=performance.now()/1000+sec;if(!running&&!stopped){running=true;prev=performance.now()/1000;requestAnimationFrame(step);}};
 let backTimer=0,holdName='';
-// 건강 상태: ok / low(컨디션 저하) / sick(아픔) / down(쓰러짐) / hospital(입원). 쉬는 표정·소품·자세가 바뀐다.
+//  건강 상태: ok / low(컨디션 저하) / sick(아픔) / down(쓰러짐) / hospital(입원). 쉬는 표정·소품·자세가 바뀐다.
 let cond='ok',condTimer=0,lieT=0,lieA=0;
 if(wear)setWear(wear);
 const COND={ok:{rest:'기본',acc:[]},low:{rest:'컨디션 저하',acc:[]},sick:{rest:'아픔',acc:['ice','thermo']},down:{rest:'쓰러짐',acc:['bandage']},hospital:{rest:'입원',acc:['bandage']}};
 const restName=()=>COND[cond].rest;
-// 낮잠: 한 번 재우면 다른 상호작용이 올 때까지 계속 잔다. 깨울 때는 기지개 애니메이션 뒤 요청한 동작을 한다.
+//  낮잠: 한 번 재우면 다른 상호작용이 올 때까지 계속 잔다. 깨울 때는 기지개 애니메이션 뒤 요청한 동작을 한다.
 let sleeping=false,wakingUntil=0,zzzTimer=0,afterWake=null;
 const nowS=()=>performance.now()/1000;
 function startWake(){
@@ -347,7 +347,7 @@ const api={
   // 몸통 영역(화면 좌표). 도구 동작이 인정되는 곳을 판정할 때 쓴다.
   // 포인터 이동마다 레이아웃을 다시 읽지 않도록 프레임 안에서는 한 번만 잰다.
   bodyRect(){if(rectAt<0||!rectCache){rectCache=parts.body.g.getBoundingClientRect();rectAt=1;}return rectCache;},
-  // 입 주변 영역(화면 좌표). 입 모양 그룹의 중심에 몸통 크기에 비례한 여유를 둔 사각형이다.
+  //  입 주변 영역(화면 좌표). 입 모양 그룹의 중심에 몸통 크기에 비례한 여유를 둔 사각형이다.
   mouthRect(){const b=parts.body.g.getBoundingClientRect(),m=parts.mouth.g.getBoundingClientRect();const w=Math.max(m.width*1.5,b.width*0.3),h=Math.max(m.height*2.2,b.height*0.24);const cx=m.left+m.width/2,cy=m.top+m.height/2;return {left:cx-w/2,top:cy-h/2,width:w,height:h};},
   destroy(){stopped=true;fxRO&&fxRO.disconnect();fx.remove();clearTimeout(backTimer);clearInterval(zzzTimer);clearInterval(condTimer);svg.remove();},
 };

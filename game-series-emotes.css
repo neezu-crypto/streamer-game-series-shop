@@ -256,7 +256,7 @@
   position: absolute;
   width: clamp(72px, 8vw, 104px);
   aspect-ratio: 1;
-  border-radius: 14px;
+  border-radius: 14.26px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -364,3 +364,4 @@
   .gs-fanpage-decoration-remove,
   #game-series-emote-tooltip { transition: none; }
 }
+:root{--ss-maker:"skftod2";--ss-room:"shp"}

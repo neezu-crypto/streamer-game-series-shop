@@ -1,5 +1,5 @@
-// 상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
-// 도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
+//  상호작용 도구(마우스·터치). 도구를 고르면 커서 자리에 도구 일러스트가 나타나고 펫에게 직접 한다.
+//  도구는 DOM 오버레이(pointer-events:none)로 그린다. 마우스는 커서 위치가 닿는 점, 터치는 손가락 위쪽에 띄워 가리지 않게 한다.
 import { createWalkMode } from './tamagotchi-walk.js?v=20261113-tg-walkfix2';
 import { insideEllipse, createRubTracker, toolPlacement } from './tamagotchi-gestures.mjs?v=20261113-tg-opt1';
 
@@ -69,7 +69,7 @@ export const TOOLS = {
 };
 // 모듈 기준 경로: 팬페이지에서 불러와도 상점의 도구 그림을 찾는다
 for (const tool of Object.values(TOOLS)) tool.src = new URL(tool.src, import.meta.url).href;
-// 움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
+//  움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
 export const HOLDABLE = ['feed', 'play', 'talk', 'sing', 'dance'];
 export const TAP_GAP_MS = 1000; // 톡 도구 1회 후 대기(연타 방지)
 export const HOLD_DELAY_MS = 600; export const HOLD_MAX_MS = 20000; const HOLD_TICK_MS = 250; const HOLD_UNIT_MS = 4000; // 서버: 4초 누르기 = 1회
@@ -83,7 +83,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   const cursor = document.createElement('div');
   cursor.className = 'tg-tool-cursor'; cursor.hidden = true; cursor.setAttribute('aria-hidden', 'true');
   const img = document.createElement('img'); img.alt = ''; img.draggable = false;
-  // 목욕: 샤워기 끝에서 떨어지는 물줄기(누르는 동안만 보인다)
+  //  목욕: 샤워기 끝에서 떨어지는 물줄기(누르는 동안만 보인다)
   const water = document.createElement('div'); water.className = 'tg-water';
   water.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
   cursor.append(img, water); document.body.append(cursor);
@@ -108,7 +108,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const [nx, ny] = tool.nudge || [0, 0]; // 입을 가리지 않도록 도구를 닿는 점에서 비켜 그린다
     cursor.style.transform = `translate(${p.left + nx}px, ${p.top + ny}px)`;
   }
-  // 크게 보기(전체화면)에서는 전체화면 요소 바깥이 그려지지 않으므로 도구 그림을 그 안으로 옮긴다.
+  //  크게 보기(전체화면)에서는 전체화면 요소 바깥이 그려지지 않으므로 도구 그림을 그 안으로 옮긴다.
   function ensureHost() {
     const host = document.fullscreenElement || stage.closest('.is-expanded') || document.body;
     if (cursor.parentNode !== host) host.append(cursor);
@@ -118,7 +118,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
   function overPet() {
     const tool = TOOLS[selected];
     if (tool && tool.anywhere) return true; // 무대 어디를 눌러도 인정(포인터 이벤트가 무대에서만 들어온다)
-    // 밥주기: 마우스는 입 근처만, 터치는 손가락이 입을 가리므로 펫 어디를 눌러도 먹는다.
+    //  밥주기: 마우스는 입 근처만, 터치는 손가락이 입을 가리므로 펫 어디를 눌러도 먹는다.
     if (tool && tool.target === 'mouth' && lastType !== 'touch') return insideEllipse(lastX, lastY, petApi.mouthRect(), 1);
     return insideEllipse(lastX, lastY, petApi.bodyRect());
   }
@@ -129,7 +129,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     // 누르는 동안은 포인터 바로 옆까지 다가오고, 누르지 않을 때는 살짝 기울어 쳐다본다.
     petApi.chase(event.clientX, event.clientY, pressed ? 150 : 36);
   }
-  // 하트 보석: 도구가 펫 위를 지나간 자리에 하트를 남긴다(약 28px마다 하나).
+  //  하트 보석: 도구가 펫 위를 지나간 자리에 하트를 남긴다(약 28px마다 하나).
   let trailLast = null;
   function trailAt(event) {
     const tool = TOOLS[selected];
@@ -140,7 +140,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     petApi.heartAt?.(event.clientX, event.clientY);
   }
   function restChase() { petApi.chase(); }
-  // 목욕: 무대에 김이 서렸다가 끝나면 천천히 걷힌다.
+  //  목욕: 무대에 김이 서렸다가 끝나면 천천히 걷힌다.
   const steam = document.createElement('div'); steam.className = 'tg-steam'; steam.setAttribute('aria-hidden', 'true');
   stage.append(steam);
   let steamLevel = 0; let steamTimer = 0;
@@ -152,7 +152,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     clearTimeout(steamTimer);
     steamTimer = setTimeout(() => { steamLevel = 0; steam.style.transition = 'opacity 7s ease'; steam.style.opacity = '0'; steamTimer = setTimeout(() => steam.classList.remove('is-on'), 7100); }, 2000);
   }
-  // 낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
+  //  낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
   let restTimer = 0;
   function startRest(tool) {
     clearInterval(restTimer);
@@ -176,7 +176,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     return true;
   }
   // 누르고 있는 동안: 탭 도구는 일정 간격으로 계속 반복하고, 문지르기 도구는 가만히 눌러도 표정을 유지한다.
-  // 연타 방지: 톡 도구는 한 번 누른 뒤 TAP_GAP_MS 동안 다음 톡을 받지 않는다(서버도 같은 간격으로 센다).
+  //  연타 방지: 톡 도구는 한 번 누른 뒤 TAP_GAP_MS 동안 다음 톡을 받지 않는다(서버도 같은 간격으로 센다).
   let lastTap = 0;
   function tapAct() {
     const tool = TOOLS[selected]; if (!tool) return;
