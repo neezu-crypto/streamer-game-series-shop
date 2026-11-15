@@ -141,5 +141,5 @@ svg.tw-ground { display: block; }
 .tw-hosp-actions .tg-button{min-height:44px}
 .tw-hosp-treat.is-armed{outline:3px solid #f2a7c2;outline-offset:2px}
 .tw-hosp-why{font-size:12px;opacity:.75}
-.tw-hosp-visits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tw-hosp-visits{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
 @media (max-width:720px){.tw-hosp-visits .tg-button{padding:8px 4px;font-size:13px}}
