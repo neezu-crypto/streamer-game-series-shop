@@ -6,7 +6,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261116-tg-fanlink1';
+const V = '?v=20261116-tg-fanlink2';
 import { trackPetFailures } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
@@ -154,8 +154,10 @@ function renderFanpageLink() {
   const fromUrl = String(new URLSearchParams(location.search).get('s') || '').trim().toLowerCase();
   const own = String(state.server?.viewer?.streamer?.id || '');
   const id = /^[a-z0-9_-]{1,64}$/.test(fromUrl) ? fromUrl : /^[a-z0-9_-]{1,64}$/.test(own) ? own : '';
-  link.hidden = !id;
-  if (id) link.href = `https://neezu-crypto.github.io/streamer-fanpage/#/p/${encodeURIComponent(id)}`;
+  // 갈 팬페이지를 모르면(비로그인·펫 없음·관리자) 팬페이지 홈(스트리머 목록)으로
+  link.hidden = false;
+  link.href = id ? `https://neezu-crypto.github.io/streamer-fanpage/#/p/${encodeURIComponent(id)}` : 'https://neezu-crypto.github.io/streamer-fanpage/';
+  link.textContent = id ? '← 팬페이지로' : '← 팬페이지 홈으로';
 }
 
 function renderPage() {
