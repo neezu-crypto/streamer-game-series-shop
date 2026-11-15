@@ -153,7 +153,7 @@ svg.tw-ground { display: block; }
 }
 /* 훈련소 데스크톱: 왼쪽 무대 · 오른쪽 재주 카드·합계를 한 화면에(스크롤 없이) */
 @media (min-width:1000px) and (min-height:640px){
-  .tw-place:has(.tw-train){width:min(1240px,calc(100% - 28px))}
+  .tw-place:has(.tw-train),.tw-place[data-place="train"]{width:min(1240px,calc(100% - 28px))}
   .tw-train{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:18px;row-gap:10px;align-items:start}
   .tw-train>*{grid-column:2}
   .tw-train>.tw-train-who,.tw-train>.tw-train-pets,.tw-train>.tw-rename{grid-column:1/-1}
@@ -169,9 +169,11 @@ svg.tw-ground { display: block; }
 .tw-gem-shop .tg-shop-preview .tg-pet-svg{position:absolute;left:25%;right:25%;top:40%;bottom:2%;width:auto;height:auto}
 /* 보석 상점 데스크톱: 왼쪽 미리보기 · 오른쪽 금고·상품 */
 @media (min-width:1000px) and (min-height:640px){
-  .tw-place:has(.tw-gem-shop){width:min(1240px,calc(100% - 28px))}
+  .tw-place:has(.tw-gem-shop),.tw-place[data-place="gem-shop"]{width:min(1240px,calc(100% - 28px))}
   .tw-gem-shop .tg-gem-shop{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);column-gap:18px;align-items:start}
   .tw-gem-shop .tg-gem-shop>*{grid-column:2}
   .tw-gem-shop .tg-gem-shop>.tg-shop-preview{grid-column:1;grid-row:1/span 5;width:100%;max-width:min(100%,calc(100dvh - 260px));margin:0 auto}
   .tw-gem-shop .tg-shop-grid{margin:0;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
 }
+/* 장소 창 로딩 카드: 왼쪽 정렬 칸(tw-*-who) 안에서도 가로 전체·가운데 */
+.tw-place-body .loading-card{justify-self:stretch;align-self:stretch;width:100%;box-sizing:border-box;text-align:center}

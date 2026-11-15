@@ -6,7 +6,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261116-tg-train1';
+const V = '?v=20261116-tg-load1';
 import { trackPetFailures } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
@@ -179,6 +179,7 @@ async function showPanel(place) {
   closePanel({ keepHash: true });
   state.placeId = place.id;
   $('twPlaceTitle').textContent = `${place.emoji} ${place.name}`;
+  $('twPlace').dataset.place = place.id; // 장소별 창 너비를 로딩 때부터 맞춘다(넓어지며 튀지 않게)
   const host = $('twPlaceBody'); host.replaceChildren(el('div', 'loading-card loading-bar', `${place.name}에 들어가는 중…`));
   if (!$('twPlace').open) $('twPlace').showModal();
   try {
