@@ -180,3 +180,7 @@ svg.tw-ground { display: block; }
 }
 /* 장소 창 로딩 카드: 왼쪽 정렬 칸(tw-*-who) 안에서도 가로 전체·가운데 */
 .tw-place-body .loading-card{justify-self:stretch;align-self:stretch;width:100%;box-sizing:border-box;text-align:center}
+/* 마을 제목 아래 팬페이지로 돌아가기 */
+.tw-fanpage-link{display:inline-flex;align-items:center;min-height:40px;margin-top:6px;padding:8px 16px;border:1px solid #ddd6cc;border-radius:999px;background:#fff;color:var(--ink);font-size:13px;font-weight:750;text-decoration:none}
+.tw-fanpage-link:hover{border-color:var(--violet);background:#f6f2fd}
+.tw-fanpage-link[hidden]{display:none}
