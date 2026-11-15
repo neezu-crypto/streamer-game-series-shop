@@ -67,7 +67,7 @@ export function mountHospitalPanel(host, ctx) {
   }
   function renderPets() {
     petsRow.replaceChildren(...(st.pets.length > 1 ? st.pets.map((p) => {
-      const b = el('button', 'tw-train-pet', p.nickname || p.petId); b.type = 'button'; b.setAttribute('role', 'radio');
+      const b = el('button', 'tw-pet-chip'); b.append(el('strong', '', p.nickname || '이름 없음')); b.type = 'button'; b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', String(p.petId === st.petId));
       b.addEventListener('click', () => { if (p.petId !== st.petId && !st.busy) { st.petId = p.petId; st.armed = ''; void loadStatus(); } });
       return b;
