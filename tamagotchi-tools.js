@@ -108,9 +108,9 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const [nx, ny] = tool.nudge || [0, 0]; // 입을 가리지 않도록 도구를 닿는 점에서 비켜 그린다
     cursor.style.transform = `translate(${p.left + nx}px, ${p.top + ny}px)`;
   }
-  //  크게 보기(전체화면)에서는 전체화면 요소 바깥이 그려지지 않으므로 도구 그림을 그 안으로 옮긴다.
+  //  크게 보기(전체화면)·모달 창에서는 전체화면 요소 바깥이 그려지지 않으므로 도구 그림을 그 안으로 옮긴다.
   function ensureHost() {
-    const host = document.fullscreenElement || stage.closest('.is-expanded') || document.body;
+    const host = document.fullscreenElement || stage.closest('.is-expanded') || stage.closest('dialog[open]') || document.body; // 모달 창(마을 장소)은 맨 위 레이어라 body에 두면 창 뒤에 가려진다
     if (cursor.parentNode !== host) host.append(cursor);
   }
   let lastType = 'mouse';

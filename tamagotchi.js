@@ -2,7 +2,7 @@ import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16
 import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261113-tg-walkfix2';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261116-tg-cursor1';
 import { createSound } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
