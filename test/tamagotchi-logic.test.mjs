@@ -149,3 +149,30 @@ test('보석 상점 카드 상태: 관리 권한·보석·두 번 누르기', as
   assert.equal(snackState({ price: 2, leftToday: 0 }, { gems: 60 }).disabled, true);
   assert.equal(snackState({ price: 2, leftToday: 1 }, { gems: 2 }).disabled, false);
 });
+
+test('펫 병원 진료표', async () => {
+  const { hospitalView, formatRemaining } = await import('../tamagotchi-logic.mjs');
+  assert.equal(formatRemaining(0), '0분');
+  assert.equal(formatRemaining(61 * 60000), '1시간 1분');
+  assert.equal(formatRemaining(2 * 3600000), '2시간');
+  const ok = hospitalView({ condition: 'ok', gems: 5, stats: { health: { band: 'good' } } });
+  assert.equal(ok.label, '건강해요'); assert.equal(ok.treat, null); assert.equal(ok.visit, false);
+  const sick = hospitalView({ condition: 'sick', gems: 5, treatment: { kind: 'outpatient', cost: 3, available: true } }, { hasAccount: true });
+  assert.equal(sick.treat.label, '외래 진료 💎3'); assert.equal(sick.treat.disabled, false);
+  assert.equal(hospitalView({ condition: 'sick', gems: 5, treatment: { kind: 'outpatient', cost: 3, available: true } }, { armed: 'outpatient' }).treat.label, '한 번 더 누르면 치료해요');
+  const used = hospitalView({ condition: 'sick', gems: 5, treatment: { kind: 'outpatient', cost: 3, available: false, usedToday: true } });
+  assert.equal(used.treat.disabled, true); assert.match(used.treat.reason, /하루 한 번/);
+  const poor = hospitalView({ condition: 'hospital', gems: 1, hospitalUntil: 1000 + 5 * 3600000, treatment: { kind: 'discharge', cost: 2, available: false } }, { now: 1000 });
+  assert.equal(poor.visit, true); assert.equal(poor.remainingText, '5시간'); assert.equal(poor.treat.disabled, true); assert.match(poor.treat.reason, /부족/);
+  assert.equal(hospitalView({ condition: 'hospital', hospitalUntil: 10 * 60000 }, { now: 0, skewMs: 4 * 60000 }).remainingText, '6분');
+  assert.equal(hospitalView({ condition: 'sick', treatment: { kind: 'outpatient', cost: 3, available: true }, gems: 9 }, { busy: true }).treat.disabled, true);
+  assert.match(hospitalView({ condition: 'hospital', hospitalUntil: 1 }, { hasAccount: false }).note, /로그인/);
+  assert.equal(hospitalView(null).condition, 'ok');
+});
+
+test('월드맵 장소: 자리 중복 없음·그림 파일 존재', () => {
+  const world = JSON.parse(readFileSync(new URL('../catalog/tamagotchi-world.json', import.meta.url)));
+  const lots = world.places.map((p) => p.lot);
+  assert.equal(new Set(lots).size, lots.length);
+  for (const p of world.places) if (p.sprite) assert.ok(readFileSync(new URL(`../${p.sprite}`, import.meta.url)).length > 1000, p.sprite);
+});

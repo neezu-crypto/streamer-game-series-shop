@@ -121,3 +121,24 @@ svg.tw-ground { display: block; }
 .tw-gem-back{font-size:13px}
 /* 가게 안 그림(제미나이): 펫이 가운데 아래 러그 위에 서도록 위·옆을 비운다 */
 .tw-gem-shop .tg-shop-preview{box-sizing:border-box;width:min(300px,78vw);aspect-ratio:1;padding:30% 19% 3%;border-radius:18px;background:url('assets/tamagotchi/world/gem-shop-room.webp') center/cover no-repeat,#fdf1f4}
+
+/* 월드맵 펫 병원 패널(2026-11-16) */
+.tw-hosp{display:grid;gap:10px}
+/* 병실 그림(챗GPT): 펫이 가운데 아래 침대 위에 오도록 위·옆을 비운다 */
+.tw-hosp-stage{box-sizing:border-box;width:min(300px,78vw);aspect-ratio:1;justify-self:center;padding:34% 22% 8%;border-radius:18px;background:url('assets/tamagotchi/world/hospital-room.webp') center/cover no-repeat,#eef8f2}
+.tw-hosp-pet{width:100%;height:100%}
+.tw-hosp-pet svg{width:100%;height:100%}
+.tw-hosp-chart{display:grid;gap:6px;padding:12px 14px;border:1px solid #cfe9dc;border-radius:16px;background:#f6fcf8}
+.tw-hosp-chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tw-hosp-badge{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.tw-hosp-badge.is-good{background:#dff3e6;color:#2f7a4a}.tw-hosp-badge.is-mid{background:#fff1d6;color:#8a5a12}
+.tw-hosp-badge.is-bad{background:#ffe1e1;color:#a12a2a}.tw-hosp-badge.is-care{background:#e3f0ff;color:#2a5ea1}
+.tw-hosp-row{display:flex;justify-content:space-between;margin:0;font-size:14px}
+.tw-hosp-band.is-good{color:#2f7a4a}.tw-hosp-band.is-mid{color:#8a5a12}.tw-hosp-band.is-bad{color:#a12a2a}
+.tw-hosp-note{margin:2px 0 0;font-size:12px;line-height:1.55;opacity:.8}
+.tw-hosp-actions{display:grid;gap:6px}
+.tw-hosp-actions .tg-button{min-height:44px}
+.tw-hosp-treat.is-armed{outline:3px solid #f2a7c2;outline-offset:2px}
+.tw-hosp-why{font-size:12px;opacity:.75}
+.tw-hosp-visits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+@media (max-width:720px){.tw-hosp-visits .tg-button{padding:8px 4px;font-size:13px}}

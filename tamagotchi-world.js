@@ -6,7 +6,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261115-tg-rename2';
+const V = '?v=20261116-tg-hosp1';
 import { trackPetFailures } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
@@ -33,6 +33,7 @@ const careCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPag
 const PANELS = {
   train: () => import(`./tamagotchi-train.js${V}`).then((m) => m.mountTrainPanel),
   gemShop: () => import(`./tamagotchi-gem-shop.js${V}`).then((m) => m.mountGemShopPanel),
+  hospital: () => import(`./tamagotchi-hospital.js${V}`).then((m) => m.mountHospitalPanel),
 };
 
 const $ = (id) => document.getElementById(id);

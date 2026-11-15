@@ -98,6 +98,16 @@
       "module": "gemShop",
       "sprite": "assets/tamagotchi/world/bld-gem-shop.webp",
       "lot": 2
+    },
+    {
+      "id": "hospital",
+      "name": "펫 병원",
+      "emoji": "🏥",
+      "desc": "아픈 펫을 치료하고 병문안해요",
+      "kind": "panel",
+      "module": "hospital",
+      "sprite": "assets/tamagotchi/world/bld-hospital.webp",
+      "lot": 3
     }
   ]
 }

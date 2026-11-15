@@ -188,3 +188,42 @@ export function trackPetFailures(call, report) {
     }
   };
 }
+
+// ---------- 월드맵 펫 병원(설계: streamer-fanpage docs/다마고치_월드맵_병원_설계.md) ----------
+// 서버 Care status 응답만으로 진료표·치료 버튼·병문안 가능 여부를 정한다(순수 함수: 테스트 대상).
+// skewMs: 서버 시각 - 기기 시각(남은 시간 계산 보정). armed: 한 번 누른 치료 종류.
+const COND_LABEL = { ok: '건강해요', low: '조금 지쳤어요', sick: '아파요', down: '쓰러졌어요', hospital: '입원 중' };
+const COND_TONE = { ok: 'good', low: 'mid', sick: 'bad', down: 'bad', hospital: 'care' };
+export function formatRemaining(ms) {
+  const total = Math.max(0, Math.ceil(ms / 60000));
+  const h = Math.floor(total / 60); const m = total % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  return h ? `${h}시간` : `${m}분`;
+}
+export function hospitalView(server, { now = Date.now(), skewMs = 0, armed = '', busy = false, hasAccount = false } = {}) {
+  const s = server || {};
+  const cond = COND_LABEL[s.condition] ? s.condition : 'ok';
+  const gems = Math.max(0, Number(s.gems) || 0);
+  const health = s.stats && s.stats.health ? s.stats.health.band : '';
+  const view = { condition: cond, label: COND_LABEL[cond], tone: COND_TONE[cond], health, gems, gemMax: Number(s.gemMax) || 60,
+    remainingMs: 0, remainingText: '', treat: null, visit: cond === 'hospital', note: '' };
+  if (cond === 'hospital' && Number(s.hospitalUntil) > 0) {
+    view.remainingMs = Math.max(0, Number(s.hospitalUntil) - (now + skewMs));
+    view.remainingText = formatRemaining(view.remainingMs);
+  }
+  const q = s.treatment;
+  if (q && (q.kind === 'outpatient' || q.kind === 'discharge')) {
+    const cost = Math.max(0, Number(q.cost) || 0);
+    const name = q.kind === 'outpatient' ? '외래 진료' : '조기 퇴원';
+    const reason = q.usedToday ? '외래 진료는 펫마다 하루 한 번이에요.' : gems < cost ? `금고의 하트 보석이 부족해요. (${gems}/${cost})` : '';
+    view.treat = { kind: q.kind, cost, reason,
+      label: armed === q.kind ? '한 번 더 누르면 치료해요' : `${name} 💎${cost}`,
+      disabled: !!busy || !!reason || q.available === false };
+  }
+  view.note = cond === 'hospital' ? '입원 중에는 시간이 멈춰요. 병문안하면 유대감이 올라요.'
+    : cond === 'sick' ? '건강이 30 아래예요. 외래 진료를 받으면 건강이 80으로 회복돼요.'
+      : cond === 'down' ? '곧 병원에 입원해요(24시간). 쓰다듬어 주세요.'
+        : '아프지 않아요. 아플 때 이곳에서 치료할 수 있어요.';
+  if (!hasAccount && (view.treat || view.visit)) view.note += ' 치료·병문안은 로그인하면 할 수 있어요.';
+  return view;
+}
