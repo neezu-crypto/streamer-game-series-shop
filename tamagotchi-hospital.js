@@ -2,7 +2,7 @@
 // - 서버 규칙(입원·외래·퇴원·병문안)은 이미 Care에 있다. 이 화면은 status·treat·interact만 부른다.
 // - 대상 펫 연결은 보석 상점과 같다(?s=스트리머&p=펫, 없으면 인증 스트리머=내 펫, 관리자=아이디 입력).
 // - 남은 입원 시간은 서버 시각 기준으로 화면에서 계산한다(주기 조회 없음). 탭이 숨으면 타이머를 멈춘다.
-import { resolveGemShopTarget, hospitalView, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-hosp3';
+import { resolveGemShopTarget, hospitalView, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-hosp4';
 import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
@@ -109,14 +109,18 @@ export function mountHospitalPanel(host, ctx) {
       list.push(btn);
       list.push(el('small', 'tw-hosp-why', v.treat.reason || '금고의 하트 보석으로 치료해요. 누가 썼는지는 남지 않아요.'));
     }
-    if (v.visit) {
+    const learned = Array.isArray(st.server?.learned) ? st.server.learned : null;
+    const visitKinds = (v.visit ? VISITS : v.condition === 'down' ? VISITS.slice(0, 1) : [])
+      .filter(([kind]) => !learned || learned.includes(kind));
+    if (visitKinds.length) {
       const row = el('div', 'tw-hosp-visits');
-      for (const [kind, label] of VISITS) {
+      for (const [kind, label] of visitKinds) {
         const b = el('button', 'tg-button', label); b.type = 'button'; b.disabled = st.busy;
         b.addEventListener('click', () => visit(kind));
         row.append(b);
       }
       list.push(row);
+      if (v.visit && visitKinds.length < VISITS.length) list.push(el('small', 'tw-hosp-why', '말 걸기·응원은 훈련소에서 배우면 병문안에 쓸 수 있어요.'));
     }
     actions.replaceChildren(...list);
   }
@@ -171,7 +175,7 @@ export function mountHospitalPanel(host, ctx) {
       const data = (await careCall({ action: 'interact', streamerId: st.streamerId, petId: st.petId, batch })).data;
       apply(data);
       const blocked = Object.keys(data?.result?.blocked || {}).length;
-      status.textContent = data?.result?.applied > 0 ? '병문안했어요. 유대감이 올랐어요. ♥' : blocked ? '조금 쉬었다가 다시 병문안해 주세요.' : '병문안을 전하지 못했어요.';
+      status.textContent = data?.result?.applied > 0 ? (st.server?.condition === 'down' ? '쓰다듬어 줬어요. ♥' : '병문안했어요. 유대감이 올랐어요. ♥') : blocked ? '조금 쉬었다가 다시 병문안해 주세요.' : '병문안을 전하지 못했어요.';
     } catch (error) { status.textContent = error?.message || '병문안을 전하지 못했어요.'; }
     render();
   }
