@@ -143,3 +143,11 @@ svg.tw-ground { display: block; }
 .tw-hosp-why{font-size:12px;opacity:.75}
 .tw-hosp-visits{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
 @media (max-width:720px){.tw-hosp-visits .tg-button{padding:8px 4px;font-size:13px}}
+/* 펫 병원 데스크톱: 왼쪽 병실(크게) · 오른쪽 진료표·버튼 */
+@media (min-width:821px){
+  .tw-hosp{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:20px;align-items:start}
+  .tw-hosp>.tw-gem-who,.tw-hosp>.tw-train-pets{grid-column:1/-1}
+  .tw-hosp>.tw-hosp-stage{grid-column:1;grid-row:span 3;width:100%;max-width:none}
+  .tw-hosp>.tw-hosp-chart,.tw-hosp>.tw-hosp-actions,.tw-hosp>.tg-status{grid-column:2}
+  .tw-hosp>.tg-status{text-align:left}
+}
