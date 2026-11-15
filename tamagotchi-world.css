@@ -162,7 +162,9 @@ svg.tw-ground { display: block; }
   .tw-skill-try{padding:8px 6px 6px}
   .tw-skill-try img{width:36px;height:36px}
   .tw-skill-try small{display:none} /* 좁은 오른쪽 칸: 설명은 카드를 누르면 무대에서 체험 */
-  .tw-skill-pick{font-size:11.5px;white-space:nowrap}
+  .tw-skill-pick{gap:3px;padding:4px 3px;font-size:11px;letter-spacing:-.03em;white-space:nowrap}
+  .tw-skill-pick input{width:15px;height:15px}
+  .tw-train-grid{gap:6px}
   .tw-skill-pick{min-height:34px}
   .tw-train-summary{position:static}
 }
