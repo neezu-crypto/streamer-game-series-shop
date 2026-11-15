@@ -120,7 +120,7 @@ svg.tw-ground { display: block; }
 .tw-gem-who{display:grid;gap:6px;justify-items:start}
 .tw-gem-back{font-size:13px}
 /* 가게 안 그림(제미나이): 펫이 가운데 아래 러그 위에 서도록 위·옆을 비운다 */
-.tw-gem-shop .tg-shop-preview{box-sizing:border-box;width:min(300px,78vw);aspect-ratio:1;padding:30% 19% 3%;border-radius:18px;background:url('assets/tamagotchi/world/gem-shop-room.webp') center/cover no-repeat,#fdf1f4}
+.tw-gem-shop .tg-shop-preview{box-sizing:border-box;width:min(300px,78vw);aspect-ratio:1;padding:0;overflow:hidden;border-radius:18px;background:url('assets/tamagotchi/world/gem-shop-room.webp') center/cover no-repeat,#fdf1f4}
 
 /* 월드맵 펫 병원 패널(2026-11-16) */
 .tw-hosp{display:grid;gap:10px}
@@ -164,4 +164,14 @@ svg.tw-ground { display: block; }
   .tw-skill-try small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .tw-skill-pick{min-height:34px}
   .tw-train-summary{position:static}
+}
+/* 보석 상점: 미리보기 펫은 방 그림 위 고정 자리(퍼센트 padding은 부모 폭 기준이라 펫이 0px이 되던 문제) */
+.tw-gem-shop .tg-shop-preview .tg-pet-svg{position:absolute;left:25%;right:25%;top:40%;bottom:2%;width:auto;height:auto}
+/* 보석 상점 데스크톱: 왼쪽 미리보기 · 오른쪽 금고·상품 */
+@media (min-width:1000px) and (min-height:640px){
+  .tw-place:has(.tw-gem-shop){width:min(1240px,calc(100% - 28px))}
+  .tw-gem-shop .tg-gem-shop{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);column-gap:18px;align-items:start}
+  .tw-gem-shop .tg-gem-shop>*{grid-column:2}
+  .tw-gem-shop .tg-gem-shop>.tg-shop-preview{grid-column:1;grid-row:1/span 5;width:100%;max-width:min(100%,calc(100dvh - 260px));margin:0 auto}
+  .tw-gem-shop .tg-shop-grid{margin:0;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
 }
