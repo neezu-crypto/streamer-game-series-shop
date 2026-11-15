@@ -3,6 +3,7 @@
 // - 사기·입히기 권한은 서버(Care status의 shop.manage)가 판정한다. 화면은 그 값만 따른다.
 import { resolveGemShopTarget } from './tamagotchi-logic.mjs?v=20261114-tg-wear1';
 import { mountGemShop } from './tamagotchi-gem-shop-ui.js?v=20261114-tg-wear1';
+import { petEmptyCard } from './tamagotchi-empty.js?v=20261116-tg-empty1';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
 const ADMIN_TARGET_KEY = 'twGemShopAdminTarget';
@@ -57,7 +58,8 @@ export function mountGemShopPanel(host, ctx) {
       box.push(form);
     }
     if (st.loading) box.push(el('div', 'loading-card loading-bar', '다마고치를 불러오는 중…'));
-    if (!st.loading && st.error) box.push(el('p', 'tg-status is-error', st.error));
+    if (!st.loading && st.error === 'no-pet') box.push(petEmptyCard({ place: '보석 상점', streamerName: st.streamerName, own: String(viewer().streamer?.id || '') === st.streamerId, admin: st.flow === 'admin' }));
+    else if (!st.loading && st.error) box.push(el('p', 'tg-status is-error', st.error));
     who.replaceChildren(...box);
   }
   function renderPets() {
@@ -93,7 +95,7 @@ export function mountGemShopPanel(host, ctx) {
       st.streamerName = String(data.streamer?.nickname || '');
       // 주소의 펫 아이디는 서버 목록에 있을 때만 쓴다
       st.petId = st.pets.some((p) => p.petId === st.wantPet) ? st.wantPet : st.pets[0]?.petId || '';
-      if (!st.pets.length) st.error = '이 팬페이지에는 아직 다마고치가 없어요.';
+      if (!st.pets.length) st.error = 'no-pet'; // 안내 카드로 보여 준다
     } catch (error) {
       st.error = error?.code === 'functions/not-found' ? '인증된 스트리머 팬페이지를 찾을 수 없어요.' : (error?.message || '다마고치를 불러오지 못했어요.');
     }

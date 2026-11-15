@@ -184,3 +184,10 @@ svg.tw-ground { display: block; }
 .tw-fanpage-link{display:inline-flex;align-items:center;min-height:40px;margin-top:6px;padding:8px 16px;border:1px solid #ddd6cc;border-radius:999px;background:#fff;color:var(--ink);font-size:13px;font-weight:750;text-decoration:none}
 .tw-fanpage-link:hover{border-color:var(--violet);background:#f6f2fd}
 .tw-fanpage-link[hidden]{display:none}
+/* 펫이 없을 때 안내 카드(훈련소·보석 상점·펫 병원 공통) */
+.tw-empty-pet{justify-self:stretch;display:grid;justify-items:center;gap:8px;width:100%;box-sizing:border-box;padding:28px 20px;border:1.5px dashed #e3d6c3;border-radius:22px;background:#fffaf2;text-align:center}
+.tw-empty-pet-icon{font-size:44px;line-height:1}
+.tw-empty-pet-title{font-size:18px;letter-spacing:-.03em}
+.tw-empty-pet-text{max-width:440px;margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.tw-empty-pet .tg-button{margin-top:6px;text-decoration:none}
+.tw-train>[hidden],.tw-hosp>[hidden],.tw-gem-shop [hidden]{display:none!important}
