@@ -2,7 +2,7 @@
 // - 서버 규칙(입원·외래·퇴원·병문안)은 이미 Care에 있다. 이 화면은 status·treat·interact만 부른다.
 // - 대상 펫 연결은 보석 상점과 같다(?s=스트리머&p=펫, 없으면 인증 스트리머=내 펫, 관리자=아이디 입력).
 // - 남은 입원 시간은 서버 시각 기준으로 화면에서 계산한다(주기 조회 없음). 탭이 숨으면 타이머를 멈춘다.
-import { resolveGemShopTarget, hospitalView } from './tamagotchi-logic.mjs?v=20261116-tg-hosp1';
+import { resolveGemShopTarget, hospitalView, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-hosp3';
 import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
@@ -67,7 +67,7 @@ export function mountHospitalPanel(host, ctx) {
   }
   function renderPets() {
     petsRow.replaceChildren(...(st.pets.length > 1 ? st.pets.map((p) => {
-      const b = el('button', 'tw-pet-chip'); b.append(el('strong', '', p.nickname || '이름 없음')); b.type = 'button'; b.setAttribute('role', 'radio');
+      const b = el('button', 'tw-pet-chip'); b.append(el('strong', '', p.nickname || '이름 없음'), el('small', '', COLOR_LABELS[p.color] || p.color || '')); b.type = 'button'; b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', String(p.petId === st.petId));
       b.addEventListener('click', () => { if (p.petId !== st.petId && !st.busy) { st.petId = p.petId; st.armed = ''; void loadStatus(); } });
       return b;

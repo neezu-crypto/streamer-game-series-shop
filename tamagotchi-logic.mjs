@@ -222,7 +222,7 @@ export function hospitalView(server, { now = Date.now(), skewMs = 0, armed = '',
   }
   view.note = cond === 'hospital' ? '입원 중에는 시간이 멈춰요. 병문안하면 유대감이 올라요.'
     : cond === 'sick' ? '건강이 30 아래예요. 외래 진료를 받으면 건강이 80으로 회복돼요.'
-      : cond === 'down' ? '곧 병원에 입원해요(24시간). 쓰다듬어 주세요.'
+      : cond === 'down' ? '곧 병원에 입원해요(24시간). 입원하면 병문안할 수 있어요.'
         : '아프지 않아요. 아플 때 이곳에서 치료할 수 있어요.';
   if (!hasAccount && (view.treat || view.visit)) view.note += ' 치료·병문안은 로그인하면 할 수 있어요.';
   return view;
