@@ -507,6 +507,7 @@ function showSuccess(pub, color, name, streamer, remaining) {
   openDialog([
     el('p', 'eyebrow section-eyebrow', 'DONE'), el('h2', 'tg-dialog-title', '새 가족이 생겼어요!'),
     art, el('p', 'tg-dialog-text', `이름 ${name} · 색 ${COLOR_LABELS[color.id] || color.label}. 이제 팬페이지에서 만날 수 있어요. 남은 통합 캐시 ${cashText(remaining)}`),
+    el('p', 'tg-notice', '이름은 나중에 팬페이지 다마고치 탭의 "✏️ 이름 바꾸기"에서 한 번 무료로 바꿀 수 있어요.'),
     el('div', 'tg-dialog-actions', ''),
   ]);
   $('tgDialogBody').lastElementChild.append(go, back);

@@ -10,6 +10,7 @@ import {
 } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 
 const REQUEST_KEY = 'tamagotchiTrainRequest';
+const RENAME_PARAM_RE = /^p_[0-9a-f]{20}$/;
 const RENAME_KEY = 'tamagotchiRenameRequest';
 const NAME_MAX = 12;
 const ADMIN_TARGET_KEY = 'tamagotchiTrainAdminTarget';
@@ -437,6 +438,18 @@ export function mountTrainPanel(host, ctx) {
       st.error = error?.code === 'functions/not-found' ? '인증된 스트리머 팬페이지를 찾을 수 없어요.' : '다마고치를 불러오지 못했어요.';
     }
     st.loading = false; setBubble(IDLE); render(); startShow();
+    openPendingRename();
+  }
+  // 팬페이지 "이름 바꾸기" 링크(?rename=펫ID)로 들어오면 그 펫을 고르고 이름 바꾸기 창을 한 번 연다.
+  let pendingRename = (() => { const id = new URLSearchParams(location.search).get('rename') || ''; return RENAME_PARAM_RE.test(id) ? id : ''; })();
+  function openPendingRename() {
+    if (!pendingRename || st.flow !== 'ready') return;
+    const pet = st.pets.find((p) => p.petId === pendingRename);
+    pendingRename = '';
+    try { const u = new URL(location.href); u.searchParams.delete('rename'); history.replaceState(history.state, '', u); } catch (_) { /* 주소 정리 실패는 무시 */ }
+    if (!pet) { setStatus('이름을 바꿀 다마고치를 찾지 못했어요. 아래에서 골라 주세요.', true); return; }
+    if (pet.petId !== st.petId) { stopShow(); st.petId = pet.petId; st.selected.clear(); render(); startShow(); }
+    startRename(pet);
   }
   function start() {
     const flow = resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
