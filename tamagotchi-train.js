@@ -432,7 +432,7 @@ export function mountTrainPanel(host, ctx) {
       const data = (await shopCall({ action: 'pets', streamerId })).data || {};
       setSkew(data.serverNow);
       st.pets = Array.isArray(data.pets) ? data.pets : [];
-      if (!keepPet || !st.pets.some((p) => p.petId === st.petId)) st.petId = st.pets[0]?.petId || '';
+      if (!keepPet || !st.pets.some((p) => p.petId === st.petId)) st.petId = st.pets.some((p) => p.petId === st.wantPet) ? st.wantPet : st.pets[0]?.petId || '';
     } catch (error) {
       st.pets = []; st.petId = '';
       st.error = error?.code === 'functions/not-found' ? '인증된 스트리머 팬페이지를 찾을 수 없어요.' : '다마고치를 불러오지 못했어요.';
@@ -454,7 +454,16 @@ export function mountTrainPanel(host, ctx) {
   function start() {
     const flow = resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
     if (flow === 'ready') { const id = viewer().streamer.id; if (id !== st.streamerId || !st.pets.length) void loadPets(id); else render(); return; }
-    if (flow === 'admin') { let saved = ''; try { saved = sessionStorage.getItem(ADMIN_TARGET_KEY) || ''; } catch (_) { /* 무시 */ } if (saved && saved !== st.streamerId) { void loadPets(saved); return; } }
+    if (flow === 'admin') {
+      // 팬페이지·병원·보석 상점에서 ?s=스트리머(&p=펫)로 들어오면 그 팬페이지를 바로 불러온다.
+      const q = new URLSearchParams(location.search); const sid = String(q.get('s') || '').trim().toLowerCase();
+      if (STREAMER_RE.test(sid)) {
+        const pid = String(q.get('p') || ''); if (/^[A-Za-z0-9_-]{1,64}$/.test(pid)) st.wantPet = pid;
+        try { sessionStorage.setItem(ADMIN_TARGET_KEY, sid); } catch (_) { /* 무시 */ }
+        if (sid !== st.streamerId || !st.pets.length) { void loadPets(sid); return; }
+        render(); return;
+      }
+      let saved = ''; try { saved = sessionStorage.getItem(ADMIN_TARGET_KEY) || ''; } catch (_) { /* 무시 */ } if (saved && saved !== st.streamerId) { void loadPets(saved); return; } }
     if (flow === 'login' || flow === 'verify') { st.pets = []; st.petId = ''; st.streamerId = ''; }
     render();
   }
