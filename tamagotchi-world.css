@@ -63,6 +63,8 @@ svg.tw-ground { display: block; }
 .tw-train-pets { display: flex; flex-wrap: wrap; gap: 8px; }
 .tw-pet-chip { display: grid; min-height: 44px; padding: 6px 14px; border: 1px solid #ddd6cc; border-radius: 16px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; }
 .tw-pet-chip small { color: var(--muted); font-size: 11px; }
+.tw-rename { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tw-rename-price, .tw-rename-count { color: var(--muted); font-size: 12px; }
 .tw-pet-chip[aria-checked="true"] { border-color: var(--violet); background: #f1ecfd; box-shadow: 0 0 0 2px #d8cdf8; }
 .tw-train-stage { min-height: min(46vh, 420px); }
 .tw-train-stage.has-home:not(.is-hospital):not(.is-bath) {

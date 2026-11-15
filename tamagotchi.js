@@ -9,7 +9,7 @@ import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
   adoptErrorMessage, farmUrl, COLOR_LABELS, trackPetFailures,
-} from './tamagotchi-logic.mjs?v=20261115-tg-fail1';
+} from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',

@@ -6,10 +6,12 @@ import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
 import {
   resolveTrainState, trainTotal, learnableIds, trainSignature, getTrainRequestId, clearRequestId,
-  shouldDiscardRequestId, trainErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261115-tg-fail1';
+  shouldDiscardRequestId, trainErrorMessage, renameErrorMessage, farmUrl, COLOR_LABELS,
+} from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
 
 const REQUEST_KEY = 'tamagotchiTrainRequest';
+const RENAME_KEY = 'tamagotchiRenameRequest';
+const NAME_MAX = 12;
 const ADMIN_TARGET_KEY = 'tamagotchiTrainAdminTarget';
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
 const SHOW_EVERY = 4000; // 훈련 중 연출(동작) 간격
@@ -39,6 +41,7 @@ export function mountTrainPanel(host, ctx) {
   const root = el('div', 'tw-train');
   const who = el('div', 'tw-train-who');
   const petsRow = el('div', 'tw-train-pets'); petsRow.setAttribute('role', 'radiogroup'); petsRow.setAttribute('aria-label', '훈련할 다마고치');
+  const renameRow = el('div', 'tw-rename'); renameRow.hidden = true;
   const stage = el('section', 'tg-stage tw-train-stage'); stage.setAttribute('aria-label', '훈련소 무대');
   const petBox = el('div', 'tg-stage-pet');
   const bubble = el('p', 'tg-bubble'); bubble.setAttribute('role', 'status'); bubble.setAttribute('aria-live', 'polite');
@@ -53,7 +56,7 @@ export function mountTrainPanel(host, ctx) {
   const summary = el('div', 'tw-train-summary');
   const status = el('p', 'tg-status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const adminBox = el('div', 'tw-train-admin'); adminBox.hidden = true;
-  root.append(who, petsRow, stage, learnedRow, grid, summary, status, adminBox);
+  root.append(who, petsRow, renameRow, stage, learnedRow, grid, summary, status, adminBox);
   host.append(root);
 
   // ---------- 공용 ----------
@@ -117,6 +120,7 @@ export function mountTrainPanel(host, ctx) {
     const pet = currentPet();
     const ready = !!pet && !st.loading && !st.error;
     stage.hidden = !ready; learnedRow.hidden = !ready; grid.hidden = !ready; summary.hidden = !ready;
+    renderRename(ready ? pet : null);
     if (ready) { ensureStage(pet); renderPets(); renderLearned(pet); renderGrid(pet); renderSummary(pet); } else { petsRow.replaceChildren(); if (st.pets.length) renderPets(); }
     renderAdmin(pet);
   }
@@ -159,6 +163,69 @@ export function mountTrainPanel(host, ctx) {
       b.addEventListener('click', () => { if (st.busy || p.petId === st.petId) return; stopShow(); st.petId = p.petId; st.selected.clear(); toolCtl?.clear(); setStatus(''); setBubble(IDLE); render(); startShow(); });
       return b;
     }));
+  }
+
+  // 이름 바꾸기: 인증 스트리머 본인만(서버가 다시 확인). 첫 1회 무료, 그다음 유료(가격은 서버 응답 nextRenameCash).
+  function renderRename(pet) {
+    const show = !!pet && st.flow === 'ready';
+    renameRow.hidden = !show; if (!show) { renameRow.replaceChildren(); return; }
+    const cash = Number(pet.nextRenameCash) || 0;
+    const btn = el('button', 'tg-button', '✏️ 이름 바꾸기'); btn.type = 'button'; btn.disabled = st.busy;
+    btn.addEventListener('click', () => startRename(pet));
+    renameRow.replaceChildren(el('span', 'tw-train-caption', `이름 · ${pet.nickname || '이름 없음'}`), btn, el('small', 'tw-rename-price', cash ? cashText(cash) : '첫 1회 무료'));
+  }
+
+  function startRename(pet) {
+    if (st.busy) return;
+    const dialog = document.getElementById('tgDialog'); const body = document.getElementById('tgDialogBody'); const closeBtn = document.getElementById('tgDialogClose');
+    const cash = Number(pet.nextRenameCash) || 0;
+    const balance = Number(ctx.server?.balanceCash) || 0;
+    const input = el('input', 'tg-input'); input.type = 'text'; input.maxLength = 40; input.value = pet.nickname || ''; input.autocomplete = 'off'; input.setAttribute('aria-label', '새 이름');
+    const count = el('small', 'tw-rename-count');
+    const st2 = el('p', 'tg-status'); st2.setAttribute('role', 'status'); st2.setAttribute('aria-live', 'polite');
+    const nodes = [el('p', 'eyebrow section-eyebrow', 'RENAME'), el('h2', 'tg-dialog-title', `${pet.nickname || '다마고치'} 이름 바꾸기`),
+      el('p', 'tg-dialog-text', `새 이름은 ${NAME_MAX}자까지 쓸 수 있어요. 팬페이지와 방송 화면에 바로 보여요.`), input, count];
+    let agree = null;
+    if (cash) {
+      const sum = el('p', 'tg-summary'); sum.append('이름 변경 ', el('strong', '', cashText(cash)), ` · 결제 후 ${cashText(balance - cash)}`);
+      const agreeLabel = el('label', 'tg-agree'); agree = el('input'); agree.type = 'checkbox';
+      agreeLabel.append(agree, el('span', '', '이름 변경 비용은 환불되지 않는다는 안내를 확인했어요(결제 오류·이중 차감은 자동 환불)'));
+      nodes.push(sum, agreeLabel);
+      if (balance < cash) { const charge = el('a', 'tw-train-charge', `${cashText(cash - balance)} 부족해요 · 캐시 충전하기`); charge.href = 'customer-center.html#charge'; nodes.push(charge); }
+    } else nodes.push(el('p', 'tg-notice', `분양 후 첫 이름 변경은 무료예요. 다음부터는 ${cashText(10)}가 들어요.`));
+    const go = el('button', 'tg-button tg-button-primary', cash ? `${cashText(cash)} 결제하고 바꾸기` : '무료로 바꾸기'); go.type = 'button';
+    const nameOf = () => input.value.replace(/\s+/g, ' ').trim();
+    const sync = () => {
+      const name = nameOf(); const len = Array.from(name).length;
+      count.textContent = `${len}/${NAME_MAX}자`;
+      go.disabled = st.busy || !name || len > NAME_MAX || name === pet.nickname || (agree && !agree.checked) || (cash > 0 && balance < cash);
+    };
+    input.addEventListener('input', sync); agree?.addEventListener('change', sync);
+    go.addEventListener('click', async () => {
+      const name = nameOf();
+      if (go.disabled) return;
+      st.busy = true; go.disabled = true; input.disabled = true; if (agree) agree.disabled = true; closeBtn.disabled = true;
+      st2.className = 'tg-status loading-bar'; st2.textContent = '이름을 바꾸는 중이에요…';
+      const requestId = getTrainRequestId(sessionStorage, RENAME_KEY, `rename|${pet.petId}|${name}|${cash}`, randomBytes);
+      try {
+        const result = (await shopCall({ action: 'rename', streamerId: st.streamerId, petId: pet.petId, nickname: name, requestId })).data || {};
+        if (result.status !== 'renamed') throw new Error('이름 변경 결과를 확인하지 못했어요.');
+        clearRequestId(sessionStorage, RENAME_KEY);
+        if (Number.isFinite(Number(result.remainingCash))) ctx.setBalance(result.remainingCash);
+        pet.nickname = result.nickname; pet.nextRenameCash = Number(result.nextRenameCash) || 0;
+        st.busy = false; closeBtn.disabled = false; dialog.close();
+        render(); setStatus(`이름을 '${result.nickname}'(으)로 바꿨어요.`);
+      } catch (error) {
+        if (shouldDiscardRequestId(error)) clearRequestId(sessionStorage, RENAME_KEY);
+        st.busy = false; closeBtn.disabled = false; input.disabled = false; if (agree) agree.disabled = false; sync();
+        st2.className = 'tg-status is-error'; st2.textContent = renameErrorMessage(error);
+        void ctx.reload();
+      }
+    });
+    nodes.push(st2, go);
+    body.replaceChildren(...nodes); sync();
+    if (!dialog.open) dialog.showModal();
+    input.focus(); input.select();
   }
 
   function renderLearned(pet) {

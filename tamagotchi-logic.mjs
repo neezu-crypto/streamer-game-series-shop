@@ -122,6 +122,17 @@ function baseTrainErrorMessage(error) {
   return '훈련을 마치지 못했어요. 차감된 캐시가 있다면 자동으로 확인돼요. 잠시 후 다시 시도해 주세요.';
 }
 
+// 이름 바꾸기 오류 문구(서버 문구 우선)
+export function renameErrorMessage(error) {
+  const code = codeOf(error);
+  const message = String((error && error.message) || '');
+  let text = '이름을 바꾸지 못했어요. 차감된 캐시가 있다면 자동으로 확인돼요. 잠시 후 다시 시도해 주세요.';
+  if (code === 'unauthenticated') text = '로그인이 필요해요.';
+  else if (code === 'resource-exhausted') text = '잠시 후 다시 시도해 주세요.';
+  else if (['unavailable', 'failed-precondition', 'permission-denied', 'invalid-argument', 'aborted', 'not-found'].includes(code) && message) text = message;
+  return withErrorRef(text, error);
+}
+
 // 팬페이지 다마고치 훈련소 주소(팬페이지 잠금 도구에서 연결)
 export const TRAIN_URL = 'https://neezu-crypto.github.io/streamer-game-series-shop/tamagotchi-world.html#train';
 
@@ -138,7 +149,7 @@ export function resolveGemShopTarget({ search = '', isAnonymous, viewer }) {
 
 // 펫 기능 실패 추적: 서버가 기록한 실패는 details.errorRef(요청 ID 끝 8자리)를 준다.
 // 서버에 닿지 못한 실패(App Check·네트워크·시간 초과)는 화면이 따로 보고하고 같은 번호를 붙인다.
-const TRACKED_ACTIONS = new Set(['adopt', 'train']);
+const TRACKED_ACTIONS = new Set(['adopt', 'train', 'rename']);
 export function errorRefOf(error) {
   const ref = (error && error.details && error.details.errorRef) || (error && error.errorRef) || '';
   return /^[A-Za-z0-9]{1,16}$/.test(String(ref)) ? String(ref) : '';
