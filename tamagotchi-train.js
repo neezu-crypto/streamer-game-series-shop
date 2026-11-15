@@ -7,7 +7,7 @@ import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
 import {
   resolveTrainState, trainTotal, learnableIds, trainSignature, getTrainRequestId, clearRequestId,
   shouldDiscardRequestId, trainErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261113-tg-world1';
+} from './tamagotchi-logic.mjs?v=20261115-tg-fail1';
 
 const REQUEST_KEY = 'tamagotchiTrainRequest';
 const ADMIN_TARGET_KEY = 'tamagotchiTrainAdminTarget';

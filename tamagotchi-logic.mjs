@@ -49,6 +49,9 @@ export function shouldDiscardRequestId(error) {
 }
 
 export function adoptErrorMessage(error) {
+  return withErrorRef(baseAdoptErrorMessage(error), error);
+}
+function baseAdoptErrorMessage(error) {
   const code = codeOf(error);
   const message = String((error && error.message) || '');
   if (code === 'unauthenticated') return '로그인이 필요해요.';
@@ -107,6 +110,9 @@ export function getTrainRequestId(storage, key, signature, randomBytes) {
 }
 
 export function trainErrorMessage(error) {
+  return withErrorRef(baseTrainErrorMessage(error), error);
+}
+function baseTrainErrorMessage(error) {
   const code = codeOf(error);
   const message = String((error && error.message) || '');
   if (code === 'unauthenticated') return '로그인이 필요해요.';
@@ -128,4 +134,46 @@ export function resolveGemShopTarget({ search = '', isAnonymous, viewer }) {
   if (/^[a-z0-9_-]{1,64}$/.test(sid)) return { flow: 'fanpage', streamerId: sid, petId: /^[A-Za-z0-9_-]{1,64}$/.test(pid) ? pid : '' };
   const flow = resolveTrainState({ isAnonymous, viewer });
   return { flow, streamerId: flow === 'ready' ? String(viewer.streamer.id) : '', petId: '' };
+}
+
+// 펫 기능 실패 추적: 서버가 기록한 실패는 details.errorRef(요청 ID 끝 8자리)를 준다.
+// 서버에 닿지 못한 실패(App Check·네트워크·시간 초과)는 화면이 따로 보고하고 같은 번호를 붙인다.
+const TRACKED_ACTIONS = new Set(['adopt', 'train']);
+export function errorRefOf(error) {
+  const ref = (error && error.details && error.details.errorRef) || (error && error.errorRef) || '';
+  return /^[A-Za-z0-9]{1,16}$/.test(String(ref)) ? String(ref) : '';
+}
+export function withErrorRef(message, error) {
+  const ref = errorRefOf(error);
+  return ref ? `${message} (오류 번호 ${ref})` : message;
+}
+export function refFromRequestId(requestId) {
+  const text = String(requestId || '').replace(/[^A-Za-z0-9]/g, '');
+  return text.slice(-8);
+}
+export function clientFailureStep(error) {
+  const code = codeOf(error);
+  const message = String((error && error.message) || '').toLowerCase();
+  if (message.includes('app check') || message.includes('appcheck') || message.includes('recaptcha')) return 'appcheck';
+  if (code === 'deadline-exceeded') return 'timeout';
+  if (code === 'unauthenticated') return 'appcheck';
+  if (code === 'internal' || code === 'unavailable' || message.includes('network') || message.includes('failed to fetch')) return 'network';
+  return 'unknown';
+}
+export function trackPetFailures(call, report) {
+  return async (payload) => {
+    try {
+      return await call(payload);
+    } catch (error) {
+      if (payload && TRACKED_ACTIONS.has(payload.action) && !errorRefOf(error)) {
+        const ref = refFromRequestId(payload.requestId);
+        try { error.errorRef = ref; } catch { /* 읽기 전용 오류 객체 */ }
+        Promise.resolve().then(() => report({
+          action: 'report', kind: payload.action, streamerId: payload.streamerId, step: clientFailureStep(error),
+          code: codeOf(error) || 'error', reason: String((error && error.message) || '').slice(0, 80), requestId: payload.requestId,
+        })).catch(() => {});
+      }
+      throw error;
+    }
+  };
 }

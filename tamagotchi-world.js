@@ -6,7 +6,8 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261114-tg-wear1';
+const V = '?v=20261115-tg-fail1';
+import { trackPetFailures } from './tamagotchi-logic.mjs?v=20261115-tg-fail1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
 const FIREBASE_CONFIG = {
@@ -21,7 +22,11 @@ const FIREBASE_CONFIG = {
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
 ensureAppCheck(app);
 const auth = getAuth(app);
-const shopCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop');
+// 분양·훈련 실패는 단계별로 기록한다(서버 기록 + 서버에 닿지 못한 실패는 화면 보고).
+const shopCall = trackPetFailures(
+  httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop'),
+  httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiFailures'),
+);
 const careCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiCare'); // 보석 상점(금고·꾸미기)
 
 // 장소 패널 모듈. 규약: mount(host, ctx) → { destroy(), onAuthChange?() }

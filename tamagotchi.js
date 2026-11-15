@@ -8,8 +8,8 @@ import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
 import {
   normalizeNickname, resolvePurchaseState, getOrCreateRequestId, clearRequestId, shouldDiscardRequestId,
-  adoptErrorMessage, farmUrl, COLOR_LABELS,
-} from './tamagotchi-logic.mjs?v=20261113-tg-opt1';
+  adoptErrorMessage, farmUrl, COLOR_LABELS, trackPetFailures,
+} from './tamagotchi-logic.mjs?v=20261115-tg-fail1';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -23,7 +23,11 @@ const FIREBASE_CONFIG = {
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
 ensureAppCheck(app);
 const auth = getAuth(app);
-const shopCall = httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop');
+// 분양·훈련 실패는 단계별로 기록한다(서버 기록 + 서버에 닿지 못한 실패는 화면 보고).
+const shopCall = trackPetFailures(
+  httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiShop'),
+  httpsCallable(getFunctions(app, 'us-central1'), 'streamerFanPageTamagotchiFailures'),
+);
 
 const $ = (id) => document.getElementById(id);
 const INTENT_KEY = 'tamagotchiAdoptIntent';
