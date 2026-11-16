@@ -75,6 +75,9 @@ async function snapshotPet(svg) {
     const data = await inlineHref(href); if (data) im.setAttribute('href', data); else im.remove();
   }
   const vb = (svg.getAttribute('viewBox') || '0 0 1250 1100').split(/\s+/).map(Number);
+  // 뛰는 순간 찍히면 리본·모자가 viewBox 위로 올라가 잘리므로, 위쪽에 늘 같은 여백을 더한다(칸마다 펫 크기 동일).
+  const head = Math.round(vb[3] * 0.16); vb[1] -= head; vb[3] += head;
+  clone.setAttribute('viewBox', vb.join(' ')); clone.style.overflow = 'visible';
   clone.setAttribute('width', String(vb[2])); clone.setAttribute('height', String(vb[3]));
   const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' }));
   try { return await loadImage(url); } finally { setTimeout(() => URL.revokeObjectURL(url), 2000); imgCache.delete(url); }
