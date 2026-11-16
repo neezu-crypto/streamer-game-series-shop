@@ -6,7 +6,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261116-tg-dist2';
+const V = '?v=20261116-tg-dist3';
 import { trackPetFailures, normalizeWorld, districtById, neighbor, minimapCells, swipeStarts, swipeResult, dragOffset } from './tamagotchi-logic.mjs?v=20261116-tg-dist1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();

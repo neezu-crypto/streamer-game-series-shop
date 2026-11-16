@@ -271,6 +271,7 @@ export function mountPhotoPanel(host, ctx) {
   async function runShoot(pbox, count, flash, dots) {
     if (st.shooting) return;
     st.shooting = true; st.shots = []; renderTabs();
+    pbox.closest('.tw-photo-view')?.scrollIntoView({ block: 'center', behavior: ctx.reduced ? 'auto' : 'smooth' });
     for (const b of body.querySelectorAll('button, input')) b.disabled = true;
     [...dots.children].forEach((d) => d.classList.remove('is-on'));
     try {

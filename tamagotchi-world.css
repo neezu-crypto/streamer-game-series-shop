@@ -274,3 +274,7 @@ svg.tw-ground { display: block; }
 .tw-photo-del.is-armed { background: #a3443a; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .tw-photo-count.is-pop, .tw-photo-flash.is-on { animation: none; } }
 .tw-photo [hidden] { display: none !important; }
+@media (max-width: 820px) {
+  .tw-photo-view { max-width: min(100%, calc(46dvh * 465 / 690)); }
+  .tw-photo-strip, .tw-photo-card-stage { width: min(100%, calc(60dvh * 1080 / 1920)); }
+}
