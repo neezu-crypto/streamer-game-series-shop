@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "backgrounds": [
+    {
+      "id": "sakura",
+      "name": "벚꽃 공원",
+      "src": "assets/tamagotchi/photo/bg-sakura.webp",
+      "top": "#ffe3ec",
+      "bottom": "#fff3f6"
+    },
+    {
+      "id": "starry",
+      "name": "별밤",
+      "src": "assets/tamagotchi/photo/bg-starry.webp",
+      "top": "#2c2f6b",
+      "bottom": "#7a6bc4"
+    },
+    {
+      "id": "heart-room",
+      "name": "하트 방",
+      "src": "assets/tamagotchi/photo/bg-heart-room.webp",
+      "top": "#ffd6e3",
+      "bottom": "#ffeef3"
+    },
+    {
+      "id": "beach",
+      "name": "바닷가",
+      "src": "assets/tamagotchi/photo/bg-beach.webp",
+      "top": "#bfe9ff",
+      "bottom": "#fff1d2"
+    }
+  ],
+  "frames": [
+    {
+      "id": "cream-ribbon",
+      "name": "크림 리본",
+      "src": "assets/tamagotchi/photo/frame-cream-ribbon.webp",
+      "color": "#fff3dd",
+      "ink": "#8a5a3c"
+    },
+    {
+      "id": "mint-check",
+      "name": "민트 체크",
+      "src": "assets/tamagotchi/photo/frame-mint-check.webp",
+      "color": "#d9f3e6",
+      "ink": "#2f7a5b"
+    },
+    {
+      "id": "pink-heart",
+      "name": "핑크 하트",
+      "src": "assets/tamagotchi/photo/frame-pink-heart.webp",
+      "color": "#ffdbe6",
+      "ink": "#b0416a"
+    },
+    {
+      "id": "lavender-star",
+      "name": "라벤더 별",
+      "src": "assets/tamagotchi/photo/frame-lavender-star.webp",
+      "color": "#e6defb",
+      "ink": "#5d4a9e"
+    }
+  ],
+  "stickers": [
+    {
+      "id": "balloon",
+      "name": "하트 풍선",
+      "emoji": "🎈",
+      "src": "assets/tamagotchi/photo/st-balloon.webp"
+    },
+    {
+      "id": "crown",
+      "name": "왕관",
+      "emoji": "👑",
+      "src": "assets/tamagotchi/photo/st-crown.webp"
+    },
+    {
+      "id": "bubble",
+      "name": "하트 말풍선",
+      "emoji": "💬",
+      "src": "assets/tamagotchi/photo/st-bubble.webp"
+    },
+    {
+      "id": "sparkle",
+      "name": "반짝이 별",
+      "emoji": "✨",
+      "src": "assets/tamagotchi/photo/st-sparkle.webp"
+    },
+    {
+      "id": "ribbon",
+      "name": "리본",
+      "emoji": "🎀",
+      "src": "assets/tamagotchi/photo/st-ribbon.webp"
+    }
+  ]
+}

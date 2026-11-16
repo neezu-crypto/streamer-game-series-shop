@@ -227,3 +227,58 @@ export function hospitalView(server, { now = Date.now(), skewMs = 0, armed = '',
   if (!hasAccount && (view.treat || view.visit)) view.note += ' 치료·병문안은 로그인하면 할 수 있어요.';
   return view;
 }
+
+// ---------- 다마고치 마을 동네(격자) ----------
+// 카탈로그 v1(동네 1개: layers·lots를 바로 가짐)과 v2(districts 목록)를 같은 모양으로 읽는다.
+export const DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+export function normalizeWorld(raw) {
+  const w = raw && typeof raw === 'object' ? raw : {};
+  const list = Array.isArray(w.districts) && w.districts.length
+    ? w.districts
+    : [{ id: 'square', name: '중앙 광장', x: 0, y: 0, layers: w.layers, lots: w.lots }];
+  const seen = new Set();
+  const districts = [];
+  for (const d of list) {
+    if (!d || typeof d.id !== 'string' || seen.has(d.id)) continue;
+    const x = Math.trunc(Number(d.x) || 0); const y = Math.trunc(Number(d.y) || 0);
+    if (districts.some((o) => o.x === x && o.y === y)) continue; // 같은 칸 둘이면 먼저 것만
+    seen.add(d.id);
+    districts.push({ id: d.id, name: String(d.name || ''), x, y, status: d.status === 'soon' ? 'soon' : 'open', layers: d.layers || null, lots: d.lots || { d: [], m: [] }, signs: d.signs || {} });
+  }
+  const home = districts.find((d) => d.x === 0 && d.y === 0 && d.status === 'open') || districts.find((d) => d.status === 'open') || null;
+  const places = (Array.isArray(w.places) ? w.places : []).map((p) => ({ ...p, district: p.district || (home ? home.id : 'square') }));
+  return { version: Number(w.version) || 1, clouds: Array.isArray(w.clouds) ? w.clouds : [], districts, home: home ? home.id : '', places };
+}
+export function districtById(world, id) { return world.districts.find((d) => d.id === id && d.status === 'open') || null; }
+export function neighbor(world, id, dir) {
+  const d = districtById(world, id); const step = DIRS[dir]; if (!d || !step) return null;
+  return world.districts.find((o) => o.x === d.x + step[0] && o.y === d.y + step[1] && o.status === 'open') || null;
+}
+// 미니맵: 열린 동네의 바운딩 박스 안 칸 + 'soon' 칸만(빈 칸은 empty). 행 우선 순서.
+export function minimapCells(world, currentId) {
+  const shown = world.districts.filter((d) => d.status === 'open' || d.status === 'soon');
+  if (!shown.length) return { cols: 0, rows: 0, cells: [] };
+  const xs = shown.map((d) => d.x); const ys = shown.map((d) => d.y);
+  const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys);
+  const cells = [];
+  for (let y = minY; y <= maxY; y += 1) for (let x = minX; x <= maxX; x += 1) {
+    const d = shown.find((o) => o.x === x && o.y === y);
+    cells.push({ x, y, id: d ? d.id : '', name: d ? d.name : '', state: !d ? 'empty' : d.status === 'soon' ? 'soon' : d.id === currentId ? 'current' : 'open' });
+  }
+  return { cols: maxX - minX + 1, rows: maxY - minY + 1, cells };
+}
+// 끌기: 시작은 가로 8px 이상 + 가로가 세로보다 클 때. 놓을 때는 너비 25% 이상 또는 빠른 휙(0.5px/ms)이면 넘어간다.
+export const SWIPE_START_PX = 8;
+export function swipeStarts(dx, dy) { return Math.abs(dx) >= SWIPE_START_PX && Math.abs(dx) > Math.abs(dy); }
+export function swipeResult({ dx = 0, ms = 1, width = 1, hasLeft = false, hasRight = false } = {}) {
+  const far = Math.abs(dx) >= width * 0.25; const fast = Math.abs(dx) / Math.max(1, ms) >= 0.5 && Math.abs(dx) >= 24;
+  if (!far && !fast) return '';
+  if (dx < 0 && hasRight) return 'right'; // 왼쪽으로 밀면 오른쪽 동네
+  if (dx > 0 && hasLeft) return 'left';
+  return '';
+}
+// 이웃이 없는 쪽으로 끌면 1/3만 움직인다(저항)
+export function dragOffset(dx, { hasLeft = false, hasRight = false } = {}) {
+  if ((dx < 0 && !hasRight) || (dx > 0 && !hasLeft)) return dx / 3;
+  return dx;
+}

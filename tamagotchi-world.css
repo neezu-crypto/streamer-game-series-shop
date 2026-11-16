@@ -191,3 +191,85 @@ svg.tw-ground { display: block; }
 .tw-empty-pet-text{max-width:440px;margin:0;color:var(--muted);font-size:13px;line-height:1.6}
 .tw-empty-pet .tg-button{margin-top:6px;text-decoration:none}
 .tw-train>[hidden],.tw-hosp>[hidden],.tw-gem-shop [hidden]{display:none!important}
+
+/* ---------- 동네 격자(좌우 끌기) ---------- */
+.tw-map { touch-action: pan-y; }
+.tw-track { position: absolute; inset: 0; will-change: transform; }
+.tw-pane { position: absolute; top: 0; width: 100%; height: 100%; overflow: hidden; }
+.tw-pane.is-edge { background: #cfe8b4; }
+.tw-arrow { position: absolute; z-index: 6; top: 50%; transform: translateY(-50%); display: grid; place-items: center; gap: 2px; min-width: 44px; min-height: 56px; padding: 6px 8px; border: 2px solid #7a5a3f; border-radius: 16px; background: rgba(255,250,240,.92); color: #5b4330; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.tw-arrow small { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.tw-arrow.is-left { left: 10px; } .tw-arrow.is-right { right: 10px; }
+.tw-arrow:hover { background: #fff; }
+.tw-minimap { position: absolute; z-index: 6; right: 10px; top: 10px; display: grid; gap: 3px; padding: 5px; border-radius: 10px; background: rgba(255,250,240,.88); border: 1px solid rgba(122,90,63,.35); }
+.tw-mini-cell { width: 18px; height: 12px; padding: 0; border-radius: 3px; border: 1px solid rgba(122,90,63,.5); background: #bfe0a0; cursor: pointer; }
+.tw-mini-cell.is-current { background: #ff8fb1; border-color: #c4456d; }
+.tw-mini-cell.is-empty { visibility: hidden; }
+.tw-mini-cell.is-soon { background: repeating-linear-gradient(45deg,#ddd,#ddd 3px,#eee 3px,#eee 6px); cursor: default; }
+.tw-district-name { position: absolute; z-index: 6; left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px; background: rgba(255,250,240,.9); color: #5b4330; font-weight: 800; font-size: 13px; pointer-events: none; }
+.tw-map:focus-visible { outline: 3px solid #ff8fb1; outline-offset: 3px; }
+
+/* ---------- 몽글필름(사진관) ---------- */
+.tw-place:has(.tw-photo), .tw-place[data-place="photo"] { width: min(1240px, calc(100vw - 24px)); }
+.tw-photo { display: grid; gap: 12px; }
+.tw-photo-tabs { display: flex; gap: 6px; }
+.tw-photo-tab { min-height: 40px; padding: 6px 16px; border: 2px solid #7a5a3f; border-radius: 999px; background: #fffaf2; color: #5b3f2b; font-weight: 800; cursor: pointer; }
+.tw-photo-tab.is-on { background: #ff8fb1; color: #fff; border-color: #c4456d; }
+.tw-photo-grid { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 821px) { .tw-photo-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.tw-photo-side { display: grid; gap: 10px; align-content: start; }
+.tw-photo-booth { display: grid; gap: 8px; }
+.tw-photo-view { position: relative; aspect-ratio: 465 / 690; max-height: min(62dvh, 560px); margin: 0 auto; width: 100%; max-width: 380px; overflow: hidden; border: 3px solid #7a5a3f; border-radius: 24px; background-size: cover; background-position: center; }
+.tw-photo-pet { position: absolute; left: 4%; right: 4%; bottom: 4%; }
+.tw-photo-pet .tg-pet-svg { width: 100%; height: auto; display: block; }
+.tw-photo-count { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(64px, 14vw, 120px); font-weight: 900; color: #fff; text-shadow: 0 4px 0 #c4456d, 0 0 20px rgba(0,0,0,.25); pointer-events: none; }
+.tw-photo-count.is-pop { animation: tw-count-pop 700ms ease-out; }
+@keyframes tw-count-pop { from { transform: scale(1.5); opacity: 0; } 30% { opacity: 1; } to { transform: scale(.9); opacity: .85; } }
+.tw-photo-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.tw-photo-flash.is-on { animation: tw-flash 380ms ease-out; }
+@keyframes tw-flash { from { opacity: .9; } to { opacity: 0; } }
+.tw-photo-dots { display: flex; justify-content: center; gap: 8px; }
+.tw-photo-dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #7a5a3f; background: #fffaf2; }
+.tw-photo-dots span.is-on { background: #ff8fb1; }
+.tw-photo-choice { display: grid; gap: 6px; }
+.tw-photo-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.tw-photo-swatch { display: grid; justify-items: center; gap: 4px; width: 76px; padding: 4px; border: 2px solid transparent; border-radius: 14px; background: none; cursor: pointer; color: #5b3f2b; }
+.tw-photo-swatch[aria-checked="true"] { border-color: #ff8fb1; background: #fff0f5; }
+.tw-photo-thumb { position: relative; display: grid; place-items: center; width: 64px; height: 64px; overflow: hidden; border: 2px solid #7a5a3f; border-radius: 12px; font-size: 30px; background: #fffaf2; }
+.tw-photo-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tw-photo-swatch.is-sticker .tw-photo-thumb img { object-fit: contain; padding: 4px; }
+.tw-photo-swatch small { font-size: 11px; white-space: nowrap; }
+.tw-photo-toggle { display: flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 700; color: #5b3f2b; }
+.tw-photo-toggle input { width: 20px; height: 20px; }
+.tw-photo-shoot { min-height: 52px; font-size: 17px; }
+.tw-photo-strip-wrap { display: grid; place-items: center; }
+.tw-photo-strip { position: relative; width: 100%; max-width: 380px; aspect-ratio: 1080 / 1920; max-height: 72dvh; touch-action: none; user-select: none; }
+@supports (height: 1dvh) { .tw-photo-strip { width: min(100%, 380px, calc(72dvh * 1080 / 1920)); } }
+.tw-photo-strip-img { width: 100%; height: 100%; display: block; border-radius: 10px; box-shadow: var(--shadow); background: #fff6ea; }
+.tw-photo-sticker { position: absolute; padding: 0; border: 0; background: none; cursor: grab; aspect-ratio: 1; touch-action: none; }
+.tw-photo-sticker img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.tw-photo-sticker span { font-size: clamp(28px, 6vw, 56px); line-height: 1; }
+.tw-photo-sticker:focus-visible { outline: 2px dashed #c4456d; }
+.tw-photo-card-stage { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 1080 / 1920; max-height: 72dvh; perspective: 1400px; touch-action: pan-y; user-select: none; cursor: grab; }
+@supports (height: 1dvh) { .tw-photo-card-stage { width: min(100%, 380px, calc(72dvh * 1080 / 1920)); } }
+.tw-photo-card-stage.is-signing { touch-action: none; cursor: crosshair; }
+.tw-photo-card { position: absolute; inset: 0; transform-style: preserve-3d; }
+.tw-photo-face { position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 10px; box-shadow: var(--shadow); }
+.tw-photo-face.is-back { transform: rotateY(180deg); overflow: hidden; }
+.tw-photo-back-canvas { width: 100%; height: 100%; display: block; }
+.tw-photo-sign-tools { display: grid; gap: 8px; }
+.tw-photo-pens, .tw-photo-edit-row, .tw-photo-dl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tw-photo-pen { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #7a5a3f; cursor: pointer; }
+.tw-photo-pen.is-on { box-shadow: 0 0 0 3px #ff8fb1; }
+.tw-photo-width { min-height: 36px; padding: 4px 12px; border: 2px solid #7a5a3f; border-radius: 999px; background: #fffaf2; font-weight: 700; cursor: pointer; }
+.tw-photo-width.is-on { background: #ffe0ea; }
+.tw-photo-album { display: grid; gap: 10px; }
+.tw-photo-album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.tw-photo-album-item { display: grid; gap: 4px; }
+.tw-photo-album-open { padding: 0; border: 2px solid #7a5a3f; border-radius: 10px; overflow: hidden; background: #fff6ea; cursor: pointer; aspect-ratio: 1080 / 1920; }
+.tw-photo-album-open img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tw-photo-album-meta { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.tw-photo-album-meta small { font-size: 11px; color: #6b5442; }
+.tw-photo-del { min-height: 32px; padding: 2px 8px; border: 1px solid #c98; border-radius: 999px; background: #fff; color: #a3443a; font-size: 12px; cursor: pointer; }
+.tw-photo-del.is-armed { background: #a3443a; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .tw-photo-count.is-pop, .tw-photo-flash.is-on { animation: none; } }

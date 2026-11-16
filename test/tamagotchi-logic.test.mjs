@@ -172,7 +172,14 @@ test('펫 병원 진료표', async () => {
 
 test('월드맵 장소: 자리 중복 없음·그림 파일 존재', () => {
   const world = JSON.parse(readFileSync(new URL('../catalog/tamagotchi-world.json', import.meta.url)));
-  const lots = world.places.map((p) => p.lot);
+  const lots = world.places.map((p) => `${p.district}:${p.lot}`); // 동네마다 자리 번호가 따로
   assert.equal(new Set(lots).size, lots.length);
+  for (const p of world.places) {
+    const d = world.districts.find((x) => x.id === p.district); assert.ok(d, p.id);
+    assert.ok(d.lots.d[p.lot] && d.lots.m[p.lot], `${p.id} lot`);
+  }
+  for (const d of world.districts) for (const k of ['d', 'm']) if (d.layers?.[k]?.ground) assert.ok(readFileSync(new URL(`../${d.layers[k].ground}`, import.meta.url)).length > 1000, d.layers[k].ground);
+  const photo = JSON.parse(readFileSync(new URL('../catalog/tamagotchi-photo.json', import.meta.url)));
+  for (const list of [photo.backgrounds, photo.frames, photo.stickers]) for (const it of list) assert.ok(readFileSync(new URL(`../${it.src}`, import.meta.url)).length > 1000, it.src);
   for (const p of world.places) if (p.sprite) assert.ok(readFileSync(new URL(`../${p.sprite}`, import.meta.url)).length > 1000, p.sprite);
 });

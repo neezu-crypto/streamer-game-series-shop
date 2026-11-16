@@ -1,73 +1,119 @@
 {
-  "version": 1,
-  "layers": {
-    "d": {
-      "ground": "assets/tamagotchi/world/world-ground-d.webp",
-      "ratio": [
-        16,
-        10
-      ],
-      "front": "assets/tamagotchi/world/world-front-d.webp"
-    },
-    "m": {
-      "ground": "assets/tamagotchi/world/world-ground-m.webp",
-      "ratio": [
-        9,
-        16
-      ],
-      "front": "assets/tamagotchi/world/world-front-m.webp"
-    }
-  },
+  "version": 2,
   "clouds": [
     "assets/tamagotchi/world/world-cloud-1.webp",
     "assets/tamagotchi/world/world-cloud-2.webp"
   ],
-  "lots": {
-    "d": [
-      [
-        28.8,
-        71.5,
-        26
-      ],
-      [
-        74.5,
-        43,
-        26
-      ],
-      [
-        39.8,
-        32,
-        16
-      ],
-      [
-        74.5,
-        76.5,
-        16
-      ]
-    ],
-    "m": [
-      [
-        53.7,
-        79.3,
-        50
-      ],
-      [
-        56.6,
-        45.7,
-        46
-      ],
-      [
-        29.8,
-        20.7,
-        26
-      ],
-      [
-        72,
-        16.5,
-        24
-      ]
-    ]
-  },
+  "districts": [
+    {
+      "id": "square",
+      "name": "중앙 광장",
+      "x": 0,
+      "y": 0,
+      "layers": {
+        "d": {
+          "ground": "assets/tamagotchi/world/world-ground-d.webp",
+          "ratio": [
+            16,
+            10
+          ],
+          "front": "assets/tamagotchi/world/world-front-d.webp"
+        },
+        "m": {
+          "ground": "assets/tamagotchi/world/world-ground-m.webp",
+          "ratio": [
+            9,
+            16
+          ],
+          "front": "assets/tamagotchi/world/world-front-m.webp"
+        }
+      },
+      "lots": {
+        "d": [
+          [
+            28.8,
+            71.5,
+            26
+          ],
+          [
+            74.5,
+            43,
+            26
+          ],
+          [
+            39.8,
+            32,
+            16
+          ],
+          [
+            74.5,
+            76.5,
+            16
+          ]
+        ],
+        "m": [
+          [
+            53.7,
+            79.3,
+            50
+          ],
+          [
+            56.6,
+            45.7,
+            46
+          ],
+          [
+            29.8,
+            20.7,
+            26
+          ],
+          [
+            72,
+            16.5,
+            24
+          ]
+        ]
+      }
+    },
+    {
+      "id": "east",
+      "name": "몽글 거리",
+      "x": 1,
+      "y": 0,
+      "layers": {
+        "d": {
+          "ground": "assets/tamagotchi/world/east-ground-d.webp",
+          "ratio": [
+            16,
+            10
+          ]
+        },
+        "m": {
+          "ground": "assets/tamagotchi/world/east-ground-m.webp",
+          "ratio": [
+            9,
+            16
+          ]
+        }
+      },
+      "lots": {
+        "d": [
+          [
+            65.5,
+            71,
+            28
+          ]
+        ],
+        "m": [
+          [
+            50,
+            64,
+            58
+          ]
+        ]
+      }
+    }
+  ],
   "places": [
     {
       "id": "adopt",
@@ -77,7 +123,8 @@
       "kind": "link",
       "href": "tamagotchi.html",
       "sprite": "assets/tamagotchi/world/bld-adopt.webp",
-      "lot": 0
+      "lot": 0,
+      "district": "square"
     },
     {
       "id": "train",
@@ -87,7 +134,8 @@
       "kind": "panel",
       "module": "train",
       "sprite": "assets/tamagotchi/world/bld-train.webp",
-      "lot": 1
+      "lot": 1,
+      "district": "square"
     },
     {
       "id": "gem-shop",
@@ -97,7 +145,8 @@
       "kind": "panel",
       "module": "gemShop",
       "sprite": "assets/tamagotchi/world/bld-gem-shop.webp",
-      "lot": 2
+      "lot": 2,
+      "district": "square"
     },
     {
       "id": "hospital",
@@ -107,7 +156,19 @@
       "kind": "panel",
       "module": "hospital",
       "sprite": "assets/tamagotchi/world/bld-hospital.webp",
-      "lot": 3
+      "lot": 3,
+      "district": "square"
+    },
+    {
+      "id": "photo",
+      "name": "몽글필름",
+      "emoji": "📸",
+      "desc": "펫과 네 컷 사진을 찍어요",
+      "kind": "panel",
+      "module": "photo",
+      "sprite": "assets/tamagotchi/world/bld-photo.webp",
+      "lot": 0,
+      "district": "east"
     }
   ]
 }

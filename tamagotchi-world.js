@@ -6,8 +6,8 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261116-tg-empty1';
-import { trackPetFailures } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
+const V = '?v=20261116-tg-dist1';
+import { trackPetFailures, normalizeWorld, districtById, neighbor, minimapCells, swipeStarts, swipeResult, dragOffset } from './tamagotchi-logic.mjs?v=20261116-tg-dist1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
 const FIREBASE_CONFIG = {
@@ -34,12 +34,13 @@ const PANELS = {
   train: () => import(`./tamagotchi-train.js${V}`).then((m) => m.mountTrainPanel),
   gemShop: () => import(`./tamagotchi-gem-shop.js${V}`).then((m) => m.mountGemShopPanel),
   hospital: () => import(`./tamagotchi-hospital.js${V}`).then((m) => m.mountHospitalPanel),
+  photo: () => import(`./tamagotchi-photo.js${V}`).then((m) => m.mountPhotoPanel),
 };
 
 const $ = (id) => document.getElementById(id);
 const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const mobileMq = window.matchMedia('(max-width: 720px), (orientation: portrait) and (max-width: 1024px)');
-const state = { user: null, world: null, server: null, publicSpecies: [], loading: true, error: '', panel: null, placeId: '' };
+const state = { user: null, world: null, server: null, publicSpecies: [], loading: true, error: '', panel: null, placeId: '', district: '' };
 let toastTimer = 0;
 
 function el(tag, className, text) {
@@ -97,38 +98,68 @@ function watchMapMotion(map) {
   document.addEventListener('visibilitychange', apply);
 }
 
-// ---------- 지도 그리기 ----------
-function renderMap() {
-  const world = state.world; if (!world) return;
-  const kind = layout(); const map = $('twMap');
-  const [rw, rh] = world.layers[kind].ratio;
-  map.className = `tw-map is-${kind}`; map.style.aspectRatio = `${rw} / ${rh}`;
-  map.replaceChildren();
-  const lots = world.lots[kind];
-  // 바닥: 그림이 있으면 그림, 없으면 임시 지도
-  const ground = img(world.layers[kind].ground, 'tw-ground', (i) => i.replaceWith(fallbackGround(kind, lots)));
-  map.append(ground);
-  // 빈 땅(장소가 없는 자리)은 바닥에만 보인다. 건물:
-  for (const place of visiblePlaces()) {
+// ---------- 지도 그리기(동네 격자: 지금 동네 + 좌우 이웃을 한 줄로 놓고 가로로 끌어 넘긴다) ----------
+function districtPane(d, kind) {
+  const pane = el('div', 'tw-pane'); pane.dataset.district = d.id;
+  const layer = (d.layers && d.layers[kind]) || {};
+  const lots = (d.lots && d.lots[kind]) || [];
+  pane.append(layer.ground ? img(layer.ground, 'tw-ground', (i) => i.replaceWith(fallbackGround(kind, lots))) : fallbackGround(kind, lots));
+  for (const place of visiblePlaces().filter((p) => p.district === d.id)) {
     const lot = lots[place.lot]; if (!lot) continue;
     const [x, y, w] = lot;
     const b = el('button', `tw-bld tw-bld-${place.id}`); b.type = 'button';
-    b.style.left = `${x}%`; b.style.top = `${y}%`; b.style.width = `${w}%`; // 자리 폭은 지도 그림마다 카탈로그에 적는다
+    b.style.left = `${x}%`; b.style.top = `${y}%`; b.style.width = `${w}%`;
     b.setAttribute('aria-label', `${place.name} — ${place.desc}`);
     const art = el('span', 'tw-bld-art');
-    const sprite = img(place.sprite, 'tw-bld-img', (i) => { i.replaceWith(el('span', 'tw-bld-emoji', place.emoji)); });
-    art.append(sprite);
+    art.append(img(place.sprite, 'tw-bld-img', (i) => { i.replaceWith(el('span', 'tw-bld-emoji', place.emoji)); }));
     const tag = el('span', 'tw-bld-tag'); tag.append(el('span', '', place.emoji), el('strong', '', place.name));
     b.append(art, tag);
-    b.addEventListener('click', () => openPlace(place.id));
-    map.append(b);
+    b.addEventListener('click', (e) => { if (drag.suppressClick) { e.preventDefault(); return; } openPlace(place.id); });
+    pane.append(b);
   }
-  if (world.layers[kind].front) map.append(img(world.layers[kind].front, 'tw-front', (i) => i.remove()));
-  // 모바일은 구름 1개만(그리기 부담 줄이기), 지도가 화면 밖이거나 탭이 숨겨지면 움직임을 멈춘다
+  if (layer.front) pane.append(img(layer.front, 'tw-front', (i) => i.remove()));
+  return pane;
+}
+function currentDistrict() { return districtById(state.world, state.district) || districtById(state.world, state.world.home); }
+function renderMap() {
+  const world = state.world; if (!world) return;
+  const kind = layout(); const map = $('twMap');
+  const cur = currentDistrict(); if (!cur) return;
+  state.district = cur.id;
+  const ratio = (cur.layers?.[kind]?.ratio) || (kind === 'm' ? [9, 16] : [16, 10]);
+  map.className = `tw-map is-${kind}`; map.style.aspectRatio = `${ratio[0]} / ${ratio[1]}`;
+  const left = neighbor(world, cur.id, 'left'); const right = neighbor(world, cur.id, 'right');
+  const track = el('div', 'tw-track');
+  const panes = [left, cur, right].map((d, n) => { const p = d ? districtPane(d, kind) : el('div', 'tw-pane is-edge'); p.style.left = `${(n - 1) * 100}%`; if (n !== 1) { p.inert = true; p.setAttribute('aria-hidden', 'true'); } return p; });
+  track.append(...panes);
+  map.replaceChildren(track);
   const clouds = (world.clouds || []).slice(0, kind === 'm' ? 1 : undefined);
-  if (!reduced) clouds.forEach((src, n) => { const c = img(src, `tw-cloud tw-cloud-${n + 1}`, (i) => i.remove()); c.decoding = 'async'; map.append(c); });
+  if (!reduced) clouds.forEach((src, n) => { const c = img(src, `tw-cloud tw-cloud-${n + 1}`, (i) => i.remove()); map.append(c); });
+  // 화살표·미니맵(동네가 둘 이상일 때만)
+  const many = world.districts.filter((d) => d.status === 'open').length > 1;
+  if (many) {
+    for (const [dir, nb, label] of [['left', left, '◀'], ['right', right, '▶']]) {
+      if (!nb) continue;
+      const a = el('button', `tw-arrow is-${dir}`); a.type = 'button'; a.setAttribute('aria-label', `${nb.name || '옆 동네'}로 가기`);
+      a.append(el('span', '', label), el('small', '', nb.name || ''));
+      a.addEventListener('click', () => goDistrict(nb.id, dir));
+      map.append(a);
+    }
+    const mm = minimapCells(world, cur.id);
+    const mini = el('div', 'tw-minimap'); mini.style.gridTemplateColumns = `repeat(${mm.cols}, 1fr)`; mini.setAttribute('aria-label', '마을 지도');
+    for (const c of mm.cells) {
+      const cell = el('button', `tw-mini-cell is-${c.state}`); cell.type = 'button';
+      cell.title = c.state === 'soon' ? '준비 중' : c.name; cell.disabled = c.state === 'empty' || c.state === 'soon' || c.state === 'current';
+      if (c.state === 'current') cell.setAttribute('aria-current', 'true');
+      cell.addEventListener('click', () => goDistrict(c.id));
+      mini.append(cell);
+    }
+    map.append(mini);
+    map.append(el('div', 'tw-district-name', cur.name || ''));
+  }
+  map.tabIndex = many ? 0 : -1;
   watchMapMotion(map);
-  // 지도 아래 장소 목록(작은 화면·스크린 리더)
+  // 지도 아래 장소 목록: 모든 동네의 장소(누르면 그 동네로 가서 연다)
   $('twPlaces').replaceChildren(...visiblePlaces().map((place) => {
     const b = el('button', 'tw-place-btn'); b.type = 'button';
     b.append(el('span', 'tw-place-emoji', place.emoji), el('strong', '', place.name), el('small', '', place.desc));
@@ -136,6 +167,69 @@ function renderMap() {
     return b;
   }));
 }
+function syncDistrictUrl() {
+  const u = new URL(location.href);
+  if (state.district && state.district !== state.world.home) u.searchParams.set('d', state.district); else u.searchParams.delete('d');
+  if (u.href !== location.href) history.replaceState(history.state, '', u.href);
+}
+// 동네 이동: 트랙을 300ms(경과 시간 기준 CSS 전환) 밀고 끝나면 새로 그린다. 동작 줄이기면 바로.
+let moving = false;
+function goDistrict(id, dir) {
+  if (moving || !districtById(state.world, id) || id === state.district) return;
+  const track = $('twMap').querySelector('.tw-track');
+  const done = () => { moving = false; state.district = id; syncDistrictUrl(); renderMap(); };
+  if (reduced || !track || !dir || (dir !== 'left' && dir !== 'right')) { done(); return; }
+  moving = true;
+  track.style.transition = 'transform 300ms ease-out';
+  track.style.transform = `translate3d(${dir === 'right' ? -100 : 100}%,0,0)`;
+  let fired = false; const finish = () => { if (!fired) { fired = true; done(); } };
+  track.addEventListener('transitionend', finish, { once: true }); setTimeout(finish, 400);
+}
+// 가로 끌기(세로는 페이지 스크롤에 맡김: touch-action pan-y)
+const drag = { id: null, x: 0, y: 0, t: 0, on: false, dx: 0, suppressClick: false };
+function bindMapDrag() {
+  const map = $('twMap');
+  map.addEventListener('pointerdown', (e) => {
+    if (moving || e.button > 0 || e.target.closest('.tw-arrow, .tw-minimap')) return;
+    Object.assign(drag, { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), on: false, dx: 0 });
+  });
+  map.addEventListener('pointermove', (e) => {
+    if (drag.id !== e.pointerId) return;
+    const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
+    const cur = state.district;
+    const sides = { hasLeft: !!neighbor(state.world, cur, 'left'), hasRight: !!neighbor(state.world, cur, 'right') };
+    if (!sides.hasLeft && !sides.hasRight) return;
+    if (!drag.on) { if (!swipeStarts(dx, dy)) { if (Math.abs(dy) > 12) drag.id = null; return; } drag.on = true; try { map.setPointerCapture(e.pointerId); } catch (_) {} }
+    drag.dx = dx;
+    const track = map.querySelector('.tw-track'); if (!track) return;
+    track.style.transition = 'none';
+    track.style.transform = `translate3d(${dragOffset(dx, sides)}px,0,0)`;
+  });
+  const end = (e) => {
+    if (drag.id !== e.pointerId) return;
+    const was = drag.on; drag.id = null; drag.on = false; if (!was) return;
+    drag.suppressClick = true; setTimeout(() => { drag.suppressClick = false; }, 60);
+    const cur = state.district;
+    const sides = { hasLeft: !!neighbor(state.world, cur, 'left'), hasRight: !!neighbor(state.world, cur, 'right') };
+    const dir = swipeResult({ dx: drag.dx, ms: performance.now() - drag.t, width: map.clientWidth, ...sides });
+    const track = map.querySelector('.tw-track');
+    if (dir) {
+      const nb = neighbor(state.world, cur, dir); moving = true;
+      const done = () => { moving = false; state.district = nb.id; syncDistrictUrl(); renderMap(); };
+      if (reduced || !track) { done(); return; }
+      track.style.transition = 'transform 220ms ease-out'; track.style.transform = `translate3d(${dir === 'right' ? -100 : 100}%,0,0)`;
+      let fired = false; const finish = () => { if (!fired) { fired = true; done(); } };
+      track.addEventListener('transitionend', finish, { once: true }); setTimeout(finish, 320);
+    } else if (track) { track.style.transition = reduced ? 'none' : 'transform 200ms ease-out'; track.style.transform = 'translate3d(0,0,0)'; }
+  };
+  map.addEventListener('pointerup', end); map.addEventListener('pointercancel', end);
+  map.addEventListener('keydown', (e) => {
+    const dir = e.key === 'ArrowLeft' ? 'left' : e.key === 'ArrowRight' ? 'right' : '';
+    const nb = dir && neighbor(state.world, state.district, dir);
+    if (nb) { e.preventDefault(); goDistrict(nb.id, dir); }
+  });
+}
+bindMapDrag();
 // 공개 전 장소(status soon)는 넣지 않는다. 지금 목록은 모두 열린 장소.
 function visiblePlaces() { return (state.world?.places || []).filter((p) => p.status !== 'soon'); }
 
@@ -183,6 +277,7 @@ function placeById(id) { return visiblePlaces().find((p) => p.id === id) || null
 function openPlace(id, { fromHash = false } = {}) {
   const place = placeById(id); if (!place) return;
   if (place.kind === 'link') { location.href = place.href; return; }
+  if (place.district && place.district !== state.district && districtById(state.world, place.district)) { state.district = place.district; syncDistrictUrl(); renderMap(); }
   if (!fromHash && location.hash !== `#${id}`) { history.pushState({ twPlace: id }, '', `#${id}`); }
   void showPanel(place);
 }
@@ -252,7 +347,9 @@ async function loadStatic() {
   try {
     const [w, c] = await Promise.all([fetch('catalog/tamagotchi-world.json', { cache: 'no-cache' }), fetch('catalog/tamagotchi.json', { cache: 'no-cache' })]);
     if (!w.ok || !c.ok) throw new Error('catalog');
-    state.world = await w.json();
+    state.world = normalizeWorld(await w.json());
+    const d = new URLSearchParams(location.search).get('d');
+    state.district = districtById(state.world, d) ? d : state.world.home;
     state.publicSpecies = (await c.json()).species || [];
   } catch (_) { state.error = '마을을 불러오지 못했어요.'; }
 }
