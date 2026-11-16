@@ -64,6 +64,12 @@ async function snapshotPet(svg) {
   if (!svg) return null;
   const clone = svg.cloneNode(true);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  // 색·표시 여부는 페이지 CSS(변수·클래스)에서 오므로, 계산된 값을 복제본에 직접 적는다(그림 파일에는 페이지 CSS가 없다).
+  const live = [svg, ...svg.querySelectorAll('*')]; const copy = [clone, ...clone.querySelectorAll('*')];
+  for (let i = 0; i < live.length; i += 1) {
+    const cs = getComputedStyle(live[i]); const st = copy[i].style;
+    for (const k of ['fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity', 'display', 'visibility', 'stroke-linecap', 'stroke-linejoin']) st.setProperty(k, cs.getPropertyValue(k));
+  }
   for (const im of clone.querySelectorAll('image')) {
     const href = im.getAttribute('href') || im.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
     const data = await inlineHref(href); if (data) im.setAttribute('href', data); else im.remove();
@@ -81,7 +87,8 @@ function drawCover(g, im, x, y, w, h) {
 }
 function dateText(t) { const d = new Date(t); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`; }
 function fileStamp(t) { const d = new Date(t); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; }
-const canvasBlob = (c) => new Promise((resolve) => c.toBlob((b) => resolve(b), 'image/png'));
+// 앞면(사진)은 JPEG로 줄여 앨범 용량을 아끼고, 뒷면(단색·사인)은 PNG가 더 작다.
+const canvasBlob = (c, type = 'image/png') => new Promise((resolve) => c.toBlob((b) => resolve(b), type, 0.92));
 function download(blob, name) {
   const url = URL.createObjectURL(blob); const a = document.createElement('a');
   a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
@@ -118,7 +125,7 @@ async function composeFront({ frame, bg, shots, stickers, showName, streamerName
   return c;
 }
 // 뒷면: 종이 바탕 + 사인 칸 + 사인 선
-function drawBack(c, { frame, at, strokes }) {
+function drawBack(c, { frame, at, strokes, art }) {
   const g = c.getContext('2d');
   g.fillStyle = '#fffaf2'; g.fillRect(0, 0, W, H);
   g.strokeStyle = frame.color || '#ffd9e4'; g.lineWidth = 40; g.strokeRect(20, 20, W - 40, H - 40);
@@ -126,6 +133,7 @@ function drawBack(c, { frame, at, strokes }) {
   g.font = '900 80px "Pretendard", "Apple SD Gothic Neo", sans-serif'; g.fillText('MONGLE FILM', W / 2, 360);
   g.font = '700 40px "Pretendard", "Apple SD Gothic Neo", sans-serif'; g.fillText('📸 몽글필름 · 다마고치 마을', W / 2, 470);
   g.font = '600 34px "Pretendard", "Apple SD Gothic Neo", sans-serif'; g.fillText(dateText(at), W / 2, 545);
+  if (art) { const s = 340; g.drawImage(art, (W - s) / 2, 600, s, s); }
   const [sx, sy, sw, sh] = SIGN_AREA;
   g.setLineDash([18, 14]); g.lineWidth = 4; g.strokeStyle = 'rgba(122,90,63,.45)'; roundRect(g, sx, sy, sw, sh, 30); g.stroke(); g.setLineDash([]);
   g.font = '600 30px "Pretendard", "Apple SD Gothic Neo", sans-serif'; g.fillStyle = 'rgba(122,90,63,.55)'; g.fillText('SIGN', W / 2, sy + sh + 50);
@@ -158,6 +166,7 @@ export function mountPhotoPanel(host, ctx) {
   const currentPet = () => st.pets.find((p) => p.petId === st.petId) || null;
   const bg = () => st.catalog?.backgrounds.find((b) => b.id === st.bgId) || st.catalog?.backgrounds[0] || {};
   const frame = () => st.catalog?.frames.find((f) => f.id === st.frameId) || st.catalog?.frames[0] || {};
+  let backArt = null; void loadImage(new URL('./assets/tamagotchi/world/bld-photo.webp', import.meta.url).href).then((i) => { backArt = i; });
   const objUrl = (blob) => { const u = URL.createObjectURL(blob); urls.add(u); return u; };
 
   function renderTabs() {
@@ -344,7 +353,7 @@ export function mountPhotoPanel(host, ctx) {
     const at = Date.now();
     status.textContent = '사진을 인화하는 중…';
     const front = await composeFront({ frame: frame(), bg: bg(), shots: st.shots, stickers: st.stickers, showName: st.showName, streamerName: st.streamerName, petName: currentPet()?.nickname || '', at });
-    const frontBlob = await canvasBlob(front);
+    const frontBlob = await canvasBlob(front, 'image/jpeg');
     const rec = { id: `${at}-${Math.random().toString(36).slice(2, 8)}`, createdAt: at, front: frontBlob, back: null, strokes: [], frameId: frame().id, petName: currentPet()?.nickname || '', streamerName: st.showName ? st.streamerName : '' };
     st.result = rec; st.strokes = []; st.flipped = false; st.signMode = false; st.step = 'result';
     status.textContent = '';
@@ -354,7 +363,7 @@ export function mountPhotoPanel(host, ctx) {
   async function saveRecord(rec, first) {
     try {
       if (first && (await albumCount()) >= ALBUM_MAX) { status.textContent = `앨범이 가득 찼어요(${ALBUM_MAX}장). 앨범에서 지운 뒤 다시 저장해 주세요.`; rec.unsaved = true; return; }
-      const back = document.createElement('canvas'); back.width = W; back.height = H; drawBack(back, { frame: frameOf(rec), at: rec.createdAt, strokes: rec.strokes || [] });
+      const back = document.createElement('canvas'); back.width = W; back.height = H; drawBack(back, { frame: frameOf(rec), at: rec.createdAt, strokes: rec.strokes || [], art: backArt });
       rec.back = await canvasBlob(back);
       await albumPut({ id: rec.id, createdAt: rec.createdAt, front: rec.front, back: rec.back, strokes: rec.strokes || [], frameId: rec.frameId, petName: rec.petName, streamerName: rec.streamerName });
       rec.unsaved = false;
@@ -378,7 +387,7 @@ export function mountPhotoPanel(host, ctx) {
     const backWrap = el('div', 'tw-photo-face is-back');
     const back = document.createElement('canvas'); back.width = W; back.height = H; back.className = 'tw-photo-back-canvas'; back.setAttribute('aria-label', '사진 뒷면(사인 칸)');
     backWrap.append(back); card.append(front, backWrap); stage.append(card);
-    const redrawBack = () => drawBack(back, { frame: frameOf(rec), at: rec.createdAt, strokes: st.strokes });
+    const redrawBack = () => drawBack(back, { frame: frameOf(rec), at: rec.createdAt, strokes: st.strokes, art: backArt });
     redrawBack();
     let angle = st.flipped ? 180 : 0;
     const setAngle = (a, animate) => { card.style.transition = animate && !ctx.reduced ? 'transform 380ms ease-out' : 'none'; card.style.transform = `rotateY(${a}deg)`; };
@@ -418,7 +427,7 @@ export function mountPhotoPanel(host, ctx) {
       e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ }
       stroke = { color: PENS[st.pen][0], width: WIDTHS[st.width][0], pts: [p] }; st.strokes.push(stroke); redrawBack();
     }
-    function moveStroke(e) { const p = toCanvasFixed(e); const last = stroke.pts[stroke.pts.length - 1]; if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 3) return; stroke.pts.push(p); if (stroke.pts.length > 2000) return; redrawBack(); }
+    function moveStroke(e) { const p = toCanvasFixed(e); const last = stroke.pts[stroke.pts.length - 1]; if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 3 || stroke.pts.length >= 2000) return; stroke.pts.push(p); redrawBack(); }
     function endStroke() { stroke = null; markDirty(); }
     let dirty = false; const markDirty = () => { dirty = true; saveBtn.disabled = false; };
 
@@ -439,7 +448,7 @@ export function mountPhotoPanel(host, ctx) {
     const edit = el('div', 'tw-photo-edit-row'); edit.append(undo, clear, saveBtn);
     signTools.append(pens, edit);
     const dl = el('div', 'tw-photo-dl');
-    const name = (side_) => `mongle-film-${fileStamp(rec.createdAt)}-${side_}.png`;
+    const name = (side_) => `mongle-film-${fileStamp(rec.createdAt)}-${side_}.${side_ === 'front' ? 'jpg' : 'png'}`;
     const dFront = el('button', 'tg-button', '⬇ 앞면'); dFront.type = 'button'; dFront.addEventListener('click', () => download(rec.front, name('front')));
     const dBack = el('button', 'tg-button', '⬇ 뒷면'); dBack.type = 'button'; dBack.addEventListener('click', async () => download(await canvasBlob(back), name('back')));
     const dBoth = el('button', 'tg-button', '⬇ 둘 다'); dBoth.type = 'button'; dBoth.addEventListener('click', async () => { download(rec.front, name('front')); await sleep(600); download(await canvasBlob(back), name('back')); });

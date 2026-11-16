@@ -273,3 +273,4 @@ svg.tw-ground { display: block; }
 .tw-photo-del { min-height: 32px; padding: 2px 8px; border: 1px solid #c98; border-radius: 999px; background: #fff; color: #a3443a; font-size: 12px; cursor: pointer; }
 .tw-photo-del.is-armed { background: #a3443a; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .tw-photo-count.is-pop, .tw-photo-flash.is-on { animation: none; } }
+.tw-photo [hidden] { display: none !important; }

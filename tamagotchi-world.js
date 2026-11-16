@@ -6,7 +6,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 
-const V = '?v=20261116-tg-dist1';
+const V = '?v=20261116-tg-dist2';
 import { trackPetFailures, normalizeWorld, districtById, neighbor, minimapCells, swipeStarts, swipeResult, dragOffset } from './tamagotchi-logic.mjs?v=20261116-tg-dist1';
 import { installUiSound } from './tamagotchi-ui-sound.js?v=20261113-tg-uisnd1';
 installUiSound();
@@ -140,7 +140,7 @@ function renderMap() {
   if (many) {
     for (const [dir, nb, label] of [['left', left, '◀'], ['right', right, '▶']]) {
       if (!nb) continue;
-      const a = el('button', `tw-arrow is-${dir}`); a.type = 'button'; a.setAttribute('aria-label', `${nb.name || '옆 동네'}로 가기`);
+      const a = el('button', `tw-arrow is-${dir}`); a.type = 'button'; a.setAttribute('aria-label', `${nb.name || '옆 동네'} 쪽으로 가기`);
       a.append(el('span', '', label), el('small', '', nb.name || ''));
       a.addEventListener('click', () => goDistrict(nb.id, dir));
       map.append(a);
