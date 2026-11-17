@@ -138,8 +138,19 @@ async function submitStreamerLogin(data) {
       await updateLoginVisibility(auth.currentUser);
       return;
     }
-    const code = payload.verificationCode ? ` 인증 코드: ${payload.verificationCode}` : '';
-    status.textContent = `인증 신청이 접수되었습니다.${code} SOOP 쪽지 안내를 완료한 뒤 인증 상태 확인을 눌러 주세요.`;
+    // 2026-11-18: 인증 코드 유효 시간이 5분이라, 만료되면 "새 코드 발급"으로 다시 받게 안내한다.
+    const expiresAt = Number(payload.verificationCodeExpiresAt) || 0;
+    const liveCode = payload.verificationCode && expiresAt > Date.now() ? payload.verificationCode : '';
+    if (liveCode) {
+      const minutes = Math.max(1, Math.round((expiresAt - Date.now()) / 60000));
+      status.textContent = `인증 신청이 접수되었습니다. 인증 코드: ${liveCode} (${minutes}분 안에 SOOP 쪽지로 보내 주세요) 보낸 뒤 인증 상태 확인을 눌러 주세요.`;
+    } else if (payload.noteEligible === false) {
+      status.textContent = '인증 신청이 접수되었습니다. 관리자 확인 후 인증 상태 확인을 눌러 주세요.';
+    } else {
+      status.textContent = data.checkOnly
+        ? '아직 인증 확인 전이에요. 코드가 만료됐다면 "새 코드 발급"을 눌러 새 코드를 받아 주세요.'
+        : '인증 신청이 접수되어 있어요. 코드를 잃어버렸거나 만료됐다면 "새 코드 발급"을 눌러 주세요.';
+    }
   } catch (error) {
     console.error('상점 스트리머 인증 처리 실패:', error);
     status.textContent = `인증 처리를 완료하지 못했습니다. ${error.message || error}`;
@@ -169,6 +180,21 @@ $('shopStreamerLoginForm').addEventListener('submit', (event) => {
   void submitStreamerLogin({ nickname, soopId });
 });
 $('shopStreamerCheck').addEventListener('click', () => void submitStreamerLogin({ checkOnly: true }));
+// 새 인증 코드 발급(이전 코드 무효화). 서버는 직전 발급 1분 후부터 새 코드를 준다.
+(() => {
+  const check = $('shopStreamerCheck');
+  if (!check || $('shopStreamerRenew')) return;
+  const renew = document.createElement('button');
+  renew.id = 'shopStreamerRenew';
+  renew.type = 'button';
+  renew.className = check.className;
+  renew.textContent = '새 코드 발급 (이전 코드 무효화)';
+  renew.addEventListener('click', async () => {
+    renew.disabled = true;
+    try { await submitStreamerLogin({ renewCode: true }); } finally { renew.disabled = false; }
+  });
+  check.insertAdjacentElement('afterend', renew);
+})();
 
 if (typeof window.Kakao !== 'undefined' && !window.Kakao.isInitialized()) {
   window.Kakao.init('ed4f01d6903ca41d5dc0ab32b6ae143c');
