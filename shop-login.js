@@ -38,7 +38,7 @@ function showLoginButton(show) {
 function openLoginModal(options = {}) {
   const streamerForm = options && options.streamer === true;
   $('shopLoginChoices').hidden = streamerForm;
-  $('shopStreamerLoginForm').hidden = !streamerForm;
+  $('shopStreamerLoginForm').hidden = !streamerForm; $('shopStreamerLoginForm').classList.remove('svs-pending'); $('shopStreamerNickname').value = ''; $('shopStreamerSoopId').value = ''; // 다시 열면 검색 단계부터
   $('shopStreamerLoginStatus').textContent = '';
   loginModal.showModal();
 }
@@ -151,6 +151,8 @@ async function submitStreamerLogin(data) {
         ? '아직 인증 확인 전이에요. 코드가 만료됐다면 "새 코드 발급"을 눌러 새 코드를 받아 주세요.'
         : '인증 신청이 접수되어 있어요. 코드를 잃어버렸거나 만료됐다면 "새 코드 발급"을 눌러 주세요.';
     }
+    // 신청 접수 단계(코드 안내)로 넘어간다. 검색·신청 버튼은 숨기고 확인·새 코드 버튼만 보인다.
+    $('shopStreamerLoginForm').classList.add('svs-pending');
   } catch (error) {
     console.error('상점 스트리머 인증 처리 실패:', error);
     status.textContent = `인증 처리를 완료하지 못했습니다. ${error.message || error}`;
@@ -164,7 +166,7 @@ $('shopLoginGoogle').addEventListener('click', loginWithGoogle);
 $('shopLoginKakao').addEventListener('click', loginWithKakao);
 $('shopLoginStreamer').addEventListener('click', () => {
   $('shopLoginChoices').hidden = true;
-  $('shopStreamerLoginForm').hidden = false;
+  $('shopStreamerLoginForm').hidden = false; $('shopStreamerLoginForm').classList.remove('svs-pending'); $('shopStreamerNickname').value = ''; $('shopStreamerSoopId').value = ''; // 다시 열면 검색 단계부터
   $('shopStreamerLoginStatus').textContent = '';
 });
 $('shopStreamerLoginBack').addEventListener('click', () => {
@@ -200,3 +202,38 @@ if (typeof window.Kakao !== 'undefined' && !window.Kakao.isInitialized()) {
   window.Kakao.init('ed4f01d6903ca41d5dc0ab32b6ae143c');
 }
 onAuthStateChanged(auth, updateLoginVisibility);
+
+// 스트리머 인증 신청: SOOP 검색을 기본 방식으로(2026-11-18). 기존 입력칸은 "직접 입력하기"로 남긴다.
+// 검색은 팬페이지 서버의 streamerFanPageVerifySearch(로그인 필요, 사용자별 횟수 제한)를 함께 쓴다.
+{
+  const soopVerifySearchFn = httpsCallable(functions, 'streamerFanPageVerifySearch');
+  const attachSoopVerifySearchTo = (nicknameId, soopIdId, steps) => {
+    if (!document.getElementById(nicknameId) || !document.getElementById(soopIdId)) return;
+    window.attachSoopVerifySearch({
+      nicknameInput: nicknameId,
+      soopIdInput: soopIdId,
+      steps,
+      search: async (query) => {
+        await auth.authStateReady();
+        if (!auth.currentUser) await signInAnonymously(auth);
+        const result = await soopVerifySearchFn({ query });
+        return (result.data && result.data.streamers) || [];
+      },
+    });
+  };
+  const attachAll = () => {
+  attachSoopVerifySearchTo('shopStreamerNickname', 'shopStreamerSoopId', {
+      root: 'shopStreamerLoginForm',
+      isPending: () => document.getElementById('shopStreamerLoginForm').classList.contains('svs-pending'),
+      afterSelect: [document.querySelector('#shopStreamerLoginForm button[type=submit]')],
+      pendingOnly: ['shopStreamerCheck', 'shopStreamerRenew'],
+    });
+  };
+  if (window.attachSoopVerifySearch) attachAll();
+  else {
+    const script = document.createElement('script');
+    script.src = new URL('./soop-verify-search.js?v=20261118-svs1', import.meta.url).href;
+    script.onload = attachAll;
+    document.head.appendChild(script);
+  }
+}
