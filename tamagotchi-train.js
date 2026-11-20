@@ -8,7 +8,7 @@ import {
   resolveTrainState, trainTotal, learnableIds, trainSignature, getTrainRequestId, clearRequestId,
   shouldDiscardRequestId, trainErrorMessage, renameErrorMessage, farmUrl, COLOR_LABELS,
 } from './tamagotchi-logic.mjs?v=20261115-tg-rename1';
-import { petEmptyCard } from './tamagotchi-empty.js?v=20261116-tg-empty1';
+import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const REQUEST_KEY = 'tamagotchiTrainRequest';
 const RENAME_PARAM_RE = /^p_[0-9a-f]{20}$/;
@@ -163,7 +163,7 @@ export function mountTrainPanel(host, ctx) {
     if (st.loading) box.push(el('div', 'loading-card loading-bar', '다마고치를 불러오는 중…'));
     if (!st.loading && st.error) box.push(el('p', 'tg-status is-error', st.error));
     if (!st.loading && !st.error && st.streamerId && !st.pets.length && (st.flow === 'ready' || st.flow === 'admin')) {
-      box.push(petEmptyCard({ place: '훈련소', streamerName: targetStreamer()?.nickname || '', own: st.flow === 'ready' && !giftId, admin: st.flow === 'admin' }));
+      box.push(petEmptyCard({ place: '훈련소', streamerName: targetStreamer()?.nickname || '', own: st.flow === 'ready' && !giftId, admin: st.flow === 'admin', giftId }));
     }
     who.replaceChildren(...box);
   }

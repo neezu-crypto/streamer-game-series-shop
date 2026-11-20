@@ -4,7 +4,7 @@
 // - 움직임은 경과 시간 기준(setTimeout·CSS 전환), 동작 줄이기면 카운트다운 숫자 애니메이션·뒤집기 전환 없음.
 import { resolveGemShopTarget, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-dist1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
-import { petEmptyCard } from './tamagotchi-empty.js?v=20261116-tg-empty1';
+import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
 const ADMIN_TARGET_KEY = 'twPhotoAdminTarget';

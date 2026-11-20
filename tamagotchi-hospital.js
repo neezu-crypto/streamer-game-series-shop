@@ -4,7 +4,7 @@
 // - 남은 입원 시간은 서버 시각 기준으로 화면에서 계산한다(주기 조회 없음). 탭이 숨으면 타이머를 멈춘다.
 import { resolveGemShopTarget, hospitalView, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-hosp4';
 import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
-import { petEmptyCard } from './tamagotchi-empty.js?v=20261116-tg-empty1';
+import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
 const ADMIN_TARGET_KEY = 'twHospitalAdminTarget';

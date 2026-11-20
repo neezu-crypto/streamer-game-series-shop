@@ -3,7 +3,7 @@
 // - 사기·입히기 권한은 서버(Care status의 shop.manage)가 판정한다. 화면은 그 값만 따른다.
 import { resolveGemShopTarget } from './tamagotchi-logic.mjs?v=20261114-tg-wear1';
 import { mountGemShop } from './tamagotchi-gem-shop-ui.js?v=20261114-tg-wear1';
-import { petEmptyCard } from './tamagotchi-empty.js?v=20261116-tg-empty1';
+import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;
 const ADMIN_TARGET_KEY = 'twGemShopAdminTarget';
