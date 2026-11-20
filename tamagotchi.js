@@ -373,7 +373,7 @@ function renderInfo(server, pub) {
   }
 
   const cta = el('div', 'tg-cta');
-  const adopt = el('button', 'tg-button tg-button-primary tg-cta-button', `${pub.name} 맞이하기 · 분양비 ${cashText(server.adoptCash)}`); adopt.type = 'button';
+  const adopt = el('button', 'tg-button tg-button-primary tg-cta-button', GIFT_TARGET_ID ? `🎁 ${pub.name} 선물하기 · ${cashText(server.adoptCash)}` : `${pub.name} 맞이하기 · 분양비 ${cashText(server.adoptCash)}`); adopt.type = 'button';
   adopt.addEventListener('click', () => startAdopt(server.id, { color: state.color, name: '' }));
   cta.append(adopt);
   info.replaceChildren(head, colors, facts, inter, cta);
