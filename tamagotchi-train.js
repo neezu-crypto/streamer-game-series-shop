@@ -63,6 +63,15 @@ export function mountTrainPanel(host, ctx) {
 
   // ---------- 공용 ----------
   const viewer = () => ctx.server?.viewer || {};
+  // 선물 모드: 팬페이지 "🎁 선물"에서 ?gift=<스트리머 아이디>#train 으로 들어오면, 로그인한 팬이 자기 캐시로
+  // 그 스트리머의 다마고치에게 재주를 가르치거나 이름을 지어 준다(선물). 실제 권한·결제는 서버가 다시 확인한다.
+  const giftId = (() => { const id = String(new URLSearchParams(location.search).get('gift') || '').trim().toLowerCase(); return STREAMER_RE.test(id) ? id : ''; })();
+  let giftName = '';
+  const flowNow = () => {
+    if (giftId) return viewer().canGift === true ? 'ready' : 'login';
+    return resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
+  };
+  const targetStreamer = () => (giftId ? { id: giftId, nickname: giftName || giftId } : viewer().streamer);
   const species = (id) => (ctx.server?.species || []).find((s) => s.id === id) || null;
   const pubSpecies = (id) => (ctx.publicSpecies || []).find((s) => s.id === id) || null;
   const currentPet = () => st.pets.find((p) => p.petId === st.petId) || null;
@@ -117,7 +126,7 @@ export function mountTrainPanel(host, ctx) {
   // ---------- 그리기 ----------
   function render() {
     if (st.destroyed) return;
-    st.flow = resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
+    st.flow = flowNow();
     renderWho();
     const pet = currentPet();
     const ready = !!pet && !st.loading && !st.error;
@@ -132,11 +141,11 @@ export function mountTrainPanel(host, ctx) {
     if (st.flow === 'login') {
       const go = el('button', 'tg-button tg-button-primary', '로그인하기'); go.type = 'button';
       go.addEventListener('click', () => ctx.openLogin());
-      box.push(el('p', 'tw-train-lead', '훈련은 다마고치를 분양받은 인증 스트리머가 할 수 있어요. 로그인하면 이어서 진행할게요.'), go);
+      box.push(el('p', 'tw-train-lead', giftId ? '훈련·이름 선물은 로그인한 팬이 할 수 있어요. 로그인하면 이어서 진행할게요.' : '훈련은 다마고치를 분양받은 인증 스트리머가 할 수 있어요. 로그인하면 이어서 진행할게요.'), go);
     } else if (st.flow === 'verify') {
       const go = el('button', 'tg-button tg-button-primary', '스트리머 인증하기'); go.type = 'button';
       go.addEventListener('click', () => ctx.openLogin({ streamer: true }));
-      box.push(el('p', 'tw-train-lead', '훈련은 펫을 분양받은 인증 스트리머만 할 수 있어요. 스트리머 인증을 마치면 이어서 진행할게요.'), go);
+      box.push(el('p', 'tw-train-lead', '훈련은 펫을 분양받은 인증 스트리머가 할 수 있어요. 스트리머 인증을 마치면 이어서 진행할게요. 팬이라면 응원하는 스트리머 팬페이지의 "🎁 스트리머에게 선물"에서 훈련을 선물할 수 있어요.'), go);
     } else if (st.flow === 'admin') {
       const form = el('form', 'tw-train-admin-target');
       const input = el('input', 'tg-input'); input.type = 'text'; input.maxLength = 20; input.placeholder = '팬페이지 ID(SOOP 아이디)'; input.autocomplete = 'off'; input.spellcheck = false;
@@ -146,13 +155,15 @@ export function mountTrainPanel(host, ctx) {
       form.addEventListener('submit', (e) => { e.preventDefault(); const id = input.value.trim().toLowerCase(); if (!STREAMER_RE.test(id)) { setStatus('팬페이지 ID를 확인해 주세요.', true); return; } try { sessionStorage.setItem(ADMIN_TARGET_KEY, id); } catch (_) { /* 무시 */ } void loadPets(id); });
       box.push(form);
     } else {
-      const s = viewer().streamer;
-      box.push(el('p', 'tw-train-lead', `${s?.nickname || s?.id} 팬페이지의 다마고치에게 새 재주를 가르쳐요. 배운 재주는 팬들도 바로 쓸 수 있어요.`));
+      const s = targetStreamer();
+      box.push(el('p', 'tw-train-lead', giftId
+        ? `🎁 선물 모드 · 내 통합 캐시로 ${s?.nickname || s?.id}님 다마고치에게 새 재주를 가르치거나 이름을 지어 줘요. 선물한 사람은 공개되지 않고, 스트리머에게 선물 알림이 가요.`
+        : `${s?.nickname || s?.id} 팬페이지의 다마고치에게 새 재주를 가르쳐요. 배운 재주는 팬들도 바로 쓸 수 있어요.`));
     }
     if (st.loading) box.push(el('div', 'loading-card loading-bar', '다마고치를 불러오는 중…'));
     if (!st.loading && st.error) box.push(el('p', 'tg-status is-error', st.error));
     if (!st.loading && !st.error && st.streamerId && !st.pets.length && (st.flow === 'ready' || st.flow === 'admin')) {
-      box.push(petEmptyCard({ place: '훈련소', streamerName: viewer().streamer?.nickname || '', own: st.flow === 'ready', admin: st.flow === 'admin' }));
+      box.push(petEmptyCard({ place: '훈련소', streamerName: targetStreamer()?.nickname || '', own: st.flow === 'ready' && !giftId, admin: st.flow === 'admin' }));
     }
     who.replaceChildren(...box);
   }
@@ -171,9 +182,12 @@ export function mountTrainPanel(host, ctx) {
     const show = !!pet && st.flow === 'ready';
     renameRow.hidden = !show; if (!show) { renameRow.replaceChildren(); return; }
     const cash = Number(pet.nextRenameCash) || 0;
-    const btn = el('button', 'tg-button', '✏️ 이름 바꾸기'); btn.type = 'button'; btn.disabled = st.busy;
+    const giftLocked = !!giftId && !cash; // 첫 무료 이름 바꾸기는 스트리머 몫
+    const btn = el('button', 'tg-button', giftId ? '🎁 이름 지어 주기' : '✏️ 이름 바꾸기'); btn.type = 'button'; btn.disabled = st.busy || giftLocked;
+    btn.title = giftLocked ? '첫 이름 바꾸기(무료)는 스트리머가 직접 할 수 있게 남겨 두었어요' : '';
     btn.addEventListener('click', () => startRename(pet));
-    renameRow.replaceChildren(el('span', 'tw-train-caption', `이름 · ${pet.nickname || '이름 없음'}`), btn, el('small', 'tw-rename-price', cash ? cashText(cash) : '첫 1회 무료'));
+    renameRow.replaceChildren(el('span', 'tw-train-caption', `이름 · ${pet.nickname || '이름 없음'}`), btn,
+      el('small', 'tw-rename-price', giftLocked ? '첫 무료 1회는 스트리머 몫이에요' : cash ? cashText(cash) : '첫 1회 무료'));
   }
 
   function startRename(pet) {
@@ -184,8 +198,8 @@ export function mountTrainPanel(host, ctx) {
     const input = el('input', 'tg-input'); input.type = 'text'; input.maxLength = 40; input.value = pet.nickname || ''; input.autocomplete = 'off'; input.setAttribute('aria-label', '새 이름');
     const count = el('small', 'tw-rename-count');
     const st2 = el('p', 'tg-status'); st2.setAttribute('role', 'status'); st2.setAttribute('aria-live', 'polite');
-    const nodes = [el('p', 'eyebrow section-eyebrow', 'RENAME'), el('h2', 'tg-dialog-title', `${pet.nickname || '다마고치'} 이름 바꾸기`),
-      el('p', 'tg-dialog-text', `새 이름은 ${NAME_MAX}자까지 쓸 수 있어요. 팬페이지와 방송 화면에 바로 보여요.`), input, count];
+    const nodes = [el('p', 'eyebrow section-eyebrow', 'RENAME'), el('h2', 'tg-dialog-title', giftId ? `${pet.nickname || '다마고치'}에게 새 이름 선물하기` : `${pet.nickname || '다마고치'} 이름 바꾸기`),
+      el('p', 'tg-dialog-text', `새 이름은 ${NAME_MAX}자까지 쓸 수 있어요. 팬페이지와 방송 화면에 바로 보여요.${giftId ? ' 내 통합 캐시로 결제하고, 스트리머에게 선물 알림이 가요.' : ''}`), input, count];
     let agree = null;
     if (cash) {
       const sum = el('p', 'tg-summary'); sum.append('이름 변경 ', el('strong', '', cashText(cash)), ` · 결제 후 ${cashText(balance - cash)}`);
@@ -283,7 +297,7 @@ export function mountTrainPanel(host, ctx) {
     const line = el('p', 'tw-train-total');
     line.append(`선택 ${picked.length}개 · 합계 `, el('strong', '', cashText(total)));
     if (st.flow === 'ready') line.append(` · 내 캐시 ${cashText(balance)}`);
-    const buy = el('button', 'tg-button tg-button-primary', st.flow === 'admin' ? '결제 훈련은 인증 스트리머만 할 수 있어요' : '훈련하기'); buy.type = 'button';
+    const buy = el('button', 'tg-button tg-button-primary', st.flow === 'admin' ? '결제 훈련은 인증 스트리머만 할 수 있어요' : giftId ? '🎁 훈련 선물하기' : '훈련하기'); buy.type = 'button';
     buy.disabled = st.busy || !picked.length || st.flow !== 'ready';
     buy.addEventListener('click', () => startTrain(pet, picked, total));
     const nodes = [line, buy];
@@ -321,7 +335,7 @@ export function mountTrainPanel(host, ctx) {
     const agreeLabel = el('label', 'tg-agree'); const agree = el('input'); agree.type = 'checkbox';
     agreeLabel.append(agree, el('span', '', '훈련은 취소할 수 없고 훈련비는 환불되지 않는다는 안내를 확인했어요'));
     const st2 = el('p', 'tg-status'); st2.setAttribute('role', 'status'); st2.setAttribute('aria-live', 'polite');
-    const pay = el('button', 'tg-button tg-button-primary', `${cashText(total)} 결제하고 훈련하기`); pay.type = 'button'; pay.disabled = true;
+    const pay = el('button', 'tg-button tg-button-primary', giftId ? `내 캐시 ${cashText(total)}로 훈련 선물하기` : `${cashText(total)} 결제하고 훈련하기`); pay.type = 'button'; pay.disabled = true;
     agree.addEventListener('change', () => { pay.disabled = st.busy || !agree.checked; });
     pay.addEventListener('click', async () => {
       if (st.busy || !agree.checked) return;
@@ -431,6 +445,7 @@ export function mountTrainPanel(host, ctx) {
     try {
       const data = (await shopCall({ action: 'pets', streamerId })).data || {};
       setSkew(data.serverNow);
+      if (giftId && data.streamer && data.streamer.id === giftId) giftName = String(data.streamer.nickname || '');
       st.pets = Array.isArray(data.pets) ? data.pets : [];
       if (!keepPet || !st.pets.some((p) => p.petId === st.petId)) st.petId = st.pets.some((p) => p.petId === st.wantPet) ? st.wantPet : st.pets[0]?.petId || '';
     } catch (error) {
@@ -452,8 +467,8 @@ export function mountTrainPanel(host, ctx) {
     startRename(pet);
   }
   function start() {
-    const flow = resolveTrainState({ isAnonymous: ctx.user?.isAnonymous !== false, viewer: viewer() });
-    if (flow === 'ready') { const id = viewer().streamer.id; if (id !== st.streamerId || !st.pets.length) void loadPets(id); else render(); return; }
+    const flow = flowNow();
+    if (flow === 'ready') { const id = targetStreamer().id; if (id !== st.streamerId || !st.pets.length) void loadPets(id); else render(); return; }
     if (flow === 'admin') {
       // 팬페이지·병원·보석 상점에서 ?s=스트리머(&p=펫)로 들어오면 그 팬페이지를 바로 불러온다.
       const q = new URLSearchParams(location.search); const sid = String(q.get('s') || '').trim().toLowerCase();

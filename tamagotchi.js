@@ -33,7 +33,11 @@ const $ = (id) => document.getElementById(id);
 const INTENT_KEY = 'tamagotchiAdoptIntent';
 const REQUEST_KEY = 'tamagotchiAdoptRequest';
 
-const state = { user: null, publicSpecies: [], server: null, error: '', loading: true, busy: false, speciesId: '', color: '' };
+const state = { user: null, publicSpecies: [], server: null, error: '', loading: true, busy: false, speciesId: '', color: '', gift: null };
+// 선물 모드: 팬페이지의 "다마고치 선물" 버튼이 ?gift=<스트리머 아이디>로 연다. 로그인한 팬이 자기 통합 캐시로 대신 분양한다.
+const GIFT_TARGET_ID = (() => {
+  try { const id = String(new URLSearchParams(location.search).get('gift') || '').trim().toLowerCase(); return /^[a-z0-9_-]{1,64}$/.test(id) ? id : ''; } catch (_) { return ''; }
+})();
 const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let petApi = null; let petSpeciesId = ''; let toolCtl = null;
 let toastTimer;
@@ -62,7 +66,7 @@ function clearIntent() { try { sessionStorage.removeItem(INTENT_KEY); } catch (_
 // ---------- 화면: 목록 ----------
 function renderBalance() {
   const wrap = $('tgBalance');
-  const loggedIn = !!state.user && (!state.user.isAnonymous || state.server?.viewer?.isVerifiedStreamer === true);
+  const loggedIn = !!state.user && (!state.user.isAnonymous || state.server?.viewer?.isVerifiedStreamer === true || state.server?.viewer?.canGift === true);
   const show = !!state.server && state.server.stage !== 'preparing' && loggedIn;
   wrap.hidden = !show;
   if (show) $('tgBalanceValue').textContent = cashText(state.server.balanceCash);
@@ -377,6 +381,11 @@ function renderInfo(server, pub) {
 
 // ---------- 구매 흐름 ----------
 function currentState(server) {
+  if (GIFT_TARGET_ID) {
+    if (!state.server?.viewer?.canGift) return 'login';
+    if (!state.gift) return 'gift-missing';
+    return (Number(state.server?.balanceCash) || 0) >= server.adoptCash ? 'ready' : 'charge';
+  }
   return resolvePurchaseState({
     isAnonymous: state.user ? state.user.isAnonymous : true,
     viewer: state.server?.viewer || null,
@@ -395,15 +404,19 @@ function startAdopt(speciesId, selection) {
   const server = serverSpecies(speciesId);
   if (!server) return;
   const flow = currentState(server);
+  if (flow === 'gift-missing') {
+    openDialog([...heading('선물할 팬페이지를 찾지 못했어요', '인증된 스트리머 팬페이지에서 "다마고치 선물" 버튼으로 다시 들어와 주세요.')]);
+    return;
+  }
   if (flow === 'login') {
     saveIntent({ speciesId, ...selection });
-    openDialog([...heading('로그인이 필요해요', '분양은 인증 스트리머만 할 수 있어요. 로그인한 뒤 이어서 진행할게요.'),
+    openDialog([...heading('로그인이 필요해요', GIFT_TARGET_ID ? '다마고치 선물은 로그인한 팬만 할 수 있어요. 로그인한 뒤 이어서 진행할게요.' : '분양은 인증 스트리머만 할 수 있어요. 로그인한 뒤 이어서 진행할게요.'),
       actionButton('로그인하기', () => { $('tgDialog').close(); window.openShopLoginModal?.(); })]);
     return;
   }
   if (flow === 'verify') {
     saveIntent({ speciesId, ...selection });
-    openDialog([...heading('스트리머 인증 후 맞이할 수 있어요', '새 가족은 인증 스트리머의 팬페이지에서 팬들과 함께 지내요. 스트리머 인증을 마치면 이어서 진행할게요.'),
+    openDialog([...heading('스트리머 인증 후 맞이할 수 있어요', '새 가족은 인증 스트리머의 팬페이지에서 팬들과 함께 지내요. 스트리머 인증을 마치면 이어서 진행할게요. 팬이라면 응원하는 스트리머 팬페이지의 "🎁 스트리머에게 선물" 버튼으로 다마고치를 선물할 수 있어요.'),
       actionButton('스트리머 인증하기', () => { $('tgDialog').close(); window.openShopLoginModal?.({ streamer: true }); })]);
     return;
   }
@@ -430,7 +443,8 @@ function actionButton(label, onClick) {
 
 function openConfirm(server, selection) {
   const pub = publicSpecies(server.id);
-  const streamer = state.server.viewer.streamer;
+  const gift = !!(GIFT_TARGET_ID && state.gift);
+  const streamer = gift ? state.gift : state.server.viewer.streamer;
   let colorId = pub.colors.some((c) => c.id === selection.color) ? selection.color : pub.colors[0].id;
   const picked = () => pub.colors.find((c) => c.id === colorId);
 
@@ -449,12 +463,12 @@ function openConfirm(server, selection) {
   nameInput.value = selection.name || '';
   const nameError = el('p', 'tg-field-error'); nameError.setAttribute('role', 'alert');
   const summary = el('p', 'tg-summary');
-  summary.append('분양비 ', el('strong', '', cashText(server.adoptCash)), ` · ${streamer.nickname || streamer.id} 팬페이지에서 함께 지내요`);
+  summary.append(gift ? '선물 · 내 통합 캐시 ' : '분양비 ', el('strong', '', cashText(server.adoptCash)), ` · ${streamer.nickname || streamer.id} 팬페이지에서 함께 지내요`);
   const notice = el('p', 'tg-notice', '분양은 한 번 맞이하면 되돌릴 수 없어서 분양비는 환불되지 않아요. 결제 오류나 이중 차감은 자동으로 환불돼요. 훈련소에서 새로운 상호작용을 더 배울 수 있어요(유료).');
   const agreeLabel = el('label', 'tg-agree'); const agree = el('input'); agree.type = 'checkbox';
   agreeLabel.append(agree, el('span', '', '분양비는 환불되지 않는다는 안내를 확인했어요'));
   const status = el('p', 'tg-status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-  const pay = el('button', 'tg-button tg-button-primary', `${pub.name} 맞이하기 · ${cashText(server.adoptCash)}`); pay.type = 'button'; pay.disabled = true;
+  const pay = el('button', 'tg-button tg-button-primary', gift ? `내 캐시 ${cashText(server.adoptCash)}로 ${pub.name} 선물하기` : `${pub.name} 맞이하기 · ${cashText(server.adoptCash)}`); pay.type = 'button'; pay.disabled = true;
 
   function sync() {
     img.src = picked().image; img.alt = `${pub.name} ${picked().label}`;
@@ -481,7 +495,7 @@ function openConfirm(server, selection) {
       state.server.balanceCash = Number(result.remainingCash) || 0;
       state.busy = false; $('tgDialogClose').disabled = false;
       renderBalance();
-      showSuccess(pub, picked(), name.value, streamer, state.server.balanceCash);
+      showSuccess(pub, picked(), name.value, streamer, state.server.balanceCash, gift);
     } catch (error) {
       if (shouldDiscardRequestId(error)) clearRequestId(sessionStorage, REQUEST_KEY);
       state.busy = false; $('tgDialogClose').disabled = false;
@@ -493,19 +507,21 @@ function openConfirm(server, selection) {
   });
 
   openDialog([
-    ...heading(`${pub.name} 맞이하기`, '색을 고르고 이름을 지어 주세요. 팬들과 함께 오래 부를 이름이에요.'),
+    ...heading(gift ? `${pub.name} 선물하기` : `${pub.name} 맞이하기`, gift
+      ? `${streamer.nickname || streamer.id}님에게 보낼 색과 이름을 골라 주세요. 스트리머는 이름을 한 번 무료로 바꿀 수 있어요. 선물한 사람은 공개되지 않아요.`
+      : '색을 고르고 이름을 지어 주세요. 팬들과 함께 오래 부를 이름이에요.'),
     preview, colorRow, nameLabel, nameInput, nameError, summary, notice, agreeLabel, status, pay,
   ]);
   sync();
 }
 
-function showSuccess(pub, color, name, streamer, remaining) {
+function showSuccess(pub, color, name, streamer, remaining, gift = false) {
   const art = el('div', 'tg-confirm-art'); const img = document.createElement('img');
   img.src = color.image; img.alt = `${pub.name} ${color.label}`; img.width = 200; img.height = 176; art.append(img);
-  const go = el('a', 'tg-button tg-button-primary', '내 팬페이지로 가기'); go.href = farmUrl(streamer.id);
+  const go = el('a', 'tg-button tg-button-primary', gift ? `${streamer.nickname || streamer.id} 팬페이지로 가기` : '내 팬페이지로 가기'); go.href = farmUrl(streamer.id);
   const back = el('button', 'tg-button', '분양소로 돌아가기'); back.type = 'button'; back.addEventListener('click', () => $('tgDialog').close());
   openDialog([
-    el('p', 'eyebrow section-eyebrow', 'DONE'), el('h2', 'tg-dialog-title', '새 가족이 생겼어요!'),
+    el('p', 'eyebrow section-eyebrow', 'DONE'), el('h2', 'tg-dialog-title', gift ? '다마고치를 선물했어요!' : '새 가족이 생겼어요!'),
     art, el('p', 'tg-dialog-text', `이름 ${name} · 색 ${COLOR_LABELS[color.id] || color.label}. 이제 팬페이지에서 만날 수 있어요. 남은 통합 캐시 ${cashText(remaining)}`),
     el('p', 'tg-notice', '이름은 나중에 팬페이지 다마고치 탭의 "✏️ 이름 바꾸기"에서 한 번 무료로 바꿀 수 있어요.'),
     el('div', 'tg-dialog-actions', ''),
@@ -603,6 +619,13 @@ async function reload({ silent = false } = {}) {
   if (!silent) { state.loading = true; state.error = ''; renderList(); }
   try {
     state.server = (await shopCall({ action: 'catalog' })).data || null;
+    if (GIFT_TARGET_ID && !state.gift) {
+      try {
+        const pets = (await shopCall({ action: 'pets', streamerId: GIFT_TARGET_ID })).data || {};
+        if (pets.streamer && pets.streamer.id) state.gift = { id: pets.streamer.id, nickname: pets.streamer.nickname || pets.streamer.id };
+      } catch (_) { state.gift = null; }
+      renderGiftBanner();
+    }
     state.error = '';
   } catch (error) {
     if (!silent) state.error = error?.code === 'functions/unavailable' ? '서비스 점검 중이에요. 잠시 후 다시 열어 주세요.' : '분양소를 불러오지 못했어요.';
@@ -610,6 +633,18 @@ async function reload({ silent = false } = {}) {
   state.loading = false;
   renderBalance(); renderList(); setupAdmin();
   if (!silent) resumeIntent();
+}
+
+function renderGiftBanner() {
+  let banner = document.getElementById('tgGiftBanner');
+  if (!GIFT_TARGET_ID) { banner?.remove(); return; }
+  if (!banner) {
+    banner = el('p', 'tg-notice tg-gift-banner'); banner.id = 'tgGiftBanner'; banner.setAttribute('role', 'status');
+    const anchor = document.querySelector('main') || document.body; anchor.prepend(banner);
+  }
+  banner.textContent = state.gift
+    ? `🎁 선물 모드 · ${state.gift.nickname}님 팬페이지에 내 통합 캐시로 다마고치를 분양해 줘요. 선물한 사람은 공개되지 않아요.`
+    : '🎁 선물 모드 · 선물할 팬페이지를 확인하고 있어요.';
 }
 
 function resumeIntent() {
