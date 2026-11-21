@@ -24,6 +24,8 @@ const functions = getFunctions(app, 'us-central1');
 const callable = (name, options) => httpsCallable(functions, name, options);
 const getWalletState = callable('gameSeriesWalletGetAdminState');
 const submitCharge = callable('gameSeriesWalletSubmitCharge');
+const getDepositQr = callable('gameSeriesWalletGetDepositQr');
+let depositQrDataUrl = '';
 const markDonationComplete = callable('gameSeriesWalletMarkDonationComplete', { timeout: 20000 });
 const cancelCharge = callable('gameSeriesWalletCancelCharge');
 const submitRefund = callable('gameSeriesWalletSubmitRefund');
@@ -108,7 +110,7 @@ function createRequestId() {
 }
 
 const STATUS_LABELS = {
-  awaitingDonation: '후원 대기', donationCompleted: '후원 완료 알림 · 관리자 확인 대기', processing: '지급 처리 중', approved: '승인 · 캐시 지급 완료',
+  awaitingDonation: '이체(후원) 대기', donationCompleted: '완료 알림 · 관리자 확인 대기', processing: '지급 처리 중', approved: '승인 · 캐시 지급 완료',
   rejected: '신청 거절', cancelled: '신청 취소', refundRequested: '환불 검수 대기',
   refundProcessing: '환불 처리 중', refundRejecting: '환불 거절 처리 중', refunded: '환불 완료', open: '답변 대기', closed: '처리 완료',
 };
@@ -136,7 +138,7 @@ function renderChargeRequests(items) {
   }
   host.innerHTML = items.map((item) => {
     const action = ['awaitingDonation', 'donationCompleted'].includes(item.status)
-      ? `<button class="wallet-small-action" type="button" data-wallet-cancel="${escapeHtml(item.requestId)}">신청 취소</button>`
+      ? `${item.status === 'awaitingDonation' && item.paymentMethod === 'bankTransfer' ? `<button class="wallet-small-action" type="button" data-wallet-resume="${escapeHtml(item.requestId)}" title="입금 QR을 다시 열고 이체 완료를 알립니다">QR 보기</button>` : ''}<button class="wallet-small-action" type="button" data-wallet-cancel="${escapeHtml(item.requestId)}">신청 취소</button>`
       : item.status === 'approved'
         ? `<button class="wallet-small-action" type="button" data-wallet-refund="${escapeHtml(item.requestId)}" data-wallet-refund-cash="${Number(item.cashAmount) || 0}">환불 신청</button>`
         : '';
@@ -144,17 +146,31 @@ function renderChargeRequests(items) {
     const refundCash = showRefund ? Number(item.refundCashAmount) || (item.status === 'refunded' ? Number(item.cashAmount) || 0 : 0) : 0;
     const refundStars = showRefund ? Number(item.refundStarCount) || refundCash : 0;
     const refundDetail = refundCash > 0
-      ? `<small>SOOP 반환 요청 ${refundStars.toLocaleString('ko-KR')}개 · ${refundCash.toLocaleString('ko-KR')}캐시</small>` : '';
+      ? (item.paymentMethod === 'bankTransfer'
+        ? `<small>환불 요청 ${(refundCash * 100).toLocaleString('ko-KR')}원 · ${refundCash.toLocaleString('ko-KR')}캐시</small>`
+        : `<small>SOOP 반환 요청 ${refundStars.toLocaleString('ko-KR')}개 · ${refundCash.toLocaleString('ko-KR')}캐시</small>`) : '';
     const viewerSupport = item.chargeType !== 'selfCharge';
-    const donationInfo = item.paymentMethod === 'starBalloon'
+    const won = `${Number(item.amountKrw || 0).toLocaleString('ko-KR')}원`;
+    const donationInfo = item.paymentMethod === 'bankTransfer'
+      ? viewerSupport
+        ? `시청자 이체 · SOOP ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')}) · 입금자 ${escapeHtml(item.depositorName || '-')} · ${won}`
+        : `계좌이체 · 입금자 ${escapeHtml(item.depositorName || '-')} · ${won}`
+      : item.paymentMethod === 'starBalloon'
       ? viewerSupport
         ? `시청자 후원 · SOOP ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')}) · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개`
         : `본인 직접 후원 · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개`
       : '전환 전 현금 충전 기록';
     return `<article class="wallet-list-row"><div><strong>${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시</strong><span>${donationInfo} · ${formatDate(item.createdAt)}</span>${refundDetail}${item.reviewNote ? `<small>검수 메모: ${escapeHtml(item.reviewNote)}</small>` : ''}${item.refundAdminNote ? `<small>반환 메모: ${escapeHtml(item.refundAdminNote)}</small>` : ''}</div><div class="wallet-list-trailing"><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b>${action}</div></article>`;
   }).join('');
+  host.querySelectorAll('[data-wallet-resume]').forEach((button) => button.addEventListener('click', () => {
+    openChargeModal();
+    $('walletChargeIntro').hidden = true;
+    $('walletDonationStep').hidden = false;
+    $('walletDonationStep').dataset.requestId = button.dataset.walletResume;
+    void showDepositQr();
+  }));
   host.querySelectorAll('[data-wallet-cancel]').forEach((button) => button.addEventListener('click', async () => {
-    if (!window.confirm('대기 중인 별풍선 충전 신청을 취소할까요? 이미 후원했다면 취소만으로 SOOP 반환이 처리되지는 않습니다.')) return;
+    if (!window.confirm('대기 중인 충전 신청을 취소할까요? 이미 이체했다면 취소만으로 돌려받지 못하니 고객센터에 알려 주세요.')) return;
     try { await cancelCharge({ requestId: button.dataset.walletCancel }); await refreshWallet(); }
     catch (error) { window.alert(`취소 실패: ${error.message || error}`); }
   }));
@@ -183,15 +199,18 @@ function renderChargeReviews(items) {
   const host = $('walletReviewList');
   const pending = items.filter((item) => item.status === 'donationCompleted');
   if (!pending.length) {
-    host.innerHTML = '<div class="wallet-empty">검수 대기 중인 별풍선 충전 신청이 없습니다.</div>';
+    host.innerHTML = '<div class="wallet-empty">검수 대기 중인 충전 신청이 없습니다.</div>';
     return;
   }
   host.innerHTML = pending.map((item) => {
     const viewerSupport = item.chargeType !== 'selfCharge';
+    const isBank = item.paymentMethod === 'bankTransfer';
+    const depositor = isBank ? ` · 입금자 ${escapeHtml(item.depositorName || '-')}` : '';
     const donorDetail = viewerSupport
-      ? `시청자 ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')}) → 인증 스트리머`
-      : '본인 직접 후원 → 신청자 본인';
-    return `<article class="wallet-list-row wallet-review-row"><div><strong>${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시 · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개</strong><span>${donorDetail} · ${formatDate(item.donationCompletedAt || item.updatedAt || item.createdAt)}</span><small>신청 번호: ${escapeHtml(item.requestId)}</small></div><div class="wallet-list-trailing"><b class="wallet-status-pill donationCompleted">후원 완료 알림</b><div class="wallet-review-actions"><button class="wallet-small-action" type="button" data-wallet-review="reject" data-wallet-request-id="${escapeHtml(item.requestId)}">거절</button><button class="wallet-small-action wallet-approve-action" type="button" data-wallet-review="approve" data-wallet-request-id="${escapeHtml(item.requestId)}">승인·캐시 지급</button></div></div></article>`;
+      ? `시청자 ${escapeHtml(item.soopDonorNickname || '-')} (${escapeHtml(item.soopDonorId || '-')})${depositor} → 인증 스트리머`
+      : `${isBank ? '본인 계좌이체' : '본인 직접 후원'}${depositor} → 신청자 본인`;
+    const amountLabel = isBank ? `${Number(item.amountKrw || 0).toLocaleString('ko-KR')}원` : `별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개`;
+    return `<article class="wallet-list-row wallet-review-row"><div><strong>${Number(item.cashAmount || 0).toLocaleString('ko-KR')}캐시 · ${amountLabel}</strong><span>${donorDetail} · ${formatDate(item.donationCompletedAt || item.updatedAt || item.createdAt)}</span><small>신청 번호: ${escapeHtml(item.requestId)}</small></div><div class="wallet-list-trailing"><b class="wallet-status-pill donationCompleted">후원 완료 알림</b><div class="wallet-review-actions"><button class="wallet-small-action" type="button" data-wallet-review="reject" data-wallet-request-id="${escapeHtml(item.requestId)}">거절</button><button class="wallet-small-action wallet-approve-action" type="button" data-wallet-review="approve" data-wallet-request-id="${escapeHtml(item.requestId)}">승인·캐시 지급</button></div></div></article>`;
   }).join('');
   host.querySelectorAll('[data-wallet-review]').forEach((button) => {
     button.disabled = busy;
@@ -201,7 +220,7 @@ function renderChargeReviews(items) {
       const isApproval = action === 'approve';
       const confirmation = isApproval
         ? 'SOOP 실제 후원 내역의 후원자 정보와 수량을 대조했나요? 승인하면 해당 신청자에게 캐시가 지급됩니다.'
-        : '이 별풍선 충전 신청을 거절할까요? 후원 완료 알림 상태의 신청만 거절할 수 있습니다.';
+        : '이 충전 신청을 거절할까요? 완료 알림 상태의 신청만 거절할 수 있습니다.';
       if (!window.confirm(confirmation)) return;
       const note = window.prompt(`${isApproval ? '승인' : '거절'} 검수 메모를 입력해 주세요. (선택 입력)`);
       if (note === null) return;
@@ -225,8 +244,8 @@ function renderSupport(items) {
     host.innerHTML = '<div class="wallet-empty">접수된 고객센터 문의가 없습니다.</div>';
     return;
   }
-  const category = { 'donation-check': '별풍선 후원 확인', 'wrong-donor': '후원자 정보·수량 차이', refund: '반환 문의', other: '기타' };
-  host.innerHTML = items.map((item) => `<article class="wallet-list-row"><div><strong>${escapeHtml(category[item.category] || '고객센터 문의')} · ${Number(item.starCount || 0) ? `${Number(item.starCount).toLocaleString('ko-KR')}개` : '수량 미입력'}</strong><span>${formatDate(item.createdAt)}${item.relatedChargeRequestId ? ` · 신청 ${escapeHtml(item.relatedChargeRequestId)}` : ''}</span><p>${escapeHtml(item.message)}</p>${item.adminNote ? `<small>답변: ${escapeHtml(item.adminNote)}</small>` : ''}</div><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b></article>`).join('');
+  const category = { 'donation-check': '입금 확인', 'wrong-donor': '입금자명·금액 차이', refund: '환불 문의', other: '기타' };
+  host.innerHTML = items.map((item) => `<article class="wallet-list-row"><div><strong>${escapeHtml(category[item.category] || '고객센터 문의')} · ${Number(item.starCount || 0) ? `${Number(item.starCount).toLocaleString('ko-KR')}(원·개)` : '금액 미입력'}</strong><span>${formatDate(item.createdAt)}${item.relatedChargeRequestId ? ` · 신청 ${escapeHtml(item.relatedChargeRequestId)}` : ''}</span><p>${escapeHtml(item.message)}</p>${item.adminNote ? `<small>답변: ${escapeHtml(item.adminNote)}</small>` : ''}</div><b class="wallet-status-pill ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</b></article>`).join('');
 }
 
 function renderLedger(items) {
@@ -239,15 +258,17 @@ function renderLedger(items) {
     const kind = String(item.kind || '');
     const chestPurchase = kind === 'treasureChestPurchase';
     const chestCancellation = kind === 'treasureChestCancellation';
-    const positive = kind === 'starBalloonCharge' || chestCancellation;
+    const bankKind = kind === 'bankTransferCharge' || kind === 'bankTransferRefund';
+    const positive = kind === 'starBalloonCharge' || kind === 'bankTransferCharge' || chestCancellation;
     const cashAmount = Number(item.cashAmount || 0);
     const title = chestPurchase
       ? `보물상자 ${Number(item.paidChestCount || 0)}개 구매${Number(item.bonusChestCount || 0) ? ` · 보너스 ${Number(item.bonusChestCount).toLocaleString('ko-KR')}개` : ''}`
       : chestCancellation
         ? `보물상자 ${Number(item.chestCount || 0)}개 취소`
-        : (positive ? '별풍선 충전 승인' : 'SOOP 반환 완료');
+        : bankKind ? (positive ? '계좌이체 충전 승인' : '계좌이체 환불 완료')
+          : (positive ? '별풍선 충전 승인' : 'SOOP 반환 완료');
     const badge = chestPurchase ? '구매' : chestCancellation ? '취소' : (positive ? '지급' : '반환');
-    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${cashAmount.toLocaleString('ko-KR')}캐시</strong><span>${title} · 별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개 · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${badge}</b></article>`;
+    return `<article class="wallet-list-row"><div><strong>${positive ? '+' : '−'}${cashAmount.toLocaleString('ko-KR')}캐시</strong><span>${title} · ${bankKind ? `${Number(item.amountKrw || 0).toLocaleString('ko-KR')}원` : `별풍선 ${Number(item.starCount || 0).toLocaleString('ko-KR')}개`} · ${formatDate(item.createdAt)}</span></div><b class="wallet-status-pill ${positive ? 'approved' : 'refunded'}">${badge}</b></article>`;
   }).join('');
 }
 
@@ -264,6 +285,9 @@ function renderWallet(data) {
     : '';
   $('walletDonorNickname').value = isVerifiedStreamer ? (data.soopDonorNickname || '') : '';
   $('walletDonorId').value = isVerifiedStreamer ? (data.soopDonorId || '') : '';
+  $('walletDepositorName').value = isVerifiedStreamer ? '' : (data.depositorName || '');
+  const remaining = Number(data.todayRemainingKrw);
+  $('walletLimitMessage').textContent = `최소 1,000원 · 100원 단위 · 100원 = 1캐시${Number.isFinite(remaining) ? ` · 오늘 남은 한도 ${remaining.toLocaleString('ko-KR')}원` : ''}`;
   renderChargeRequests(data.requests || []);
   renderSupport(data.supportRequests || []);
   renderLedger(data.ledger || []);
@@ -286,13 +310,17 @@ function configureChargeExperience() {
   nickname.required = isVerifiedStreamer;
   donorId.required = isVerifiedStreamer;
   if (isVerifiedStreamer) {
-    $('walletChargeTabHint').textContent = '시청자의 SOOP 후원을 접수해 스트리머 본인 계정에 캐시를 적립합니다. 시청자 닉네임·아이디와 수량을 입력한 뒤 라이브에 QR을 보여 주세요.';
-    $('walletChargeIntroGuide').textContent = '인증 스트리머 계정입니다. 시청자 후원자 닉네임·아이디와 수량을 먼저 입력하고, 시청자가 라이브 화면의 QR을 스캔해 후원하면 승인 캐시가 스트리머 본인 계정에 적립됩니다.';
-    $('walletDonationGuide').textContent = '입력한 시청자가 라이브 화면의 QR을 스캔해 신청 수량만큼 후원한 뒤, 스트리머가 후원 완료를 알려 주세요. 아래 버튼은 관리자에게 검수 대기 알림을 보냅니다.';
+    $('walletChargeTabHint').textContent = '시청자의 계좌이체를 접수해 스트리머 본인 계정에 캐시를 적립합니다. 시청자 닉네임·아이디, 시청자 입금자명과 금액을 입력한 뒤 라이브에 QR을 보여 주세요.';
+    $('walletChargeIntroGuide').textContent = '인증 스트리머 계정입니다. 시청자 SOOP 닉네임·아이디와 시청자 입금자명·금액을 먼저 입력하고, 시청자가 라이브 화면의 QR로 이체하면 승인 캐시가 스트리머 본인 계정에 적립됩니다.';
+    $('walletDonationGuide').textContent = '입력한 시청자가 라이브 화면의 QR로 신청 금액을 이체한 뒤, 스트리머가 이체 완료를 알려 주세요. 아래 버튼은 관리자에게 검수 대기 알림을 보냅니다.';
+    $('walletDepositorLabel').textContent = '시청자 입금자명';
+    $('walletDepositorHint').textContent = '시청자의 은행 이체 화면에 표시되는 이름이에요. 관리자가 이 이름으로 입금을 확인하며, 이 신청에만 저장합니다.';
   } else {
-    $('walletChargeTabHint').textContent = '일반 로그인 계정입니다. 후원자 정보 입력 없이 본인이 QR을 스캔해 후원하면 승인 캐시가 본인 계정에 적립됩니다.';
-    $('walletChargeIntroGuide').textContent = '일반 로그인 계정입니다. 후원자 정보는 입력하지 않습니다. 신청 후 본인이 QR을 스캔해 별풍선을 후원하고 직접 후원 완료를 알려 주세요.';
-    $('walletDonationGuide').textContent = '본인이 QR을 스캔해 신청 수량만큼 후원한 뒤 후원 완료를 눌러 주세요. 승인 캐시는 이 로그인 계정에 적립됩니다. 아래 버튼은 관리자에게 검수 대기 알림을 보냅니다.';
+    $('walletChargeTabHint').textContent = '일반 로그인 계정입니다. 금액과 입금자명을 입력해 신청한 뒤 QR로 이체하면, 관리자 확인 후 본인 계정에 캐시가 적립됩니다.';
+    $('walletChargeIntroGuide').textContent = '일반 로그인 계정입니다. 신청 후 입금 QR로 본인이 이체하고 이체 완료를 알려 주세요.';
+    $('walletDonationGuide').textContent = 'QR을 스캔해 신청 금액을 입금자명 그대로 이체한 뒤 이체 완료를 눌러 주세요. 승인 캐시는 이 로그인 계정에 적립됩니다. 아래 버튼은 관리자에게 검수 대기 알림을 보냅니다.';
+    $('walletDepositorLabel').textContent = '입금자명';
+    $('walletDepositorHint').textContent = '은행 이체 화면에 표시되는 이름과 같게 적어 주세요. 관리자가 이 이름으로 입금을 확인합니다.';
   }
 }
 
@@ -329,8 +357,8 @@ async function refreshWallet(force = false) {
 function updateCashPreview() {
   const input = $('walletAmount');
   const amount = Number(input.value) || 0;
-  $('walletCashPreview').textContent = Number.isSafeInteger(amount) && amount > 0
-    ? amount.toLocaleString('ko-KR')
+  $('walletCashPreview').textContent = Number.isSafeInteger(amount) && amount >= 100
+    ? Math.floor(amount / 100).toLocaleString('ko-KR')
     : '0';
   $('walletChargeSubmit').disabled = busy;
 }
@@ -520,7 +548,7 @@ function openChargeModal() {
   $('walletDonationStep').hidden = true;
   $('walletDonationStep').dataset.requestId = '';
   $('walletDonationComplete').disabled = false;
-  $('walletDonationComplete').textContent = '후원 완료';
+  $('walletDonationComplete').textContent = '이체 완료';
   $('walletDonationStatus').textContent = '';
   chargeStatus.textContent = '';
   $('walletChargeModal').showModal();
@@ -544,7 +572,7 @@ $('walletChargeBack').addEventListener('click', () => {
 
 $('walletDonationCancel').addEventListener('click', async () => {
   const requestId = $('walletDonationStep').dataset.requestId;
-  if (!requestId || !window.confirm('별풍선 충전 신청을 취소할까요? 이미 후원했다면 SOOP 반환은 자동으로 처리되지 않습니다.')) return;
+  if (!requestId || !window.confirm('충전 신청을 취소할까요? 이미 이체했다면 취소만으로 돌려받지 못하니 고객센터에 알려 주세요.')) return;
   try {
     await cancelCharge({ requestId });
     $('walletDonationStep').hidden = true;
@@ -556,48 +584,69 @@ $('walletDonationCancel').addEventListener('click', async () => {
 
 $('walletDonationComplete').addEventListener('click', async () => {
   const requestId = $('walletDonationStep').dataset.requestId;
-  if (!requestId || !window.confirm('실제 별풍선 후원을 마쳤나요? 이 알림은 캐시 지급이나 후원 자동 확인이 아닙니다.')) return;
+  if (!requestId || !window.confirm('신청 금액을 실제로 이체했나요? 이 알림은 캐시 지급이나 입금 자동 확인이 아닙니다.')) return;
   const completeButton = $('walletDonationComplete');
   completeButton.disabled = true;
   completeButton.textContent = '알림 전송 중';
-  $('walletDonationStatus').textContent = '후원 완료 알림을 보내고 있습니다.';
+  $('walletDonationStatus').textContent = '이체 완료 알림을 보내고 있습니다.';
   try {
     await markDonationComplete({ requestId });
     completeButton.textContent = '알림 전송 완료';
-    $('walletDonationStatus').textContent = '후원 완료 알림을 보냈습니다. 관리자가 실제 후원 내역을 확인한 뒤 승인합니다.';
-    chargeStatus.textContent = '후원 완료 알림을 보냈습니다. 관리자가 실제 후원 내역을 확인한 뒤 승인합니다.';
+    $('walletDonationStatus').textContent = '이체 완료 알림을 보냈습니다. 관리자가 실제 입금 내역을 확인한 뒤 승인합니다.';
+    chargeStatus.textContent = '이체 완료 알림을 보냈습니다. 관리자가 실제 입금 내역을 확인한 뒤 승인합니다.';
     await refreshWallet();
   } catch (error) {
     completeButton.disabled = false;
-    completeButton.textContent = '후원 완료';
-    $('walletDonationStatus').textContent = `후원 완료 알림 실패: ${error.message || error}`;
+    completeButton.textContent = '이체 완료';
+    $('walletDonationStatus').textContent = `이체 완료 알림 실패: ${error.message || error}`;
   }
 });
+
+// 입금 QR(계좌 정보 포함)은 공개 파일로 두지 않고, 이체 단계가 열릴 때 서버에서 한 번 받아 이 탭에서만 기억한다.
+async function showDepositQr() {
+  const image = $('walletQrImage');
+  const status = $('walletQrStatus');
+  if (depositQrDataUrl) { image.src = depositQrDataUrl; image.hidden = false; status.hidden = true; return; }
+  image.hidden = true; status.hidden = false; status.textContent = '입금 QR을 불러오는 중입니다.';
+  try {
+    const result = await getDepositQr();
+    depositQrDataUrl = String(result.data && result.data.qrDataUrl || '');
+    if (!depositQrDataUrl.startsWith('data:image/')) throw new Error('입금 QR이 준비되지 않았어요.');
+    image.src = depositQrDataUrl; image.hidden = false; status.hidden = true;
+  } catch (error) {
+    status.textContent = `입금 QR을 불러오지 못했어요. 새로고침하거나 고객센터로 문의해 주세요. (${error.message || error})`;
+  }
+}
 
 $('walletChargeForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (busy) return;
-  const starCount = Number($('walletAmount').value);
+  const amountKrw = Number($('walletAmount').value);
   const soopDonorNickname = $('walletDonorNickname').value.trim();
   const soopDonorId = $('walletDonorId').value.trim();
+  const depositorName = $('walletDepositorName').value.trim();
   if (!$('walletChargePolicy').checked) {
     chargeStatus.textContent = '충전 운영 기준을 확인해 주세요.';
     return;
   }
-  if (!Number.isSafeInteger(starCount) || starCount <= 0) {
-    chargeStatus.textContent = '후원할 별풍선 수량을 1개 이상의 정수로 입력해 주세요.';
+  if (!Number.isSafeInteger(amountKrw) || amountKrw < 1000 || amountKrw % 100 !== 0) {
+    chargeStatus.textContent = '이체할 금액을 1,000원 이상, 100원 단위로 입력해 주세요.';
+    return;
+  }
+  if (!depositorName) {
+    chargeStatus.textContent = '입금자명을 입력해 주세요.';
     return;
   }
   if (isVerifiedStreamer && (!soopDonorNickname || !soopDonorId)) {
-    chargeStatus.textContent = '시청자 SOOP 후원자 닉네임과 아이디를 입력해 주세요.';
+    chargeStatus.textContent = '시청자 SOOP 닉네임과 아이디를 입력해 주세요.';
     return;
   }
-  const target = isVerifiedStreamer ? '시청자 후원으로 스트리머 계정 충전' : '본인 직접 후원 충전';
-  if (!window.confirm(`${target}으로 별풍선 ${starCount.toLocaleString('ko-KR')}개를 신청할까요? 신청과 후원 완료 알림만으로 캐시가 지급되지는 않습니다.`)) return;
+  const target = isVerifiedStreamer ? '시청자 이체로 스트리머 계정 충전' : '본인 계좌이체 충전';
+  if (!window.confirm(`${target}으로 ${amountKrw.toLocaleString('ko-KR')}원(${(amountKrw / 100).toLocaleString('ko-KR')}캐시)을 신청할까요? 입금자명: ${depositorName}\n신청과 이체 완료 알림만으로 캐시가 지급되지는 않습니다.`)) return;
   setBusy(true);
   chargeStatus.textContent = '충전 신청을 저장하고 있습니다.';
   try {
-    const payload = { requestId: createRequestId(), starCount };
+    const payload = { requestId: createRequestId(), amountKrw, depositorName };
     if (isVerifiedStreamer) Object.assign(payload, { soopDonorNickname, soopDonorId });
     const response = await submitCharge(payload);
     $('walletDonationStep').hidden = false;
@@ -605,7 +654,8 @@ $('walletChargeForm').addEventListener('submit', async (event) => {
     $('walletChargeForm').hidden = true;
     $('walletChargeIntro').hidden = true;
     $('walletChargePolicy').checked = false;
-    chargeStatus.textContent = '신청을 접수했습니다. QR로 후원한 뒤 후원 완료를 눌러 주세요.';
+    chargeStatus.textContent = '신청을 접수했습니다. QR로 이체한 뒤 이체 완료를 눌러 주세요.';
+    void showDepositQr();
     await refreshWallet(true);
   } catch (error) {
     chargeStatus.textContent = error.message || '충전 신청을 저장하지 못했습니다.';
