@@ -5,6 +5,7 @@ import {
   signInWithCustomToken, signInWithPopup,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
+import { setupBugReport } from './bug-report.js?v=20261121-bug1';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -52,6 +53,14 @@ function notifyAuthChanged() {
   window.dispatchEvent(new CustomEvent('shop-auth-changed'));
 }
 window.openShopLoginModal = openLoginModal;
+//  2026-11-21 공용 버그 제보 창(팬페이지·갤러리·상점 공통). 접수는 팬페이지 서버가 로그인 계정인지 판정한다.
+setupBugReport({
+  service: 'shop',
+  call: httpsCallable(functions, 'streamerFanPageViewerStatsBugReports'),
+  getUid: () => auth.currentUser?.uid || '',
+  openLogin: () => openLoginModal(),
+  trigger: document.getElementById('openBugReport'),
+});
 
 async function updateLoginVisibility(user) {
   currentUser = user;
