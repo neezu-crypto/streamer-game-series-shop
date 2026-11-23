@@ -2,7 +2,7 @@ import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16
 import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261124-tg-dry1';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261124-tg-dry3';
 import { createSound } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261124-tg-dry1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
@@ -289,7 +289,7 @@ function onToolChange(event) {
   if (event.type === 'act' || event.type === 'hold') hideTip();
   if (event.type === 'hold') $('tgBubble').textContent = `${TOOLS[event.tool]?.done || item.label} (${Math.floor(event.total / 1000)}초)`;
   if (event.type === 'holdDone') $('tgBubble').textContent = '😊';
-  if (event.type === 'phase') { $('tgBubble').textContent = event.tip; showTip(event.tip); }
+  if (event.type === 'phase') { $('tgBubble').textContent = event.tip; showTip(event.tip); setBath(event.phase === 'shower'); } // 샤워는 욕실, 수건·드라이기는 방에서
   if (event.type === 'dried') { $('tgBubble').textContent = event.text; hideTip(); }
   if (event.type === 'walk') { if (event.meters > 0) hideTip(); $('tgBubble').textContent = event.meters > 0 ? `산책 중… ${event.meters}m 걸었어요` : '산책로에 도착했어요! 클릭하거나 누른 채 같이 걸어요'; }
   if (event.type === 'stat') $('tgBubble').textContent = event.value > 0 ? `쿨쿨… 피로가 풀리고 있어요 (피로 ${event.value}, ${event.delta})` : '쿨쿨… 피로가 모두 풀렸어요 ✦';

@@ -191,6 +191,8 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     phase = id; const st = BATH_STEPS[id];
     img.src = st.src; cursor.classList.toggle('has-water', id === 'shower'); cursor.classList.toggle('is-dryer', id === 'dryer');
     if (id !== 'dryer') cursor.classList.remove('is-flip');
+    //  방으로 옮기면 욕실 김을 바로 걷는다
+    if (id !== 'shower') { clearTimeout(steamTimer); steamLevel = 0; steam.style.transition = 'opacity .4s ease'; steam.style.opacity = '0'; steamTimer = setTimeout(() => steam.classList.remove('is-on'), 450); }
     sound?.stopAll(); tracker = createRubTracker({ threshold: TOOLS.bath.threshold });
     renderSteps(); onChange?.({ type: 'phase', tool: 'bath', phase: id, tip: st.tip });
   }

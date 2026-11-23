@@ -1,6 +1,6 @@
 // 훈련소 패널(월드맵 장소). 내 다마고치 고르기 → 무대에서 체험 → 배울 재주 고르기 → 합계·환불 불가 확인 → 결제.
 // 가격·판매 여부·배운 목록은 서버 응답만 믿는다. 체험은 서버를 부르지 않는다.
-import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261124-tg-dry1';
+import { createToolController, TOOLS } from './tamagotchi-tools.js?v=20261124-tg-dry3';
 import { createSound, SOUNDS } from './tamagotchi-sound.js?v=20261113-tg-opt1';
 import { createMongsil } from './tamagotchi-pet.js?v=20261124-tg-dry1';
 import { createScene } from './tamagotchi-scene.js?v=20261113-tg-walkfix2';
@@ -113,7 +113,7 @@ export function mountTrainPanel(host, ctx) {
     if (event.type === 'act') setBubble(`${TOOLS[event.tool]?.done || label(pet, event.tool)} ${event.count}`);
     if (event.type === 'hold') setBubble(`${TOOLS[event.tool]?.done || ''} (${Math.floor(event.total / 1000)}초)`);
     if (event.type === 'holdDone') setBubble('😊');
-    if (event.type === 'phase') setBubble(event.tip);
+    if (event.type === 'phase') { setBubble(event.tip); scene?.setBath(event.phase === 'shower'); } // 샤워는 욕실, 수건·드라이기는 방에서
     if (event.type === 'dried') setBubble(event.text);
     if (event.type === 'walk' && event.meters > 0) setBubble(`산책 체험 중… ${event.meters}m`);
     syncTrial();
