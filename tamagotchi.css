@@ -328,6 +328,6 @@ html.tg-noscroll, html.tg-noscroll body { overflow: hidden; overscroll-behavior:
 .tg-rh-out[data-state="error"] { background: #5a1f2b; }
 
 /* 분양 전 체험 안내(2026-11-23): 스크롤해도 화면 위에 붙어 있고, 크게 보기에서도 맨 위에 보인다. */
-.tg-try-notice { position: sticky; top: calc(env(safe-area-inset-top) + 8px); z-index: 5; width: fit-content; max-width: 100%; box-sizing: border-box; margin: 0 auto 10px; padding: 7px 14px; border: 1px solid #f3d08a; border-radius: 999px; background: rgba(255,244,214,.96); color: #6b4a00; font-size: 12px; font-weight: 700; line-height: 1.4; text-align: center; box-shadow: 0 4px 14px rgba(120,80,0,.12); }
+.tg-try-notice { position: static; width: fit-content; max-width: 100%; box-sizing: border-box; margin: 0 auto 10px; padding: 7px 14px; border: 1px solid #f3d08a; border-radius: 999px; background: rgba(255,244,214,.96); color: #6b4a00; font-size: 12px; font-weight: 700; line-height: 1.4; text-align: center; box-shadow: 0 4px 14px rgba(120,80,0,.12); }
 .tg-showcase.is-expanded .tg-try-notice { position: static; flex: none; margin-bottom: 0; }
 @media (max-width: 520px) { .tg-try-notice { font-size: 11px; padding: 6px 11px; } }
