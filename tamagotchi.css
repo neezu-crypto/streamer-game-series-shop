@@ -143,6 +143,25 @@
 .tg-steam.is-on { will-change: opacity, transform; animation: tg-steam-drift 9s ease-in-out infinite alternate; }
 @keyframes tg-steam-drift { from { transform: translateY(6px) scale(1.02); } to { transform: translateY(-6px) scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .tg-steam { animation: none; } }
+/* 목욕 단계(샤워 → 수건 → 드라이기): 무대 위쪽 가운데 */
+.tg-bath-steps { position: absolute; left: 50%; top: 10px; z-index: 6; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(255, 255, 255, .86); box-shadow: 0 3px 10px rgba(80, 50, 30, .16); }
+.tg-bath-steps[hidden] { display: none; }
+.tg-bath-step { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 4px 12px; border: 2px solid transparent; border-radius: 999px; background: transparent; color: #764C37; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.tg-bath-step[aria-checked="true"] { background: #FFE3EA; border-color: #F29BB2; }
+.tg-bath-step.is-next { animation: tg-step-next 1.1s ease-in-out infinite; }
+@keyframes tg-step-next { 50% { background: #FFF3C4; transform: translateY(-2px); } }
+.tg-drip { position: absolute; z-index: 3; width: 7px; height: 11px; margin-left: -3px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #9FD3F0; box-shadow: 0 0 0 1.5px #5FA9C9; pointer-events: none; animation: tg-drip-fall .9s ease-in forwards; }
+@keyframes tg-drip-fall { 0% { opacity: 0; transform: translateY(0) scale(.6); } 20% { opacity: 1; transform: translateY(4px) scale(1); } 100% { opacity: 0; transform: translateY(46px) scale(.9); } }
+.tg-air { position: absolute; z-index: 3; width: 34px; height: 10px; margin: -5px 0 0 -4px; border-radius: 999px; border-top: 3px solid #FFC4D3; pointer-events: none; animation: tg-air-blow .7s ease-out forwards; }
+@keyframes tg-air-blow { 0% { opacity: .95; transform: translateX(0) scaleX(.5); } 100% { opacity: 0; transform: translateX(-46px) scaleX(1.2); } }
+.tg-air.is-right { animation-name: tg-air-blow-right; }
+@keyframes tg-air-blow-right { 0% { opacity: .95; transform: translateX(0) scaleX(.5); } 100% { opacity: 0; transform: translateX(46px) scaleX(1.2); } }
+/* 드라이기: 펫 쪽을 보도록 좌우 반전, 바람 맞은 털 흔들림 */
+.tg-tool-cursor.is-flip img { scale: -1 1; }
+.tg-blown .tg-pet-svg { transform-origin: 50% 95%; animation: tg-fur-blow .32s ease-in-out infinite alternate; }
+@keyframes tg-fur-blow { from { transform: skewX(calc(var(--wind, 1) * 1deg)) scaleX(1.01); } to { transform: skewX(calc(var(--wind, 1) * 4.5deg)) scaleX(.985) translateX(calc(var(--wind, 1) * -1.5%)); } }
+@media (max-width: 560px) { .tg-bath-step { padding: 4px 9px; font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .tg-bath-step.is-next, .tg-drip, .tg-air, .tg-blown .tg-pet-svg { animation: none; } }
 
 /* 산책 모드: 탑다운 지도 배경, 목줄, 발자국 */
 .tg-walk-bg { position: absolute; inset: 0; z-index: 0; border-radius: inherit; background: url("assets/tamagotchi/walk-park.webp") center / cover no-repeat; opacity: 0; transition: opacity .5s ease; pointer-events: none; }

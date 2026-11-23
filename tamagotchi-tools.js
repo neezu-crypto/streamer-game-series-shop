@@ -34,7 +34,7 @@ export const TOOLS = {
   bath: {
     id: 'bath', label: '목욕', src: 'assets/tamagotchi/tools/bath.svg', hotspot: [114, 148], mode: 'rub', threshold: 220, water: true, holdFx: 'bubble', foam: true,
     preset: '목욕', fx: 'bubble', tip: '누른 채 샤워해 주세요', done: '보송보송 개운해졌어요 ✦',
-    hint: '펫 위에서 누른 채 움직여 샤워해 주세요. 다시 누르면 선택이 풀려요.',
+    hint: '펫 위에서 누른 채 움직여 샤워해 주세요. 샤워 뒤에는 수건·드라이기로 말려 줄 수 있어요. 다시 누르면 선택이 풀려요.',
   },
   nap: {
     id: 'nap', label: '낮잠', src: 'assets/tamagotchi/tools/nap.svg', hotspot: [205, 176], mode: 'once', restEvery: 12000, restStep: 1,
@@ -67,8 +67,14 @@ export const TOOLS = {
     hint: '펫을 눌러 응원봉을 흔들어 주세요. 응원은 한 번에 한 번씩이에요. 다시 누르면 선택이 풀려요.',
   },
 };
+//  목욕 단계: 샤워(서버에 목욕으로 기록) → 수건(거품·물기 닦기) → 드라이기(말리기). 수건·드라이기는 화면 연출만 하고 서버에 보내지 않는다.
+export const BATH_STEPS = {
+  shower: { label: '샤워', icon: '🚿', src: 'assets/tamagotchi/tools/bath.svg', hotspot: [114, 148], tip: '누른 채 샤워해 주세요' },
+  towel: { label: '수건', icon: '🧺', src: 'assets/tamagotchi/tools/towel.svg', hotspot: [128, 150], tip: '누른 채 문질러 물기를 닦아 주세요', done: '뽀득뽀득 물기를 닦았어요' },
+  dryer: { label: '드라이기', icon: '💨', src: 'assets/tamagotchi/tools/dryer.svg', hotspot: [20, 104], tip: '누른 채 따뜻한 바람으로 말려 주세요', done: '보송보송 다 말랐어요 ✦' },
+};
 //  모듈 기준 경로: 팬페이지에서 불러와도 상점의 도구 그림을 찾는다
-for (const tool of Object.values(TOOLS)) tool.src = new URL(tool.src, import.meta.url).href;
+for (const tool of [...Object.values(TOOLS), ...Object.values(BATH_STEPS)]) tool.src = new URL(tool.src, import.meta.url).href;
 // 움직이지 않는 톡 도구: 누르고 있으면 0.6초 뒤부터 천천히 계속(최대 20초). 보석·응원은 선물이라 1회만.
 export const HOLDABLE = ['feed', 'play', 'talk', 'sing', 'dance'];
 export const TAP_GAP_MS = 1000; // 톡 도구 1회 후 대기(연타 방지)
@@ -93,6 +99,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     if (SFX[id] === 'keep') sound.keep(id, REPEAT_MS + 450); else sound.once(id, ONCE_GAP[id]);
   }
 
+  let dryLast = [0, 0]; let dryerFlip = false; let blowTimer = 0;
   let selected = null; let pressed = false; let activePointer = null; let rubCount = 0;
   let tracker = createRubTracker();
   let holdTimer = 0; let lastX = 0; let lastY = 0;
@@ -104,7 +111,14 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const touch = event.pointerType === 'touch';
     const size = (touch ? TOUCH_SIZE : DESKTOP_SIZE) * (tool.scale || 1);
     cursor.style.width = `${size}px`; cursor.style.height = `${size}px`;
-    const p = toolPlacement({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, size, hotspot: tool.hotspot });
+    //  목욕 단계마다 도구 그림이 바뀌므로 닿는 점도 그 단계 그림 기준. 드라이기는 펫 왼쪽에 있으면 좌우를 뒤집어 펫 쪽을 보게 한다.
+    let hotspot = selected === 'bath' ? BATH_STEPS[phase].hotspot : tool.hotspot;
+    if (selected === 'bath' && phase === 'dryer') {
+      const r = petApi.bodyRect(); dryerFlip = event.clientX < r.left + r.width / 2;
+      cursor.classList.toggle('is-flip', dryerFlip);
+      if (dryerFlip) hotspot = [256 - hotspot[0], hotspot[1]];
+    }
+    const p = toolPlacement({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, size, hotspot });
     const [nx, ny] = tool.nudge || [0, 0]; // 입을 가리지 않도록 도구를 닿는 점에서 비켜 그린다
     cursor.style.transform = `translate(${p.left + nx}px, ${p.top + ny}px)`;
   }
@@ -151,6 +165,78 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     steam.classList.add('is-on'); steam.style.transition = 'opacity 1s ease'; steam.style.opacity = String(steamLevel);
     clearTimeout(steamTimer);
     steamTimer = setTimeout(() => { steamLevel = 0; steam.style.transition = 'opacity 7s ease'; steam.style.opacity = '0'; steamTimer = setTimeout(() => steam.classList.remove('is-on'), 7100); }, 2000);
+  }
+  //  목욕 단계 버튼(무대 위)과 젖은 정도(0~1). 샤워하면 젖고, 수건이 물기 절반을, 드라이기가 나머지를 말린다.
+  let phase = 'shower'; let wet = 0; let dripTimer = 0; let airLast = 0;
+  const steps = document.createElement('div'); steps.className = 'tg-bath-steps'; steps.hidden = true;
+  steps.setAttribute('role', 'radiogroup'); steps.setAttribute('aria-label', '목욕 단계');
+  const stepBtns = new Map();
+  for (const [id, st] of Object.entries(BATH_STEPS)) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tg-bath-step'; b.dataset.step = id;
+    b.setAttribute('role', 'radio'); b.innerHTML = `<span aria-hidden="true">${st.icon}</span>${st.label}`;
+    b.addEventListener('click', (e) => { e.stopPropagation(); setPhase(id); });
+    stepBtns.set(id, b); steps.append(b);
+  }
+  stage.append(steps);
+  function renderSteps() {
+    for (const [id, b] of stepBtns) {
+      b.setAttribute('aria-checked', String(id === phase));
+      // 다음에 할 단계를 살짝 반짝여 알려 준다
+      const next = (phase === 'shower' && wet >= 0.6 && id === 'towel') || (phase === 'towel' && wet <= 0.5 && wet > 0 && id === 'dryer');
+      b.classList.toggle('is-next', next && !reduced);
+    }
+  }
+  function setPhase(id) {
+    if (!BATH_STEPS[id] || selected !== 'bath') return;
+    phase = id; const st = BATH_STEPS[id];
+    img.src = st.src; cursor.classList.toggle('has-water', id === 'shower'); cursor.classList.toggle('is-dryer', id === 'dryer');
+    if (id !== 'dryer') cursor.classList.remove('is-flip');
+    sound?.stopAll(); tracker = createRubTracker({ threshold: TOOLS.bath.threshold });
+    renderSteps(); onChange?.({ type: 'phase', tool: 'bath', phase: id, tip: st.tip });
+  }
+  function startDrips() {
+    if (dripTimer || reduced) return;
+    dripTimer = setInterval(() => {
+      if (wet <= 0.05 || document.hidden) { if (wet <= 0.05) { clearInterval(dripTimer); dripTimer = 0; } return; }
+      if (Math.random() > wet) return;
+      const r = petApi.bodyRect(); const host = stage.getBoundingClientRect();
+      const d = document.createElement('i'); d.className = 'tg-drip'; d.setAttribute('aria-hidden', 'true');
+      d.style.left = `${r.left - host.left + r.width * (0.2 + Math.random() * 0.6)}px`; d.style.top = `${r.top - host.top + r.height * (0.45 + Math.random() * 0.35)}px`;
+      stage.append(d); setTimeout(() => d.remove(), 900);
+    }, 380);
+  }
+  function wetUp() { wet = Math.min(1, Math.max(0, wet) + 0.08); startDrips(); renderSteps(); }
+  //  드라이기 바람에 털이 바람 방향으로 살랑살랑 흔들린다(바람이 멈추면 0.4초 뒤 그친다)
+  function blowFur() {
+    if (!petEl || reduced) return;
+    petEl.style.setProperty('--wind', dryerFlip ? '-1' : '1');
+    petEl.classList.add('tg-blown');
+    clearTimeout(blowTimer); blowTimer = setTimeout(() => petEl.classList.remove('tg-blown'), 400);
+  }
+  //  수건·드라이기: 펫 위에서 움직이거나 누르고 있으면 물기가 줄어든다(서버 전송 없음)
+  function dryTick(amount, event) {
+    if (phase === 'towel') {
+      if (petApi.rinse) petApi.rinse(1);
+      wet = Math.max(Math.min(wet, 0.3), wet - amount); // 수건으로는 70%까지만, 나머지는 드라이기로
+      petApi.hold('쓰다듬 받음', 1.1);
+    } else {
+      wet = Math.max(0, wet - amount);
+      petApi.hold('쓰다듬 받음', 1.1);
+      blowFur();
+      const t = performance.now();
+      if (!reduced && event && t - airLast > 160) {
+        airLast = t; const host = stage.getBoundingClientRect();
+        const a = document.createElement('i'); a.className = `tg-air${dryerFlip ? ' is-right' : ''}`; a.setAttribute('aria-hidden', 'true');
+        a.style.left = `${event.clientX - host.left}px`; a.style.top = `${event.clientY - host.top + (Math.random() - 0.5) * 16}px`;
+        stage.append(a); setTimeout(() => a.remove(), 700);
+      }
+      if (wet <= 0) {
+        petApi.rinse?.(99); petApi.fx('spark'); petApi.hold('목욕', 1.6); popDone(); sound?.once('bonus');
+        onChange?.({ type: 'dried', tool: 'bath', text: BATH_STEPS.dryer.done });
+        wet = -1; // 다시 샤워하기 전까지 완료 상태
+      }
+    }
+    renderSteps();
   }
   // 낮잠: 펫이 자는 동안(누르지 않아도) 일정 주기로 피로가 줄어든다. 깨어나면 멈춘다.
   let restTimer = 0;
@@ -216,6 +302,8 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     }
     holdTimer = setInterval(() => {
       if (!pressed || !selected || !overPet()) return;
+      if (selected === 'bath' && phase !== 'shower') { if (wet > 0) dryTick(phase === 'dryer' ? 0.04 : 0.02); return; }
+      if (selected === 'bath') wetUp();
       petApi.hold(tool.preset, 1.1); bathTick(tool); sfx(selected); if (tool.holdFx && Math.random() < 0.35) petApi.fx(tool.holdFx);
     }, 500);
   }
@@ -227,7 +315,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
 
   function onDown(event) {
     if (!selected || (event.pointerType === 'mouse' && event.button !== 0)) return;
-    if (event.target.closest && event.target.closest('.tg-stage-colors, .tg-sound-btn')) return; // 색상 점은 그대로 누를 수 있게
+    if (event.target.closest && event.target.closest('.tg-stage-colors, .tg-sound-btn, .tg-bath-steps')) return; // 색상 점은 그대로 누를 수 있게
     const tool = TOOLS[selected];
     pressed = true; activePointer = event.pointerId;
     try { stage.setPointerCapture(event.pointerId); } catch (_) { /* 무시 */ }
@@ -256,9 +344,16 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     const tool = TOOLS[selected];
     if (tool.mode !== 'rub') return;
     const inside = insideEllipse(event.clientX, event.clientY, petApi.bodyRect());
+    if (selected === 'bath' && phase !== 'shower') {
+      if (!inside) return;
+      const moved = Math.hypot(event.clientX - dryLast[0], event.clientY - dryLast[1]); dryLast = [event.clientX, event.clientY];
+      if (wet > 0 && moved > 2) dryTick(Math.min(0.03, moved / (phase === 'dryer' ? 2400 : 3200)), event);
+      return;
+    }
     const result = tracker.move(event.clientX, event.clientY, inside);
     if (inside) { petApi.hold(tool.preset, 1.1); sfx(selected); }
     if (result.rubbed && !limited(selected, 1)) {
+      if (selected === 'bath') wetUp();
       rubCount += 1; if (tool.fx) petApi.fx(tool.fx); bathTick(tool); popDone();
       onChange?.({ type: 'act', tool: selected, count: rubCount });
     }
@@ -303,13 +398,16 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
     water.style.left = `${(tool.hotspot[0] / 256) * 100}%`; water.style.top = `${(tool.hotspot[1] / 256) * 100}%`;
     tracker = createRubTracker(tool.threshold ? { threshold: tool.threshold } : {});
     stage.classList.add('is-tool-mode');
+    phase = 'shower'; cursor.classList.remove('is-dryer'); steps.hidden = id !== 'bath'; if (id === 'bath') renderSteps();
     onChange?.({ type: 'select', tool: id });
     return true;
   }
   function clear() {
     if (!selected) return;
     const was = selected; sound?.stopAll(); walk?.exit(); stopHold(); selected = null; pressed = false; activePointer = null; tracker.reset();
-    cursor.hidden = true; cursor.classList.remove('is-active', 'is-done'); restChase();
+    cursor.hidden = true; cursor.classList.remove('is-active', 'is-done', 'is-dryer', 'is-flip');
+    clearTimeout(blowTimer); petEl?.classList.remove('tg-blown'); restChase();
+    steps.hidden = true; phase = 'shower'; wet = 0; clearInterval(dripTimer); dripTimer = 0;
     stage.classList.remove('is-tool-mode');
     onChange?.({ type: 'clear', tool: was });
   }
@@ -322,7 +420,7 @@ export function createToolController({ stage, petApi, petEl, ignoreOutside = [],
       stage.removeEventListener('pointerup', onUp); stage.removeEventListener('pointercancel', onUp);
       stage.removeEventListener('pointerleave', onLeave);
       document.removeEventListener('pointerdown', onOutside, true); window.removeEventListener('blur', onBlur);
-      cursor.remove(); walk?.destroy(); clearTimeout(steamTimer); clearInterval(restTimer); steam.remove();
+      cursor.remove(); walk?.destroy(); clearTimeout(steamTimer); clearInterval(restTimer); steam.remove(); clearInterval(dripTimer); steps.remove();
     },
   };
 }

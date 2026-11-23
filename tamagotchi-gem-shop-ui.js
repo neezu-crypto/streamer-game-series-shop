@@ -2,7 +2,7 @@
 // 설계: streamer-fanpage docs/다마고치_보석상점_꾸미기_설계.md, docs/다마고치_월드맵_보석상점_설계.md
 // - 가격·보유·권한(shop.manage)은 서버 status 응답(shop)만 믿는다. 사기 확인은 confirm() 대신 두 번 누르기.
 // - 서버 호출은 바깥에서 받는다(call(payload) → 응답 data). 응답을 받으면 onApplied(data)로 돌려준다.
-import { createMongsil, wearImageUrl } from './tamagotchi-pet.js?v=20261114-tg-wear1';
+import { createMongsil, wearImageUrl } from './tamagotchi-pet.js?v=20261124-tg-dry1';
 
 const SLOT_WORD = { head: '머리', face: '얼굴', neck: '목', back: '등' };
 function el(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text != null) n.textContent = text; return n; }

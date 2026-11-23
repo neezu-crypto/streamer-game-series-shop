@@ -333,6 +333,8 @@ const api={
     spawn('heart',{x:p.x-chaseC[0],y:p.y-chaseC[1],dx:(Math.random()-0.5)*24,rise:45,life:1.1,scale:0.55});
   },
   foam(){addFoam();foamAt=performance.now()/1000;wake(9);},
+  // 수건: 붙은 거품을 n개 닦아 낸다. 남은 개수를 돌려준다.
+  rinse(n=1){for(let i=0;i<n&&foamG.lastChild;i++)foamG.lastChild.remove();wake(1);return foamG.children.length;},
   // 화면 좌표(클라이언트)의 포인터를 향해 최대 maxPx만큼 다가간다. 인자를 비우면 제자리로 돌아온다.
   chase(clientX,clientY,maxPx=36){
     if(clientX!=null&&busy())return;

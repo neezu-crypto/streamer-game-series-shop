@@ -3,7 +3,7 @@
 // - 대상 펫 연결은 보석 상점과 같다(?s=스트리머&p=펫, 없으면 인증 스트리머=내 펫, 관리자=아이디 입력).
 // - 남은 입원 시간은 서버 시각 기준으로 화면에서 계산한다(주기 조회 없음). 탭이 숨으면 타이머를 멈춘다.
 import { resolveGemShopTarget, hospitalView, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-hosp4';
-import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
+import { createMongsil } from './tamagotchi-pet.js?v=20261124-tg-dry1';
 import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;

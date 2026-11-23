@@ -2,7 +2,7 @@
 // - 팬페이지에서 ?s=스트리머&p=펫 으로 들어오면 그 펫이 바로 연결된다. 없으면 인증 스트리머는 내 펫, 관리자는 아이디 입력.
 // - 사기·입히기 권한은 서버(Care status의 shop.manage)가 판정한다. 화면은 그 값만 따른다.
 import { resolveGemShopTarget } from './tamagotchi-logic.mjs?v=20261114-tg-wear1';
-import { mountGemShop } from './tamagotchi-gem-shop-ui.js?v=20261114-tg-wear1';
+import { mountGemShop } from './tamagotchi-gem-shop-ui.js?v=20261124-tg-dry1';
 import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;

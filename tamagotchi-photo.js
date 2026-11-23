@@ -3,7 +3,7 @@
 // - 흐름: 펫 고르기 → 배경·프레임·스트리머 이름 → 3·2·1 네 번 촬영 → 스티커 붙이기 → 완성(앞면) → 뒤집어 사인(뒷면) → 앨범.
 // - 움직임은 경과 시간 기준(setTimeout·CSS 전환), 동작 줄이기면 카운트다운 숫자 애니메이션·뒤집기 전환 없음.
 import { resolveGemShopTarget, COLOR_LABELS } from './tamagotchi-logic.mjs?v=20261116-tg-dist1';
-import { createMongsil } from './tamagotchi-pet.js?v=20261114-tg-wear1';
+import { createMongsil } from './tamagotchi-pet.js?v=20261124-tg-dry1';
 import { petEmptyCard } from './tamagotchi-empty.js?v=20261121-tg-empty2';
 
 const STREAMER_RE = /^[a-z0-9_-]{1,64}$/;

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="드라이기">
+  <g class="tool-base">
+    <!-- 손잡이 -->
+    <path d="M132 136 L 150 218 Q 152 232 166 230 L 180 228 Q 192 226 190 212 L 176 132 Z" fill="#B9A7F2" stroke="#764C37" stroke-width="7" stroke-linejoin="round"/>
+    <rect x="152" y="160" width="20" height="12" rx="5" transform="rotate(-10 162 166)" fill="#FFE08A" stroke="#764C37" stroke-width="4"/>
+    <!-- 몸통 -->
+    <path d="M58 70 L 160 60 Q 214 56 222 104 Q 226 152 172 150 L 58 138 Z" fill="#D9CCFF" stroke="#764C37" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M76 82 L 156 74" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+    <!-- 뒤 통풍구 -->
+    <circle cx="186" cy="104" r="22" fill="#F3EEFF" stroke="#764C37" stroke-width="6"/>
+    <g stroke="#9C88E0" stroke-width="4" stroke-linecap="round"><path d="M176 98 h20"/><path d="M174 106 h24"/><path d="M178 114 h16"/></g>
+    <!-- 노즐 -->
+    <path d="M24 64 L 60 70 L 60 138 L 24 144 Q 16 104 24 64 Z" fill="#FFD6E0" stroke="#764C37" stroke-width="7" stroke-linejoin="round"/>
+    <!-- 얼굴 -->
+    <g fill="#764C37"><circle cx="110" cy="102" r="5"/><circle cx="140" cy="100" r="5"/></g>
+    <path d="M118 114 q7 6 14 0" fill="none" stroke="#764C37" stroke-width="4" stroke-linecap="round"/>
+    <g fill="#FFB3C7" opacity=".85"><ellipse cx="98" cy="114" rx="8" ry="5"/><ellipse cx="152" cy="112" rx="8" ry="5"/></g>
+  </g>
+</svg>
