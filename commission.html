@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1eb">
+  <meta name="description" content="스트리머가 원하는 게임을 시청자 통합 캐시 모금으로 만들어 드려요">
+  <title>게임 제작 의뢰 — 게임 시리즈</title>
+  <script type="module" src="./maintenance-admin-gate.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="commission.css?v=20261126-c1">
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script type="module" src="shop-login.js?v=20261121-bug1"></script>
+  <script type="module" src="commission.js?v=20261126-c1"></script>
+</head>
+<body class="cm-page">
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="게임 시리즈 상점 홈">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy"><strong>GAME SERIES</strong><small>GAME COMMISSION</small></span>
+    </a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a href="./">상점</a>
+      <a class="active" href="commission.html">게임 제작 의뢰</a>
+      <a href="customer-center.html">캐시 충전·고객센터</a>
+    </nav>
+    <button id="shopLoginButton" class="series-link" type="button">로그인</button>
+  </header>
+
+  <main class="cm-main">
+    <section class="cm-hero">
+      <p class="eyebrow section-eyebrow">STREAMER GAME COMMISSION</p>
+      <h1>스트리머가 원하는 게임,<br><em>시청자 모금으로 만들어요.</em></h1>
+      <p>신청은 무료예요. 30일 동안 통합 캐시로 모금하고, 목표를 채우면 순서대로 한 번에 1건씩 제작해요. 목표에 못 닿으면 후원한 캐시는 모두 돌려드려요.</p>
+      <div class="cm-hero-stats">
+        <span id="cmPromoLeft" class="cm-chip cm-chip-hot">오픈 특가 확인 중</span>
+        <span id="cmQueueInfo" class="cm-chip">제작 대기열 확인 중</span>
+        <span id="cmBalance" class="cm-chip" hidden></span>
+      </div>
+    </section>
+
+    <div class="cm-tabs" role="tablist">
+      <button class="cm-tab active" type="button" data-tab="funding" role="tab">모금 중</button>
+      <button class="cm-tab" type="button" data-tab="apply" role="tab">신청하기</button>
+      <button class="cm-tab" type="button" data-tab="mine" role="tab">내 신청</button>
+    </div>
+
+    <section id="cmPanelFunding" class="cm-panel">
+      <div id="cmFundingList" class="cm-list"><p class="cm-empty">불러오는 중…</p></div>
+    </section>
+
+    <section id="cmPanelApply" class="cm-panel" hidden>
+      <form id="cmForm" class="cm-form" novalidate>
+        <h2>1. 장르 고르기</h2>
+        <div id="cmGenres" class="cm-genres"></div>
+
+        <h2>2. 분량·옵션</h2>
+        <div class="cm-option-row">
+          <div><strong id="cmUnitLabel">추가 옵션</strong><small id="cmUnitPrice"></small></div>
+          <div class="cm-stepper"><button id="cmMinus" type="button" aria-label="옵션 줄이기">−</button><output id="cmUnits">0</output><button id="cmPlus" type="button" aria-label="옵션 늘리기">+</button></div>
+        </div>
+        <label class="cm-check"><input id="cmDonation" type="checkbox"> <span><strong>게임에 SOOP 방송 후원 연동 넣기</strong> <small>+2만 원 · 기간 +7~14일(SOOP 심사). 별풍선 후원으로 게임 안 이벤트가 일어나요.</small></span></label>
+
+        <h2>3. 스타일</h2>
+        <div class="cm-two">
+          <label>그림체<select id="cmArt"><option value="anime">애니 일러스트</option><option value="sd">SD(귀여운 2~3등신)</option><option value="pixel">픽셀</option></select></label>
+          <label>분위기<select id="cmMood"><option value="healing">힐링</option><option value="comedy">코미디</option><option value="romance">로맨스</option><option value="mystery">미스터리</option></select></label>
+        </div>
+        <p class="cm-note">캐릭터는 스트리머의 이름·말투·분위기만 반영한 <strong>새 모티브 캐릭터</strong>로 만들어요(작가 허락이 필요 없는 방식). 기존 아바타 외형은 쓰지 않아요.</p>
+        <label id="cmOwnAvatarWrap" class="cm-check" hidden><input id="cmOwnAvatar" type="checkbox"> <span><strong>이 아바타의 저작권은 스트리머 본인에게 있습니다</strong> <small>체크하면 본인 아바타 외형 그대로 만들어요. 사실과 다르면 권리 문제는 신청자 책임이에요.</small></span></label>
+
+        <h2>4. 받을 스트리머</h2>
+        <p id="cmSelfTarget" class="cm-note" hidden></p>
+        <div id="cmTargetWrap">
+          <p class="cm-note">게임을 받을 스트리머를 SOOP에서 검색해 골라 주세요. 스트리머가 SOOP 쪽지로 동의하면 모금이 열려요.</p>
+          <label for="cmTargetNick">스트리머 닉네임</label>
+          <input id="cmTargetNick" type="text" maxlength="40" autocomplete="off">
+          <label for="cmTargetId">SOOP 아이디</label>
+          <input id="cmTargetId" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false">
+        </div>
+
+        <h2>5. 내용</h2>
+        <label>게임 제목(가제)<input id="cmTitle" type="text" maxlength="40" placeholder="예: 벌칙 룰렛 대작전"></label>
+        <label>한 줄 소개(모금 화면에 보여요)<input id="cmPitch" type="text" maxlength="200" placeholder="예: 합방 때 쓰는 우리 방송 전용 벌칙 룰렛"></label>
+        <label>원하는 내용·제작 방향<textarea id="cmDesc" maxlength="3000" rows="6" placeholder="넣고 싶은 항목, 분위기, 방송에서 쓰는 방법 등을 자유롭게 적어 주세요."></textarea></label>
+
+        <div class="cm-summary" aria-live="polite">
+          <div><span>모금 목표</span><strong id="cmSumPrice">-</strong><small id="cmSumRegular"></small></div>
+          <div><span>예상 기간</span><strong id="cmSumDays">-</strong><small>여유 일정으로 진행해요(평균보다 길 수 있어요)</small></div>
+          <div><span>대신 홍보</span><strong id="cmSumPromo">-</strong><small>10만 원부터 100곳</small></div>
+        </div>
+
+        <label class="cm-check"><input id="cmConsentCopy" type="checkbox"> <span>기존 게임·캐릭터를 따라 만든 의뢰가 아니며, 성인 콘텐츠·현금 환전 보상·실존 인물 비방이 없어요. <small>(필수)</small></span></label>
+        <label class="cm-check"><input id="cmConsentRules" type="checkbox"> <span>모금·반환 규칙에 동의해요: 30일 안에 목표 미달·제작 시작 전 취소는 전액 반환, 제작 시작 후 취소는 단계별 환불 수수료(기획 90%·그림 50%·조립 20% 반환, 완성 후 0%). <a href="terms.html#commission" target="_blank" rel="noopener">약관</a> <small>(필수)</small></span></label>
+        <button id="cmSubmit" class="cm-primary" type="submit">무료로 신청하기</button>
+        <p id="cmFormStatus" class="cm-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="cmPanelMine" class="cm-panel" hidden>
+      <div id="cmMineList" class="cm-list"><p class="cm-empty">로그인하면 내 신청이 보여요.</p></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>스트리머 게임 시리즈 상점 <span>·</span> 게임 제작 의뢰<br><small class="footer-copyright">© 2026 STREAMER SERIES · All rights reserved · 무단 복제·재배포 금지</small></p>
+    <a href="terms.html">이용약관</a> <a href="privacy.html">개인정보 처리방침</a>
+    <button id="openBugReport" class="sbr-footer-link" type="button" title="작동하지 않거나 잘못 보이는 부분 알리기">버그 제보</button>
+  </footer>
+
+  <dialog id="shopLoginModal" class="preview-dialog shop-login-modal" aria-labelledby="shopLoginModalTitle">
+    <div class="dialog-shell shop-login-shell">
+      <button id="shopLoginClose" class="dialog-close" type="button" aria-label="로그인 창 닫기" title="로그인 창 닫기">×</button>
+      <div class="dialog-heading">
+        <p class="eyebrow section-eyebrow">ACCOUNT</p>
+        <h2 id="shopLoginModalTitle">계정 로그인</h2>
+        <p>시리즈에서 사용 중인 계정 보호 방식으로 로그인합니다.</p>
+      </div>
+      <div id="shopLoginChoices" class="shop-login-choices">
+        <button id="shopLoginGoogle" class="shop-login-choice shop-login-google" type="button">🔵 Google로 로그인</button>
+        <button id="shopLoginKakao" class="shop-login-choice shop-login-kakao" type="button">💬 카카오로 로그인</button>
+        <button id="shopLoginStreamer" class="shop-login-choice" type="button">🎙️ 스트리머 인증으로 로그인</button>
+      </div>
+      <form id="shopStreamerLoginForm" class="shop-streamer-login-form" hidden>
+        <button id="shopStreamerLoginBack" class="shop-login-back" type="button">← 로그인 방법으로 돌아가기</button>
+        <p>SOOP에서 본인을 검색해 신청하고, 안내되는 코드를 SOOP 쪽지로 보내면 자동 승인됩니다.</p>
+        <label for="shopStreamerNickname">SOOP 닉네임</label>
+        <input id="shopStreamerNickname" type="text" maxlength="40" autocomplete="off" required>
+        <label for="shopStreamerSoopId">SOOP 아이디</label>
+        <input id="shopStreamerSoopId" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false" required>
+        <button class="shop-login-submit" type="submit">스트리머 인증 신청</button>
+        <button id="shopStreamerCheck" class="shop-login-back" type="button">인증 상태 확인</button>
+        <div id="shopStreamerLoginStatus" class="shop-login-status" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </dialog>
+</body>
+</html>

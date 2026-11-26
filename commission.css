@@ -1,0 +1,71 @@
+/* 게임 제작 의뢰(2026-11-26). style.css 변수 사용. */
+.cm-main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 64px; }
+.cm-hero { padding: 36px 0 20px; }
+.cm-hero h1 { margin: 8px 0 12px; font-size: clamp(28px, 5vw, 44px); line-height: 1.2; letter-spacing: -.02em; }
+.cm-hero h1 em { font-style: normal; color: var(--coral); }
+.cm-hero > p { max-width: 640px; color: var(--muted); line-height: 1.7; margin: 0; }
+.cm-hero-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.cm-chip { display: inline-flex; align-items: center; gap: 4px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 13px; }
+.cm-chip[hidden] { display: none; }
+.cm-chip-hot { border-color: var(--coral); background: #fff0f4; color: #c2335b; font-weight: 700; }
+.cm-chip a { color: var(--violet); }
+.cm-tabs { display: flex; gap: 6px; margin: 12px 0 18px; border-bottom: 1px solid var(--line); }
+.cm-tab { border: 0; background: none; padding: 12px 16px; color: var(--muted); font-weight: 700; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.cm-tab.active { color: var(--ink); border-color: var(--coral); }
+.cm-panel[hidden] { display: none; }
+.cm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.cm-empty { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: var(--muted); }
+.cm-card { padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: var(--shadow); }
+.cm-card h3 { margin: 10px 0 4px; font-size: 19px; }
+.cm-card p { margin: 6px 0; line-height: 1.55; overflow-wrap: anywhere; }
+.cm-card-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cm-status-badge { padding: 3px 9px; border-radius: 999px; background: #eeeaf9; font-size: 12px; font-weight: 700; }
+.cm-status-badge.s-funding { background: #fff0f4; color: #c2335b; }
+.cm-status-badge.s-queued, .cm-status-badge.s-in_production { background: #eaf4ff; color: #2a6db3; }
+.cm-status-badge.s-completed { background: #e9f8ee; color: #22804a; }
+.cm-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.cm-tags i { font-style: normal; font-size: 11px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.cm-target { color: var(--muted); font-size: 14px; }
+.cm-progress { height: 10px; border-radius: 999px; background: #efe9e1; overflow: hidden; margin: 12px 0 6px; }
+.cm-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--coral), var(--yellow)); border-radius: inherit; }
+.cm-amount { font-size: 14px; }
+.cm-mini { font-size: 13px; color: var(--muted); }
+.cm-actions { display: grid; gap: 8px; margin-top: 12px; }
+.cm-donate { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.cm-donate input, .cm-form input[type=text], .cm-form textarea, .cm-form select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; font-size: 16px; color: var(--ink); }
+.cm-primary { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; cursor: pointer; }
+.cm-primary:disabled { opacity: .5; cursor: default; }
+.cm-ghost { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); cursor: pointer; }
+.cm-status { min-height: 1.2em; font-size: 13px; color: #c2335b; line-height: 1.6; }
+.cm-form { max-width: 720px; display: grid; gap: 12px; }
+.cm-form h2 { margin: 18px 0 0; font-size: 17px; }
+.cm-form label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.cm-form [hidden] { display: none !important; }
+.cm-genres { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.cm-genre { position: relative; display: grid !important; gap: 4px !important; padding: 14px; border: 2px solid var(--line); border-radius: 16px; background: var(--card); cursor: pointer; }
+.cm-genre input { position: absolute; opacity: 0; pointer-events: none; }
+.cm-genre.active { border-color: var(--coral); background: #fff6f8; }
+.cm-genre small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.cm-genre-price strong { color: #c2335b; }
+.cm-genre-price s { color: var(--muted); font-size: 12px; font-weight: 400; }
+.cm-option-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.cm-option-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.cm-stepper { display: flex; align-items: center; gap: 6px; }
+.cm-stepper button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 20px; cursor: pointer; }
+.cm-stepper button:disabled { opacity: .35; cursor: default; }
+.cm-stepper output { min-width: 28px; text-align: center; font-weight: 700; font-size: 18px; }
+.cm-check { grid-template-columns: auto 1fr !important; align-items: start; font-weight: 400 !important; line-height: 1.55; }
+.cm-check input { width: 20px; height: 20px; margin-top: 2px; }
+.cm-check small { color: var(--muted); }
+.cm-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cm-note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.65; }
+.cm-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px; border-radius: 16px; background: #28253e; color: #fff; margin-top: 10px; }
+.cm-summary span { display: block; font-size: 12px; opacity: .7; }
+.cm-summary strong { display: block; font-size: 18px; margin: 4px 0; }
+.cm-summary small { font-size: 11px; opacity: .7; line-height: 1.4; display: block; }
+@media (max-width: 640px) {
+  .cm-summary, .cm-two { grid-template-columns: 1fr; }
+  .cm-list { grid-template-columns: 1fr; }
+  .cm-genres { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-page * { transition: none !important; } }
