@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="commission.css?v=20261127-c3">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261121-bug1"></script>
-  <script type="module" src="commission.js?v=20261127-c5"></script>
+  <script type="module" src="commission.js?v=20261127-c6"></script>
 </head>
 <body class="cm-page">
   <header class="site-header">
@@ -57,6 +57,8 @@
         <h2>1. 장르 고르기</h2>
         <div id="cmGenres" class="cm-genres"></div>
 
+        <p class="cm-note" data-genre-hint>장르를 고르면 분량·옵션과 견적이 나와요.</p>
+        <div data-needs-genre hidden>
         <h2>2. 분량·옵션</h2>
         <div class="cm-option-row">
           <div><strong id="cmUnitLabel">추가 옵션</strong><small id="cmUnitPrice"></small></div>
@@ -76,6 +78,7 @@
         <div class="cm-two">
           <label>그림체<select id="cmArt"></select></label>
           <label>분위기<select id="cmMood"></select></label>
+        </div>
         </div>
         <p class="cm-note">캐릭터는 스트리머의 이름·말투·분위기만 반영한 <strong>새 모티브 캐릭터</strong>로 만들어요(작가 허락이 필요 없는 방식). 기존 아바타 외형은 쓰지 않아요.</p>
         <label id="cmOwnAvatarWrap" class="cm-check" hidden><input id="cmOwnAvatar" type="checkbox"> <span><strong>이 아바타의 저작권은 스트리머 본인에게 있습니다</strong> <small>체크하면 본인 아바타 외형 그대로 만들어요. 사실과 다르면 권리 문제는 신청자 책임이에요.</small></span></label>

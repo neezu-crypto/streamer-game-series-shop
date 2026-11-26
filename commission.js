@@ -39,7 +39,8 @@ const STATUS = {
 };
 const STAGE = { planning: '기획·대본', artwork: '그림 작업', assembly: '조립·검수', delivered: '전달 완료' };
 
-const state = { data: null, genre: 'roulette', units: 0, promoUnits: 0, tab: 'funding', busy: false };
+// genre '' = 장르 미선택(주소에 genre=가 없을 때). 고르기 전에는 옵션·요약·신청 버튼이 잠긴다.
+const state = { data: null, genre: '', units: 0, promoUnits: 0, tab: 'funding', busy: false };
 const won = (krw) => `${(krw / 10000).toLocaleString('ko-KR')}만 원`;
 const cashText = (c) => `${Number(c || 0).toLocaleString('ko-KR')}캐시`;
 const dateText = (ms) => (ms ? new Date(ms).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) : '-');
@@ -144,6 +145,17 @@ function renderForm() {
   const d = state.data;
   if (!d) return;
   const g = d.genres[state.genre];
+  $('cmSubmit').disabled = !g || state.busy;
+  document.querySelectorAll('#cmForm [data-needs-genre]').forEach((el) => { el.hidden = !g; });
+  const hint = document.querySelector('#cmForm [data-genre-hint]'); if (hint) hint.hidden = !!g;
+  if (!g) {
+    ['cmSumProduction', 'cmSumPromo', 'cmSumPrice', 'cmSumDays'].forEach((id) => { $(id).textContent = '-'; });
+    $('cmSumRegular').textContent = '장르를 골라 주세요'; $('cmSumPromoNote').textContent = ''; $('cmSumCash').textContent = '';
+    $('cmMultiWrap').hidden = true; $('cmPlayersWrap').hidden = true;
+    const me0 = d.me; const st0 = !!(me0 && me0.isStreamer);
+    $('cmOwnAvatarWrap').hidden = !st0; $('cmTargetWrap').hidden = st0; $('cmSelfTarget').hidden = !st0;
+    return;
+  }
   const canMulti = state.genre !== 'vn';
   if (!canMulti) $('cmMulti').checked = false;
   $('cmMultiWrap').hidden = !canMulti;
@@ -208,6 +220,7 @@ $('cmForm').addEventListener('submit', async (e) => {
   const me = state.data && state.data.me;
   if (!requireLogin()) { status.textContent = '로그인하면 이어서 신청할 수 있어요. 입력한 내용은 그대로 남아 있어요.'; return; }
   const title = $('cmTitle').value.trim(); const pitch = $('cmPitch').value.trim(); const description = $('cmDesc').value.trim();
+  if (!state.data.genres[state.genre]) { status.textContent = '장르를 먼저 골라 주세요.'; return; }
   if (!title || !pitch || !description) { status.textContent = '제목·한 줄 소개·내용을 모두 적어 주세요.'; return; }
   const targetSoopId = $('cmTargetId').value.trim().toLowerCase();
   if (!(me && me.isStreamer) && !/^[a-z0-9]{2,20}$/.test(targetSoopId)) { status.textContent = '받을 스트리머를 검색해서 골라 주세요.'; return; }
