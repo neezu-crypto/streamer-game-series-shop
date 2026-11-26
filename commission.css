@@ -71,3 +71,8 @@
 @media (prefers-reduced-motion: reduce) { .cm-page * { transition: none !important; } }
 .cm-closed { max-width: 720px; padding: 18px; border-radius: 16px; background: #fff0f4; color: #c2335b; line-height: 1.7; font-weight: 600; }
 .cm-closed[hidden], .cm-form[hidden] { display: none; }
+.cm-web-banner { margin: 0 0 4px; padding: 14px 16px; border-radius: 14px; background: #eaf4ff; color: #1f4f86; line-height: 1.65; font-size: 14px; }
+.cm-inline { display: flex !important; align-items: center; gap: 10px; font-weight: 600; }
+.cm-inline select { width: auto; min-height: 40px; }
+.cm-summary { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 640px) { .cm-summary { grid-template-columns: 1fr 1fr; } }

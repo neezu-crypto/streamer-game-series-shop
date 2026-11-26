@@ -39,7 +39,7 @@ const STATUS = {
 };
 const STAGE = { planning: '기획·대본', artwork: '그림 작업', assembly: '조립·검수', delivered: '전달 완료' };
 
-const state = { data: null, genre: 'roulette', units: 0, tab: 'funding', busy: false };
+const state = { data: null, genre: 'roulette', units: 0, promoUnits: 0, tab: 'funding', busy: false };
 const won = (krw) => `${(krw / 10000).toLocaleString('ko-KR')}만 원`;
 const cashText = (c) => `${Number(c || 0).toLocaleString('ko-KR')}캐시`;
 const dateText = (ms) => (ms ? new Date(ms).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) : '-');
@@ -47,16 +47,25 @@ const newId = (prefix) => prefix + Array.from(crypto.getRandomValues(new Uint8Ar
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const errText = (e) => String((e && e.message) || e || '').replace(/^.*?: /, '') || '잠시 후 다시 시도해 주세요.';
 
-function quote(genre, units, donation, promo) {
-  const g = state.data && state.data.genres[genre];
+// 서버 quote(functions/commission.js)와 같은 계산. 최종 금액은 서버가 다시 계산한다.
+function quote(genre, units, donation, promo, multi = false, players = 0, promoUnits = 0) {
+  const d = state.data; const g = d && d.genres[genre];
   if (!g) return null;
-  const krw = (promo ? g.promoKrw : g.regularKrw) + units * g.unitKrw + (donation ? 20000 : 0);
-  let days = g.baseDays + Math.max(0, units - g.freeUnits) * g.daysPerUnit;
+  const M = d.multiOption; const P = d.promoOption;
+  if (multi && genre === 'vn') return null;
+  let baseKrw = promo ? g.promoKrw : g.regularKrw; let baseDays = g.baseDays;
+  if (multi) {
+    if (genre === 'roulette') { baseKrw += M.rouletteKrw; baseDays += M.rouletteDays; }
+    else { baseKrw = Math.ceil((baseKrw * (1 + M.rate)) / 1000) * 1000; baseDays = Math.ceil(baseDays * (1 + M.rate)); }
+  }
+  let days = baseDays + Math.max(0, units - g.freeUnits) * g.daysPerUnit;
   if (g.maxDays && days > g.maxDays) return null;
-  if (krw > MAX_KRW) return null;
-  days += donation ? 14 : 0;
-  const promoSpots = krw >= 100000 ? Math.min(500, Math.floor(krw / 50000) * 100 - 100) : 0;
-  return { krw, days, promoSpots };
+  const donationKrw = donation ? (multi ? M.donationKrw : 20000) : 0;
+  days += donation ? (multi ? M.donationDays : 14) : 0;
+  const productionKrw = baseKrw + units * g.unitKrw + donationKrw;
+  if (productionKrw > MAX_KRW || promoUnits > P.maxUnits) return null;
+  const promoKrw = promoUnits * P.unitKrw;
+  return { productionKrw, promoKrw, krw: productionKrw + promoKrw, days, promoSpots: promoUnits * P.unitSpots, promoDays: promoUnits * P.daysPerUnit };
 }
 const promoAvailable = () => !!(state.data && state.data.promoLeft > 0);
 
@@ -135,21 +144,42 @@ function renderForm() {
   const d = state.data;
   if (!d) return;
   const g = d.genres[state.genre];
+  const canMulti = state.genre !== 'vn';
+  if (!canMulti) $('cmMulti').checked = false;
+  $('cmMultiWrap').hidden = !canMulti;
+  const multi = $('cmMulti').checked;
+  $('cmPlayersWrap').hidden = !multi;
+  $('cmMultiNote').textContent = state.genre === 'roulette' ? '합방용 공유 화면 · +1만 원 · 기간 +3일 · 2~4명' : '기본가·기본 기간 +50% · 2~4명 · 차례·점수 대결·협동 방식(실시간 대전 제외)';
+  $('cmDonationNote').textContent = multi
+    ? '+4만 원 · 기간 +14~21일(SOOP 심사). 참여 스트리머 모두 각자 방송 후원으로 게임 이벤트를 일으킬 수 있어요.'
+    : '+2만 원 · 기간 +7~14일(SOOP 심사). 별풍선 후원으로 게임 안 이벤트가 일어나요.';
+  const players = Number($('cmPlayers').value) || 2;
   const donation = $('cmDonation').checked;
   const promo = promoAvailable();
-  const q = quote(state.genre, state.units, donation, promo);
+  const pu = state.promoUnits;
+  const q = quote(state.genre, state.units, donation, promo, multi, players, pu);
   $('cmUnitLabel').textContent = `추가: ${g.unitLabel}`;
   const extra = g.freeUnits ? `${g.freeUnits}개까지 기간 그대로, 이후 개당 +${g.daysPerUnit}일` : `개당 +${g.daysPerUnit}일`;
   $('cmUnitPrice').textContent = `개당 +${won(g.unitKrw)} · ${extra}`;
   $('cmUnits').textContent = String(state.units);
   $('cmMinus').disabled = state.units <= 0;
-  $('cmPlus').disabled = !quote(state.genre, state.units + 1, donation, false);
-  if (!q) { state.units = Math.max(0, state.units - 1); return renderForm(); }
-  $('cmSumPrice').textContent = `${won(q.krw)} (${cashText(q.krw / 100)})`;
-  const reg = quote(state.genre, state.units, donation, false);
-  $('cmSumRegular').textContent = promo && reg && reg.krw !== q.krw ? `오픈 특가 적용 · 정가 ${won(reg.krw)}` : '정가';
+  $('cmPlus').disabled = !quote(state.genre, state.units + 1, donation, false, multi, players, 0);
+  $('cmPromoUnits').textContent = `${pu * d.promoOption.unitSpots}곳`;
+  $('cmPromoMinus').disabled = pu <= 0;
+  $('cmPromoPlus').disabled = pu >= d.promoOption.maxUnits;
+  if (!q) {
+    if (state.units > 0) { state.units -= 1; return renderForm(); }
+    if (donation) { $('cmDonation').checked = false; return renderForm(); }
+    return;
+  }
+  $('cmSumProduction').textContent = won(q.productionKrw);
+  const reg = quote(state.genre, state.units, donation, false, multi, players, 0);
+  $('cmSumRegular').textContent = promo && reg && reg.productionKrw !== q.productionKrw ? `오픈 특가 적용 · 정가 ${won(reg.productionKrw)}` : '정가';
+  $('cmSumPromo').textContent = q.promoKrw ? won(q.promoKrw) : '없음';
+  $('cmSumPromoNote').textContent = q.promoKrw ? `${q.promoSpots}곳 · 완성 후 최대 ${q.promoDays}일` : '선택 안 함';
+  $('cmSumPrice').textContent = won(q.krw);
+  $('cmSumCash').textContent = cashText(q.krw / 100);
   $('cmSumDays').textContent = donation ? `최대 ${q.days}일` : `${q.days}일`;
-  $('cmSumPromo').textContent = q.promoSpots ? `${q.promoSpots}곳` : '없음';
   const me = d.me;
   const isStreamer = !!(me && me.isStreamer);
   $('cmOwnAvatarWrap').hidden = !isStreamer;
@@ -166,6 +196,10 @@ $('cmGenres').addEventListener('change', (e) => {
 $('cmMinus').addEventListener('click', () => { state.units = Math.max(0, state.units - 1); renderForm(); });
 $('cmPlus').addEventListener('click', () => { state.units += 1; renderForm(); });
 $('cmDonation').addEventListener('change', renderForm);
+$('cmMulti').addEventListener('change', renderForm);
+$('cmPlayers').addEventListener('change', renderForm);
+$('cmPromoMinus').addEventListener('click', () => { state.promoUnits = Math.max(0, state.promoUnits - 1); renderForm(); });
+$('cmPromoPlus').addEventListener('click', () => { state.promoUnits = Math.min(state.data.promoOption.maxUnits, state.promoUnits + 1); renderForm(); });
 
 $('cmForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -177,7 +211,7 @@ $('cmForm').addEventListener('submit', async (e) => {
   if (!title || !pitch || !description) { status.textContent = '제목·한 줄 소개·내용을 모두 적어 주세요.'; return; }
   const targetSoopId = $('cmTargetId').value.trim().toLowerCase();
   if (!(me && me.isStreamer) && !/^[a-z0-9]{2,20}$/.test(targetSoopId)) { status.textContent = '받을 스트리머를 검색해서 골라 주세요.'; return; }
-  if (!$('cmConsentCopy').checked || !$('cmConsentRules').checked) { status.textContent = '필수 동의 두 가지를 체크해 주세요.'; return; }
+  if (!$('cmConsentCopy').checked || !$('cmConsentWeb').checked || !$('cmConsentRules').checked) { status.textContent = '필수 동의 세 가지를 모두 체크해 주세요.'; return; }
   state.busy = true; $('cmSubmit').disabled = true; status.textContent = '신청하는 중…';
   const form = $('cmForm');
   form.dataset.requestId = form.dataset.requestId || newId('cm_');
@@ -187,10 +221,11 @@ $('cmForm').addEventListener('submit', async (e) => {
       donation: $('cmDonation').checked, ownAvatar: $('cmOwnAvatar').checked,
       style: { art: $('cmArt').value, mood: $('cmMood').value },
       title, pitch, description, targetSoopId,
-      consents: { noCopy: true, rules: true },
+      multi: $('cmMulti').checked, players: Number($('cmPlayers').value) || 2, promoUnits: state.promoUnits,
+      consents: { noCopy: true, rules: true, webOnly: true },
     });
     delete form.dataset.requestId;
-    form.reset(); state.units = 0;
+    form.reset(); state.units = 0; state.promoUnits = 0;
     status.innerHTML = r.status === 'funding'
       ? `신청 완료(번호 ${esc(r.shortCode)}). 모금이 열렸어요! 방송에서 시청자에게 알려 주세요.`
       : `신청 완료(번호 ${esc(r.shortCode)}). <strong>${esc(r.target.nickname)}</strong> 님이 SOOP 쪽지로 동의하면 모금이 열려요. 스트리머에게 신청 번호를 알려 주세요.`;
@@ -212,9 +247,10 @@ function card(item, { mine = false } = {}) {
   if (item.status === 'funding') lines.push(`모금 마감까지 ${left}일 · 후원 ${item.donorCount}명`, `지금 채우면 ${dateText(item.estStartAt)}쯤 제작 시작`);
   if (item.status === 'queued') lines.push(`제작 대기 ${item.queuePos}번째 · ${dateText(item.estStartAt)}쯤 시작 예정`);
   if (item.status === 'in_production') lines.push(`${STAGE[item.stage] || '제작'} 단계 · ${dateText(item.dueAt)}까지 전달 예정`);
+  if (item.status === 'completed' && item.promoStatus === 'pending') lines.push(`완성 · 대신 홍보 ${item.promoSpots}곳 진행 중`);
   if (item.status === 'awaiting_streamer') lines.push(`${esc(item.target.nickname)} 님의 SOOP 쪽지 동의를 기다리고 있어요(신청 번호 ${esc(item.shortCode)}).`);
   if (mine && item.closeReason) lines.push(`${esc(item.closeReason)} · 반환 ${cashText(item.refundedCash)}`);
-  const tags = [item.genreLabel, item.units ? `+옵션 ${item.units}` : '', item.donation ? '후원 연동' : '', item.isPromo ? '오픈 특가' : '', item.ownAvatar ? '본인 아바타' : ''].filter(Boolean);
+  const tags = [item.genreLabel, item.units ? `+옵션 ${item.units}` : '', item.multi ? `멀티 ${item.players}명` : '', item.donation ? '후원 연동' : '', item.promoSpots ? `홍보 ${item.promoSpots}곳` : '', item.isPromo ? '오픈 특가' : '', item.ownAvatar ? '본인 아바타' : ''].filter(Boolean);
   let actions = '';
   if (item.status === 'funding') {
     const remain = item.priceCash - (item.raisedCash || 0);
