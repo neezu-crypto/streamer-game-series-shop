@@ -119,6 +119,30 @@ function renderHead() {
   if (d.me) b.innerHTML = `내 캐시 <strong>${cashText(d.me.balanceCash)}</strong> · <a href="customer-center.html?open=charge">충전</a>`;
 }
 
+// ---------- 게임 제작 이력(정적 목록, 서버·DB 호출 없음) ----------
+// status: 'open'(운영 중) | 'paused'(점검 중). paused는 previewReady(메인만 보기 적용)일 때만 [둘러보기] 링크를 연다.
+// 운영 상태가 바뀌면 이 목록을 고친다(관리센터 서비스 일시정지 화면 기준).
+const PORTFOLIO = [
+  { name: '당신이 여기에 온 이유', desc: '스트리머 이야기를 담은 미연시', img: 'assets/portfolio/onyu.webp', url: 'https://neezu-crypto.github.io/onyu-vn/', status: 'open' },
+  { name: '다마고치 분양소', desc: '펫 분양·육성', img: 'assets/portfolio/tamagotchi.webp', url: 'tamagotchi.html', status: 'open' },
+  { name: '스트리머 배팅시장', desc: '시청자 참여 예측 게임', img: 'assets/portfolio/betting.webp', url: 'https://neezu-crypto.github.io/StreamBet-Market/', status: 'paused', previewReady: false },
+  { name: '스트리머 주식시장', desc: '시청자 참여 주식 게임', emoji: '📈', url: 'https://neezu-crypto.github.io/soop-stock-market/', status: 'paused', previewReady: false },
+  { name: '스트리머 인생게임', desc: '시청자 참여 게임', img: 'assets/portfolio/life.webp', url: 'https://neezu-crypto.github.io/streamer-life-game/', status: 'paused', previewReady: false },
+  { name: '스트리머 주루마블', desc: '보드게임', img: 'assets/portfolio/jurumable.webp', url: 'https://neezu-crypto.github.io/streamer-jurumable/', status: 'paused', previewReady: false },
+];
+function renderPortfolio() {
+  $('cmPortfolio').innerHTML = PORTFOLIO.map((p) => {
+    const open = p.status === 'open';
+    const canView = open || p.previewReady;
+    const art = p.img ? `<img src="${esc(p.img)}" alt="" width="480" height="300" loading="lazy" decoding="async">` : `<span class="cm-portfolio-emoji" aria-hidden="true">${p.emoji || '🎮'}</span>`;
+    const badge = open ? '<span class="cm-badge open">운영 중</span>' : `<span class="cm-badge paused">${p.previewReady ? '점검 중 · 둘러보기만 가능' : '점검 중'}</span>`;
+    const ext = /^https?:/.test(p.url);
+    const link = canView ? `<a class="cm-portfolio-go" href="${esc(p.url)}"${ext ? ' target="_blank" rel="noopener"' : ''}>둘러보기</a>` : '';
+    return `<article class="cm-portfolio-card"><div class="cm-portfolio-art">${art}</div><div class="cm-portfolio-body"><b>${esc(p.name)}</b><small>${esc(p.desc)}</small>${badge}${link}</div></article>`;
+  }).join('');
+}
+renderPortfolio();
+
 // ---------- 신청서 ----------
 // 장르별 그림체·분위기 선택지(서버 styles). 장르를 바꾸면 첫 항목으로 돌아간다.
 function renderStyles() {

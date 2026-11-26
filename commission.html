@@ -8,10 +8,10 @@
   <title>게임 제작 의뢰 — 게임 시리즈</title>
   <script type="module" src="./maintenance-admin-gate.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="commission.css?v=20261127-c3">
+  <link rel="stylesheet" href="commission.css?v=20261127-c4">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261121-bug1"></script>
-  <script type="module" src="commission.js?v=20261127-c6"></script>
+  <script type="module" src="commission.js?v=20261127-c7"></script>
 </head>
 <body class="cm-page">
   <header class="site-header">
@@ -38,6 +38,12 @@
         <span id="cmQueueInfo" class="cm-chip">제작 대기열 확인 중</span>
         <span id="cmBalance" class="cm-chip" hidden></span>
       </div>
+    </section>
+
+    <section class="cm-portfolio" aria-labelledby="cmPortfolioTitle">
+      <h2 id="cmPortfolioTitle">게임 제작 이력</h2>
+      <p class="cm-portfolio-sub">지금까지 직접 만든 게임이에요. 점검 중인 게임은 화면만 둘러볼 수 있어요.</p>
+      <div id="cmPortfolio" class="cm-portfolio-list"></div>
     </section>
 
     <div class="cm-tabs" role="tablist">
