@@ -93,3 +93,5 @@
 .cm-badge.paused{background:#f3f4f6;color:#6b7280}
 .cm-portfolio-go{margin-top:6px;align-self:flex-start;min-height:36px;display:inline-flex;align-items:center;padding:0 14px;border-radius:10px;background:#111827;color:#fff;font-weight:700;font-size:14px;text-decoration:none}
 @media (max-width:760px){.cm-portfolio-list{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}.cm-portfolio-card{flex:0 0 72%;scroll-snap-align:start}}
+
+.cm-promo-intro{display:block;margin:2px 0;color:#374151;font-size:13px;line-height:1.5}

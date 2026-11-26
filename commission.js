@@ -130,8 +130,19 @@ const PORTFOLIO = [
   { name: '스트리머 인생게임', desc: '시청자 참여 게임', img: 'assets/portfolio/life.webp', url: 'https://neezu-crypto.github.io/streamer-life-game/', status: 'paused', previewReady: false },
   { name: '스트리머 주루마블', desc: '보드게임', img: 'assets/portfolio/jurumable.webp', url: 'https://neezu-crypto.github.io/streamer-jurumable/', status: 'paused', previewReady: false },
 ];
+const SERVICES = [
+  { name: '스트리머 팬페이지', desc: '인증 스트리머별 팬 페이지', img: 'assets/portfolio/fanpage.webp', url: 'https://neezu-crypto.github.io/streamer-fanpage/', status: 'open' },
+  { name: '스트리머 고점체크', desc: '다시보기 시청 흐름 분석', img: 'assets/portfolio/viewerstats.webp', url: 'https://neezu-crypto.github.io/streamer-fanpage/viewer-stats.html', status: 'open' },
+  { name: '스트리머 갤러리', desc: '팬아트·사진 공유', img: 'assets/portfolio/gallery.webp', url: 'https://neezu-crypto.github.io/streamer-gallery/', status: 'open' },
+  { name: '스트리머 메신저', desc: '스트리머 채팅방', img: 'assets/portfolio/messenger.webp', url: 'https://neezu-crypto.github.io/streamer-messenger/', status: 'open' },
+  { name: '게임시리즈 통합상점', desc: '스티커·캐시·게임 제작 의뢰', img: 'assets/portfolio/shop.webp', url: './', status: 'open' },
+];
 function renderPortfolio() {
-  $('cmPortfolio').innerHTML = PORTFOLIO.map((p) => {
+  renderPortfolioList('cmPortfolio', PORTFOLIO);
+  renderPortfolioList('cmServices', SERVICES);
+}
+function renderPortfolioList(id, list) {
+  $(id).innerHTML = list.map((p) => {
     const open = p.status === 'open';
     const canView = open || p.previewReady;
     const art = p.img ? `<img src="${esc(p.img)}?v=20261127b" alt="" width="480" height="300" loading="lazy" decoding="async">` : `<span class="cm-portfolio-emoji" aria-hidden="true">${p.emoji || '🎮'}</span>`;
