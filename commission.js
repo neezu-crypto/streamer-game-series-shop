@@ -85,6 +85,7 @@ async function load() {
   }
   renderHead();
   renderGenres();
+  if ($('cmArt').dataset.genre !== state.genre) { renderStyles(); $('cmArt').dataset.genre = state.genre; }
   renderForm();
   renderFunding();
   renderMine();
@@ -109,6 +110,14 @@ function renderHead() {
 }
 
 // ---------- 신청서 ----------
+// 장르별 그림체·분위기 선택지(서버 styles). 장르를 바꾸면 첫 항목으로 돌아간다.
+function renderStyles() {
+  const st = state.data.styles && state.data.styles[state.genre];
+  if (!st) return;
+  const fill = (sel, list) => { sel.innerHTML = list.map(([k, label]) => `<option value="${esc(k)}">${esc(label)}</option>`).join(''); sel.value = list[0][0]; };
+  fill($('cmArt'), st.art); fill($('cmMood'), st.mood);
+}
+
 function renderGenres() {
   const d = state.data;
   const promo = promoAvailable();
@@ -152,7 +161,7 @@ function renderForm() {
 $('cmGenres').addEventListener('change', (e) => {
   if (e.target.name !== 'cmGenre') return;
   state.genre = e.target.value; state.units = 0;
-  renderGenres(); renderForm();
+  renderGenres(); renderStyles(); $('cmArt').dataset.genre = state.genre; renderForm();
 });
 $('cmMinus').addEventListener('click', () => { state.units = Math.max(0, state.units - 1); renderForm(); });
 $('cmPlus').addEventListener('click', () => { state.units += 1; renderForm(); });
