@@ -69,3 +69,5 @@
   .cm-genres { grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .cm-page * { transition: none !important; } }
+.cm-closed { max-width: 720px; padding: 18px; border-radius: 16px; background: #fff0f4; color: #c2335b; line-height: 1.7; font-weight: 600; }
+.cm-closed[hidden], .cm-form[hidden] { display: none; }

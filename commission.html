@@ -8,10 +8,10 @@
   <title>게임 제작 의뢰 — 게임 시리즈</title>
   <script type="module" src="./maintenance-admin-gate.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="commission.css?v=20261126-c1">
+  <link rel="stylesheet" href="commission.css?v=20261126-c2">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261121-bug1"></script>
-  <script type="module" src="commission.js?v=20261126-c1"></script>
+  <script type="module" src="commission.js?v=20261126-c3"></script>
 </head>
 <body class="cm-page">
   <header class="site-header">
@@ -33,6 +33,7 @@
       <h1>스트리머가 원하는 게임,<br><em>시청자 모금으로 만들어요.</em></h1>
       <p>신청은 무료예요. 30일 동안 통합 캐시로 모금하고, 목표를 채우면 순서대로 한 번에 1건씩 제작해요. 목표에 못 닿으면 후원한 캐시는 모두 돌려드려요.</p>
       <div class="cm-hero-stats">
+        <span id="cmRoundLeft" class="cm-chip cm-chip-hot">1차 모집 확인 중</span>
         <span id="cmPromoLeft" class="cm-chip cm-chip-hot">오픈 특가 확인 중</span>
         <span id="cmQueueInfo" class="cm-chip">제작 대기열 확인 중</span>
         <span id="cmBalance" class="cm-chip" hidden></span>
@@ -50,6 +51,7 @@
     </section>
 
     <section id="cmPanelApply" class="cm-panel" hidden>
+      <p id="cmRoundClosed" class="cm-closed" hidden></p>
       <form id="cmForm" class="cm-form" novalidate>
         <h2>1. 장르 고르기</h2>
         <div id="cmGenres" class="cm-genres"></div>

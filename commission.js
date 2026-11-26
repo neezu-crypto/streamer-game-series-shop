@@ -23,13 +23,14 @@ const actionFn = httpsCallable(functions, 'gameSeriesCommissionAction', { timeou
 const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
 const MAX_KRW = 300000;
-const GENRE_ORDER = ['roulette', 'viewer', 'card', 'board', 'escape', 'vn'];
+const GENRE_ORDER = ['roulette', 'viewer', 'penalty', 'card', 'board', 'escape', 'vn'];
 const GENRE_DESC = {
   roulette: '룰렛 1종(항목 30개) · 테마·캐릭터 연출 · 방송 화면용',
   viewer: '예측·투표 방식 1종 · 시청자 점수판',
   card: '카드 20장 · 도감·뽑기 연출',
   board: '말판 24칸 · 이벤트 20개 · 2~4인',
   escape: '사건 1개(약 20~30분)',
+  penalty: '고난도 스테이지 6개 · 실패 연출·시청자 구경 화면',
   vn: '약 45분 분량',
 };
 const STATUS = {
@@ -91,6 +92,13 @@ async function load() {
 
 function renderHead() {
   const d = state.data;
+  const roundOpen = d.roundLeft > 0;
+  $('cmRoundLeft').textContent = roundOpen ? `${d.round}차 모집 남은 신청 ${d.roundLeft}/${d.roundSlots}` : `${d.round}차 모집 마감`;
+  $('cmRoundLeft').classList.toggle('cm-chip-hot', roundOpen);
+  $('cmRoundClosed').hidden = roundOpen;
+  $('cmRoundClosed').textContent = `${d.round}차 공개 모금은 신청 ${d.roundSlots}건을 모두 받았어요. 다음 모집은 제작 상황을 보고 가격을 다시 정해 열어요. 지금 열린 모금에는 계속 후원할 수 있어요.`;
+  $('cmForm').hidden = !roundOpen;
+  $('cmPromoLeft').hidden = !roundOpen;
   $('cmPromoLeft').textContent = d.promoLeft > 0 ? `오픈 특가 남은 자리 ${d.promoLeft}` : '오픈 특가 마감 · 정가 적용';
   $('cmPromoLeft').classList.toggle('cm-chip-hot', d.promoLeft > 0);
   const waitDays = Math.max(0, Math.ceil((d.nextStartAt - d.now) / DAY));
