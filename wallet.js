@@ -1,11 +1,9 @@
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
-import {
-  getAuth, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, signInAnonymously,
-  signInWithCustomToken, signInWithPopup, signOut,
-} from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInAnonymously, signOut } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { setupBugReport } from './bug-report.js?v=20261121-bug1';
+import { createSeriesLogin } from './series-login.js?v=20261127-kit1';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -33,11 +31,6 @@ const submitRefund = callable('gameSeriesWalletSubmitRefund');
 const submitSupport = callable('gameSeriesWalletSubmitSupport');
 const getWalletAdminList = callable('gameSeriesWalletAdminList');
 const reviewWalletRequest = callable('gameSeriesWalletAdminReview');
-// 주식시장·인생게임과 같은 공용 계정 보호 함수다. 상점이 별도 계정을 만들지
-// 않고, 기존 시리즈 UID의 캐시·인증 상태를 그대로 사용하도록 한다.
-const linkGoogleAccount = callable('linkGoogleAccount');
-const linkKakaoAccount = callable('linkKakaoAccount');
-const requestStreamerVerification = callable('requestStreamerVerification');
 
 const $ = (id) => document.getElementById(id);
 const authStatus = $('walletAuthStatus');
@@ -392,103 +385,12 @@ async function initializeWalletUser(user) {
 
 onAuthStateChanged(auth, initializeWalletUser);
 
-function openLoginModal() {
-  $('walletLoginChoices').hidden = false;
-  $('walletStreamerLoginForm').hidden = true;
-  $('walletStreamerLoginStatus').textContent = '';
-  $('walletLoginModal').showModal();
-}
-
-function closeLoginModal() {
-  $('walletLoginModal').close();
-}
-
-async function loginWithGoogle() {
-  try {
-    const provider = new GoogleAuthProvider();
-    if (auth.currentUser?.isAnonymous) {
-      await linkWithPopup(auth.currentUser, provider);
-    } else {
-      await signInWithPopup(auth, provider);
-    }
-    await linkGoogleAccount();
-    closeLoginModal();
-  } catch (error) {
-    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') return;
-    // 이미 다른 시리즈 UID에 연결된 Google 계정은 해당 계정으로 전환한다.
-    if (error?.code === 'auth/credential-already-in-use' || error?.code === 'auth/email-already-in-use') {
-      try {
-        await signInWithPopup(auth, new GoogleAuthProvider());
-        await linkGoogleAccount();
-        closeLoginModal();
-        return;
-      } catch (switchError) {
-        console.error('Google 계정 전환 실패:', switchError);
-        window.alert(`Google 로그인에 실패했습니다. ${switchError.message || switchError}`);
-        return;
-      }
-    }
-    console.error('Google 로그인 실패:', error);
-    window.alert(`Google 로그인에 실패했습니다. ${error.message || error}`);
-  }
-}
-
-async function loginWithKakao() {
-  if (typeof window.Kakao === 'undefined' || !window.Kakao.isInitialized()) {
-    window.alert('카카오 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-    return;
-  }
-  window.Kakao.Auth.login({
-    success: async (kakaoAuth) => {
-      try {
-        const result = await linkKakaoAccount({ kakaoAccessToken: kakaoAuth.access_token });
-        if (result.data?.action === 'switch') await signInWithCustomToken(auth, result.data.customToken);
-        closeLoginModal();
-      } catch (error) {
-        console.error('카카오 로그인 실패:', error);
-        window.alert(`카카오 로그인에 실패했습니다. ${error.message || error}`);
-      }
-    },
-    fail: () => window.alert('카카오 로그인이 취소되었거나 실패했습니다.'),
-  });
-}
-
-async function submitStreamerLogin(data) {
-  const status = $('walletStreamerLoginStatus');
-  status.textContent = '스트리머 인증 상태를 확인하고 있습니다.';
-  try {
-    const result = await requestStreamerVerification({ ...data, source: 'game-series-shop' });
-    const payload = result.data || {};
-    if (payload.action === 'switch' && payload.customToken) {
-      await signInWithCustomToken(auth, payload.customToken);
-      closeLoginModal();
-      return;
-    }
-    if (payload.action === 'already-verified' || payload.action === 'auto-approved') {
-      closeLoginModal();
-      await initializeWalletUser(auth.currentUser);
-      return;
-    }
-    // 2026-11-18: 인증 코드 유효 시간이 5분이라, 만료되면 "새 코드 발급"으로 다시 받게 안내한다.
-    const expiresAt = Number(payload.verificationCodeExpiresAt) || 0;
-    const liveCode = payload.verificationCode && expiresAt > Date.now() ? payload.verificationCode : '';
-    if (liveCode) {
-      const minutes = Math.max(1, Math.round((expiresAt - Date.now()) / 60000));
-      status.textContent = `인증 신청이 접수되었습니다. 인증 코드: ${liveCode} (${minutes}분 안에 SOOP 쪽지로 보내 주세요) 보낸 뒤 인증 상태 확인을 눌러 주세요.`;
-    } else if (payload.noteEligible === false) {
-      status.textContent = '인증 신청이 접수되었습니다. 관리자 확인 후 인증 상태 확인을 눌러 주세요.';
-    } else {
-      status.textContent = data.checkOnly
-        ? '아직 인증 확인 전이에요. 코드가 만료됐다면 "새 코드 발급"을 눌러 새 코드를 받아 주세요.'
-        : '인증 신청이 접수되어 있어요. 코드를 잃어버렸거나 만료됐다면 "새 코드 발급"을 눌러 주세요.';
-    }
-    // 신청 접수 단계(코드 안내)로 넘어간다. 검색·신청 버튼은 숨기고 확인·새 코드 버튼만 보인다.
-    $('walletStreamerLoginForm').classList.add('svs-pending');
-  } catch (error) {
-    console.error('스트리머 인증 처리 실패:', error);
-    status.textContent = `인증 처리를 완료하지 못했습니다. ${error.message || error}`;
-  }
-}
+// 로그인 창은 시리즈 공통 부품(series-kit login-modal). 로그인 뒤 지갑 상태를 다시 불러온다.
+const seriesLogin = createSeriesLogin({
+  auth, functions, source: 'game-series-shop',
+  onChange: (user) => initializeWalletUser(user),
+});
+const openLoginModal = () => seriesLogin.open();
 
 authButton.addEventListener('click', async () => {
   if (currentUser && !currentUser.isAnonymous) {
@@ -507,47 +409,6 @@ setupBugReport({
   openLogin: () => openLoginModal(),
   trigger: document.getElementById('openBugReport'),
 });
-$('walletLoginClose').addEventListener('click', closeLoginModal);
-$('walletLoginModal').addEventListener('click', (event) => { if (event.target === $('walletLoginModal')) closeLoginModal(); });
-$('walletLoginGoogle').addEventListener('click', loginWithGoogle);
-$('walletLoginKakao').addEventListener('click', loginWithKakao);
-$('walletLoginStreamer').addEventListener('click', () => {
-  $('walletLoginChoices').hidden = true;
-  $('walletStreamerLoginForm').hidden = false; $('walletStreamerLoginForm').classList.remove('svs-pending'); $('walletStreamerNickname').value = ''; $('walletStreamerSoopId').value = ''; // 다시 열면 검색 단계부터
-  $('walletStreamerLoginStatus').textContent = '';
-});
-$('walletStreamerLoginBack').addEventListener('click', () => {
-  $('walletLoginChoices').hidden = false;
-  $('walletStreamerLoginForm').hidden = true;
-});
-$('walletStreamerLoginForm').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const nickname = $('walletStreamerNickname').value.trim();
-  const soopId = $('walletStreamerSoopId').value.trim();
-  if (!nickname) return window.alert('SOOP 닉네임을 입력해 주세요.');
-  if (!/^[a-z0-9]{2,20}$/.test(soopId)) return window.alert('SOOP 아이디는 영문 소문자·숫자 2~20자로 입력해 주세요.');
-  void submitStreamerLogin({ nickname, soopId });
-});
-$('walletStreamerCheck').addEventListener('click', () => void submitStreamerLogin({ checkOnly: true }));
-// 새 인증 코드 발급(이전 코드 무효화). 서버는 직전 발급 1분 후부터 새 코드를 준다.
-(() => {
-  const check = $('walletStreamerCheck');
-  if (!check || $('walletStreamerRenew')) return;
-  const renew = document.createElement('button');
-  renew.id = 'walletStreamerRenew';
-  renew.type = 'button';
-  renew.className = check.className;
-  renew.textContent = '새 코드 발급 (이전 코드 무효화)';
-  renew.addEventListener('click', async () => {
-    renew.disabled = true;
-    try { await submitStreamerLogin({ renewCode: true }); } finally { renew.disabled = false; }
-  });
-  check.insertAdjacentElement('afterend', renew);
-})();
-
-if (typeof window.Kakao !== 'undefined' && !window.Kakao.isInitialized()) {
-  window.Kakao.init('ed4f01d6903ca41d5dc0ab32b6ae143c');
-}
 
 $('walletAmount').addEventListener('input', updateCashPreview);
 $('walletRefresh').addEventListener('click', refreshWallet);
@@ -697,43 +558,3 @@ $('walletSupportForm').addEventListener('submit', async (event) => {
     setBusy(false);
   }
 });
-
-// 스트리머 인증 신청: SOOP 검색을 기본 방식으로(2026-11-18). 기존 입력칸은 "직접 입력하기"로 남긴다.
-// 검색은 팬페이지 서버의 streamerFanPageVerifySearch(로그인 필요, 사용자별 횟수 제한)를 함께 쓴다.
-{
-  const soopVerifySearchFn = httpsCallable(functions, 'streamerFanPageVerifySearch');
-  const attachSoopVerifySearchTo = (nicknameId, soopIdId, steps) => {
-    if (!document.getElementById(nicknameId) || !document.getElementById(soopIdId)) return;
-    window.attachSoopVerifySearch({
-      nicknameInput: nicknameId,
-      soopIdInput: soopIdId,
-      steps,
-      search: async (query) => {
-        await auth.authStateReady();
-        if (!auth.currentUser) await signInAnonymously(auth);
-        // 검색하는 동안 인증 서버를 미리 깨운다(확인 전용 호출: 신청·코드를 만들지 않음, 5분에 한 번).
-        if (Date.now() - (window.__verifyWarmAt || 0) > 300000) {
-          window.__verifyWarmAt = Date.now();
-          httpsCallable(functions, 'requestStreamerVerification')({ checkOnly: true }).catch(() => {});
-        }
-        const result = await soopVerifySearchFn({ query });
-        return (result.data && result.data.streamers) || [];
-      },
-    });
-  };
-  const attachAll = () => {
-  attachSoopVerifySearchTo('walletStreamerNickname', 'walletStreamerSoopId', {
-      root: 'walletStreamerLoginForm',
-      isPending: () => document.getElementById('walletStreamerLoginForm').classList.contains('svs-pending'),
-      afterSelect: [document.querySelector('#walletStreamerLoginForm button[type=submit]')],
-      pendingOnly: ['walletStreamerCheck', 'walletStreamerRenew'],
-    });
-  };
-  if (window.attachSoopVerifySearch) attachAll();
-  else {
-    const script = document.createElement('script');
-    script.src = new URL('./soop-verify-search.js?v=20261118-svs1', import.meta.url).href;
-    script.onload = attachAll;
-    document.head.appendChild(script);
-  }
-}
