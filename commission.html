@@ -8,7 +8,7 @@
   <title>게임 제작 의뢰 — 게임 시리즈</title>
   <script type="module" src="./maintenance-admin-gate.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="commission.css?v=20261127-c5">
+  <link rel="stylesheet" href="commission.css?v=20261127-c6">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261121-bug1"></script>
   <script type="module" src="commission.js?v=20261127-c12"></script>
@@ -38,17 +38,6 @@
         <span id="cmQueueInfo" class="cm-chip">제작 대기열 확인 중</span>
         <span id="cmBalance" class="cm-chip" hidden></span>
       </div>
-    </section>
-
-    <section class="cm-portfolio" aria-labelledby="cmPortfolioTitle">
-      <h2 id="cmPortfolioTitle">게임 제작 이력</h2>
-      <p class="cm-portfolio-sub">지금까지 직접 만든 게임이에요. 점검 중인 게임은 화면만 둘러볼 수 있어요.</p>
-      <div id="cmPortfolio" class="cm-portfolio-list"></div>
-    </section>
-    <section class="cm-portfolio" aria-labelledby="cmServicesTitle">
-      <h2 id="cmServicesTitle">서비스 제작 이력</h2>
-      <p class="cm-portfolio-sub">게임 말고도 스트리머와 팬을 위한 서비스를 만들어 왔어요.</p>
-      <div id="cmServices" class="cm-portfolio-list"></div>
     </section>
 
     <div class="cm-tabs" role="tablist">
@@ -126,6 +115,17 @@
 
     <section id="cmPanelMine" class="cm-panel" hidden>
       <div id="cmMineList" class="cm-list"><p class="cm-empty">로그인하면 내 신청이 보여요.</p></div>
+    </section>
+
+    <section class="cm-portfolio" aria-labelledby="cmPortfolioTitle">
+      <h2 id="cmPortfolioTitle">게임 제작 이력</h2>
+      <p class="cm-portfolio-sub">지금까지 직접 만든 게임이에요. 점검 중인 게임은 화면만 둘러볼 수 있어요.</p>
+      <div id="cmPortfolio" class="cm-portfolio-list"></div>
+    </section>
+    <section class="cm-portfolio" aria-labelledby="cmServicesTitle">
+      <h2 id="cmServicesTitle">서비스 제작 이력</h2>
+      <p class="cm-portfolio-sub">게임 말고도 스트리머와 팬을 위한 서비스를 만들어 왔어요.</p>
+      <div id="cmServices" class="cm-portfolio-list"></div>
     </section>
   </main>
 

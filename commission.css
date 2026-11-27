@@ -79,6 +79,7 @@
 
 /* 게임 제작 이력 (2026-11-27) */
 .cm-portfolio{margin:8px 0 28px}
+.cm-panel + .cm-portfolio{margin-top:40px}
 .cm-portfolio h2{margin:0 0 4px;font-size:20px}
 .cm-portfolio-sub{margin:0 0 12px;color:#6b7280;font-size:14px}
 .cm-portfolio-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
