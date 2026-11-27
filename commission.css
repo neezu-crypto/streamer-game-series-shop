@@ -96,3 +96,11 @@
 @media (max-width:760px){.cm-portfolio-list{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}.cm-portfolio-card{flex:0 0 72%;scroll-snap-align:start}}
 
 .cm-promo-intro{display:block;margin:2px 0;color:#374151;font-size:13px;line-height:1.5}
+
+/* 대신 홍보 글 예시(2026-11-27) */
+.cm-promo-samples{margin-top:8px;font-size:13px}
+.cm-promo-samples summary{cursor:pointer;color:#db2777;font-weight:700}
+.cm-promo-sample{display:block;margin-top:8px;padding:10px 12px;border:1px solid #f1d5e2;border-radius:10px;background:#fff;color:inherit;text-decoration:none}
+.cm-promo-sample:hover{border-color:#db2777}
+.cm-promo-sample b{display:block;margin-bottom:2px}
+.cm-promo-sample small{color:#9ca3af}
