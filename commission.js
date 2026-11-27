@@ -271,6 +271,20 @@ $('cmPlayers').addEventListener('change', renderForm);
 $('cmPromoMinus').addEventListener('click', () => { state.promoUnits = Math.max(0, state.promoUnits - 1); renderForm(); });
 $('cmPromoPlus').addEventListener('click', () => { state.promoUnits = Math.min(state.data.promoOption.maxUnits, state.promoUnits + 1); renderForm(); });
 
+// 받을 스트리머 검색 칸(공통 부품)이 고르지 않은 신청을 먼저 멈추고 안내를 검색 칸 옆에만 띄워서,
+// 버튼 옆에는 아무 안내가 없었다(2026-11-27). 제출을 가장 먼저 받아 빠진 항목을 버튼 옆 문구로 알린다.
+document.addEventListener('submit', (e) => {
+  if (e.target !== $('cmForm') || !state.data) return;
+  const me = state.data.me;
+  const status = $('cmFormStatus');
+  let msg = '';
+  if (!state.data.genres[state.genre]) msg = '장르를 먼저 골라 주세요.';
+  else if (!$('cmTitle').value.trim() || !$('cmPitch').value.trim() || !$('cmDesc').value.trim()) msg = '제목·한 줄 소개·내용을 모두 적어 주세요.';
+  else if (!(me && me.isStreamer) && !/^[a-z0-9]{2,20}$/.test($('cmTargetId').value.trim().toLowerCase())) msg = '받을 스트리머를 검색해서 골라 주세요.';
+  else if (!$('cmConsentCopy').checked || !$('cmConsentWeb').checked || !$('cmConsentRules').checked) msg = '필수 동의 세 가지를 모두 체크해 주세요.';
+  if (msg) status.textContent = msg;
+}, true);
+
 $('cmForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (state.busy) return;
