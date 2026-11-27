@@ -23,10 +23,11 @@ const actionFn = httpsCallable(functions, 'gameSeriesCommissionAction', { timeou
 const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
 const MAX_KRW = 300000;
-const GENRE_ORDER = ['roulette', 'viewer', 'penalty', 'card', 'board', 'escape', 'vn'];
+const GENRE_ORDER = ['roulette', 'viewer', 'quiz', 'penalty', 'card', 'board', 'escape', 'vn'];
 const GENRE_DESC = {
   roulette: '룰렛 1종(항목 30개) · 테마·캐릭터 연출 · 방송 화면용',
   viewer: '예측·투표 방식 1종 · 시청자 점수판',
+  quiz: '문제 20개(최대 50개, 객관식·OX) · 시청자 채팅 정답·점수판',
   card: '카드 20장 · 도감·뽑기 연출',
   board: '말판 24칸 · 이벤트 20개 · 2~4인',
   escape: '사건 1개(약 20~30분)',
@@ -53,6 +54,7 @@ function quote(genre, units, donation, promo, multi = false, players = 0, promoU
   const d = state.data; const g = d && d.genres[genre];
   if (!g) return null;
   const M = d.multiOption; const P = d.promoOption;
+  if (g.maxUnits !== undefined && units > g.maxUnits) return null;
   if (multi && genre === 'vn') return null;
   let baseKrw = promo ? g.promoKrw : g.regularKrw; let baseDays = g.baseDays;
   if (multi) {
@@ -162,6 +164,8 @@ function renderStyles() {
   if (!st) return;
   const fill = (sel, list) => { sel.innerHTML = list.map(([k, label]) => `<option value="${esc(k)}">${esc(label)}</option>`).join(''); sel.value = list[0][0]; };
   fill($('cmArt'), st.art); fill($('cmMood'), st.mood);
+  // 퀴즈 주제는 주제 목록이 있는 장르(퀴즈쇼)만 보인다.
+  $('cmTopicWrap').hidden = !st.topic; if (st.topic) fill($('cmTopic'), st.topic);
 }
 
 function renderGenres() {
@@ -268,7 +272,7 @@ $('cmForm').addEventListener('submit', async (e) => {
     const r = await call({
       action: 'create', requestId: form.dataset.requestId, genre: state.genre, units: state.units,
       donation: $('cmDonation').checked, ownAvatar: $('cmOwnAvatar').checked,
-      style: { art: $('cmArt').value, mood: $('cmMood').value },
+      style: { art: $('cmArt').value, mood: $('cmMood').value, ...($('cmTopicWrap').hidden ? {} : { topic: $('cmTopic').value }) },
       title, pitch, description, targetSoopId,
       multi: $('cmMulti').checked, players: Number($('cmPlayers').value) || 2, promoUnits: state.promoUnits,
       consents: { noCopy: true, rules: true, webOnly: true },
