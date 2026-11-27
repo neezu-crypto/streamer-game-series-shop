@@ -126,9 +126,9 @@ function renderHead() {
 const PORTFOLIO = [
   { name: '당신이 여기에 온 이유', desc: '스트리머 이야기를 담은 미연시', img: 'assets/portfolio/onyu.webp', url: 'https://neezu-crypto.github.io/onyu-vn/', status: 'open' },
   { name: '다마고치 분양소', desc: '펫 분양·육성', img: 'assets/portfolio/tamagotchi.webp', url: 'tamagotchi.html', status: 'open' },
-  { name: '스트리머 배팅시장', desc: '시청자 참여 예측 게임', img: 'assets/portfolio/betting.webp', url: 'https://neezu-crypto.github.io/StreamBet-Market/', status: 'paused', previewReady: false },
-  { name: '스트리머 주식시장', desc: '시청자 참여 주식 게임', img: 'assets/portfolio/stock.webp', url: 'https://neezu-crypto.github.io/soop-stock-market/', status: 'paused', previewReady: false },
-  { name: '스트리머 인생게임', desc: '시청자 참여 게임', img: 'assets/portfolio/life.webp', url: 'https://neezu-crypto.github.io/streamer-life-game/', status: 'paused', previewReady: false },
+  { name: '스트리머 배팅시장', desc: '시청자 참여 예측 게임', img: 'assets/portfolio/betting.webp', url: 'https://neezu-crypto.github.io/StreamBet-Market/', status: 'paused', previewReady: true },
+  { name: '스트리머 주식시장', desc: '시청자 참여 주식 게임', img: 'assets/portfolio/stock.webp', url: 'https://neezu-crypto.github.io/soop-stock-market/', status: 'paused', previewReady: true },
+  { name: '스트리머 인생게임', desc: '시청자 참여 게임', img: 'assets/portfolio/life.webp', url: 'https://neezu-crypto.github.io/streamer-life-game/', status: 'paused', previewReady: true },
   { name: '스트리머 주루마블', desc: '보드게임', img: 'assets/portfolio/jurumable.webp', url: 'https://neezu-crypto.github.io/streamer-jurumable/', status: 'paused', previewReady: true },
 ];
 const SERVICES = [
