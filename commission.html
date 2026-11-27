@@ -8,10 +8,10 @@
   <title>게임 제작 의뢰 — 게임 시리즈</title>
   <script type="module" src="./maintenance-admin-gate.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="commission.css?v=20261127-c7">
+  <link rel="stylesheet" href="commission.css?v=20261127-c12">
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script type="module" src="shop-login.js?v=20261121-bug1"></script>
-  <script type="module" src="commission.js?v=20261127-c14"></script>
+  <script type="module" src="commission.js?v=20261127-c17"></script>
 </head>
 <body class="cm-page">
   <header class="site-header">
@@ -52,14 +52,15 @@
 
     <section id="cmPanelApply" class="cm-panel" hidden>
       <p id="cmRoundClosed" class="cm-closed" hidden></p>
-      <form id="cmForm" class="cm-form" novalidate>
+      <div id="cmDone" class="cm-done" role="status" aria-live="polite" hidden></div>
+      <form id="cmForm" class="cm-form" novalidate autocomplete="off">
         <p class="cm-web-banner">🌐 모든 게임은 <strong>웹게임</strong>으로 만들어요. PC·모바일 브라우저와 방송 화면(OBS)에서 링크로 바로 플레이하고, 설치형 PC 게임·모바일 앱은 만들지 않아요. 완성 후 1년간 링크 유지·오류 수정이 포함돼요.</p>
-        <h2>1. 장르 고르기</h2>
+        <h2 class="cm-step"><i>1</i>장르 고르기</h2>
         <div id="cmGenres" class="cm-genres"></div>
 
         <p class="cm-note" data-genre-hint>장르를 고르면 분량·옵션과 견적이 나와요.</p>
         <div data-needs-genre hidden>
-        <h2>2. 분량·옵션</h2>
+        <h2 class="cm-step"><i>2</i>분량·옵션</h2>
         <div class="cm-option-row">
           <div><strong id="cmUnitLabel">추가 옵션</strong><small id="cmUnitPrice"></small></div>
           <div class="cm-stepper"><button id="cmMinus" type="button" aria-label="옵션 줄이기">−</button><output id="cmUnits">0</output><button id="cmPlus" type="button" aria-label="옵션 늘리기">+</button></div>
@@ -68,7 +69,7 @@
         <label id="cmPlayersWrap" class="cm-inline" hidden>참여 인원 <select id="cmPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option></select></label>
         <label class="cm-check"><input id="cmDonation" type="checkbox"> <span><strong>게임에 SOOP 방송 후원 연동 넣기</strong> <small id="cmDonationNote">+2만 원 · 기간 +7~14일(SOOP 심사). 별풍선 후원으로 게임 안 이벤트가 일어나요.</small></span></label>
 
-        <h2>3. 대신 홍보(선택)</h2>
+        <h2 class="cm-step"><i>3</i>대신 홍보(선택)</h2>
         <div class="cm-option-row">
           <div><strong>다른 스트리머 방송국 대신 홍보</strong><span class="cm-promo-intro">함께할 스트리머를 모집할 때 뻐꾸기 홍보글을 대신 제작 &amp; 홍보해 드립니다.</span><small>100곳당 3만 원 · 최대 1000곳 · 게임 완성 후 진행(100곳당 최대 3일)</small>
             <details class="cm-promo-samples"><summary>홍보글 예시 보기</summary>
@@ -79,17 +80,17 @@
           <div class="cm-stepper"><button id="cmPromoMinus" type="button" aria-label="홍보 줄이기">−</button><output id="cmPromoUnits">0곳</output><button id="cmPromoPlus" type="button" aria-label="홍보 늘리기">+</button></div>
         </div>
 
-        <h2>4. 스타일</h2>
-        <div class="cm-two">
-          <label>그림체<select id="cmArt"></select></label>
-          <label>분위기<select id="cmMood"></select></label>
-          <label id="cmTopicWrap" hidden>퀴즈 주제<select id="cmTopic"></select></label>
+        <h2 class="cm-step"><i>4</i>스타일</h2>
+        <div class="cm-styles">
+          <div class="cm-chip-field"><span>그림체</span><select id="cmArt" class="cm-hidden-select" tabindex="-1" aria-hidden="true"></select><div class="cm-chip-group" data-for="cmArt" role="radiogroup" aria-label="그림체"></div></div>
+          <div class="cm-chip-field"><span>분위기</span><select id="cmMood" class="cm-hidden-select" tabindex="-1" aria-hidden="true"></select><div class="cm-chip-group" data-for="cmMood" role="radiogroup" aria-label="분위기"></div></div>
+          <div id="cmTopicWrap" class="cm-chip-field" hidden><span>퀴즈 주제</span><select id="cmTopic" class="cm-hidden-select" tabindex="-1" aria-hidden="true"></select><div class="cm-chip-group" data-for="cmTopic" role="radiogroup" aria-label="퀴즈 주제"></div></div>
         </div>
         </div>
         <p class="cm-note">캐릭터는 스트리머의 이름·말투·분위기만 반영한 <strong>새 모티브 캐릭터</strong>로 만들어요(작가 허락이 필요 없는 방식). 기존 아바타 외형은 쓰지 않아요.</p>
         <label id="cmOwnAvatarWrap" class="cm-check" hidden><input id="cmOwnAvatar" type="checkbox"> <span><strong>이 아바타의 저작권은 스트리머 본인에게 있습니다</strong> <small>체크하면 본인 아바타 외형 그대로 만들어요. 사실과 다르면 권리 문제는 신청자 책임이에요.</small></span></label>
 
-        <h2>5. 받을 스트리머</h2>
+        <h2 class="cm-step"><i>5</i>받을 스트리머</h2>
         <p id="cmSelfTarget" class="cm-note" hidden></p>
         <div id="cmTargetWrap">
           <p class="cm-note">게임을 받을 스트리머를 SOOP에서 검색해 골라 주세요. 스트리머가 SOOP 쪽지로 동의하면 모금이 열려요.</p>
@@ -99,7 +100,7 @@
           <input id="cmTargetId" type="text" maxlength="20" autocapitalize="off" autocomplete="off" spellcheck="false">
         </div>
 
-        <h2>6. 내용</h2>
+        <h2 class="cm-step"><i>6</i>내용</h2>
         <label>게임 제목(가제)<input id="cmTitle" type="text" maxlength="40"></label>
         <label>한 줄 소개(모금 화면에 보여요)<input id="cmPitch" type="text" maxlength="200"></label>
         <label>원하는 내용·제작 방향<textarea id="cmDesc" maxlength="3000" rows="6" placeholder="넣고 싶은 항목, 분위기, 방송에서 쓰는 방법 등을 자유롭게 적어 주세요."></textarea></label>
@@ -114,7 +115,8 @@
         <label class="cm-check"><input id="cmConsentCopy" type="checkbox"> <span>기존 게임·캐릭터를 따라 만든 의뢰가 아니며, 성인 콘텐츠·현금 환전 보상·실존 인물 비방이 없어요. <small>(필수)</small></span></label>
         <label class="cm-check"><input id="cmConsentWeb" type="checkbox"> <span>결과물이 브라우저에서 플레이하는 <strong>웹게임</strong>이며, 설치 파일·앱·게임 원본 파일은 제공되지 않는다는 점을 확인했어요. <small>(필수)</small></span></label>
         <label class="cm-check"><input id="cmConsentRules" type="checkbox"> <span>모금·반환 규칙에 동의해요: 모금 기한(30일) 안에 목표 미달·제작 시작 전 취소는 전액 반환, 제작 시작 후 취소는 제작비에 단계별 환불 수수료(기획 90%·그림 50%·조립 20% 반환, 완성 후 0%), 홍보비는 홍보 전이면 전액·진행 중이면 남은 곳만큼 반환. 제작 기한(연장 30일 포함) 안에 완성하지 못하면 전액 반환. <a href="terms.html#commission" target="_blank" rel="noopener">약관</a> <small>(필수)</small></span></label>
-        <button id="cmSubmit" class="cm-primary" type="submit">무료로 신청하기</button>
+        <div class="cm-submit-row"><button id="cmSaveDraft" class="cm-ghost" type="button">현재 설정 저장</button><button id="cmSubmit" class="cm-primary" type="submit">무료로 신청하기</button></div>
+        <p id="cmDraftStatus" class="cm-draft-status" role="status" aria-live="polite" hidden></p>
         <p id="cmFormStatus" class="cm-status" role="status" aria-live="polite"></p>
       </form>
     </section>

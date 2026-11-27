@@ -4,6 +4,7 @@ import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16
 import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
+import qrcode from './qrcode-generator.mjs?v=20261122';
 
 const app = getApps().find((item) => item.name === '[DEFAULT]') || initializeApp({
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
@@ -24,6 +25,7 @@ const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
 const MAX_KRW = 300000;
 const GENRE_ORDER = ['roulette', 'viewer', 'quiz', 'penalty', 'card', 'board', 'escape', 'vn'];
+const GENRE_ICON = { roulette: '🎡', viewer: '🙋', quiz: '❓', penalty: '🔥', card: '🃏', board: '🎲', escape: '🔍', vn: '📖' };
 const GENRE_DESC = {
   roulette: '룰렛 1종(항목 30개) · 테마·캐릭터 연출 · 방송 화면용',
   viewer: '예측·투표 방식 1종 · 시청자 점수판',
@@ -98,6 +100,7 @@ async function load() {
   renderHead();
   renderGenres();
   if ($('cmArt').dataset.genre !== state.genre) { renderStyles(); $('cmArt').dataset.genre = state.genre; }
+  if (!draftChecked) { draftChecked = true; applyDraft(); }
   renderForm();
   renderFunding();
   renderMine();
@@ -166,7 +169,20 @@ function renderStyles() {
   fill($('cmArt'), st.art); fill($('cmMood'), st.mood);
   // 퀴즈 주제는 주제 목록이 있는 장르(퀴즈쇼)만 보인다.
   $('cmTopicWrap').hidden = !st.topic; if (st.topic) fill($('cmTopic'), st.topic);
+  renderStyleChips();
 }
+
+// 스타일은 칩 버튼으로 고른다(값은 숨긴 select에 그대로 두어 신청·저장 코드는 select를 읽는다).
+function renderStyleChips() {
+  document.querySelectorAll('#cmForm .cm-chip-group').forEach((group) => {
+    const sel = $(group.dataset.for);
+    group.innerHTML = [...sel.options].map((o) => `<button type="button" role="radio" class="cm-style-chip${o.value === sel.value ? ' active' : ''}" aria-checked="${o.value === sel.value}" data-value="${esc(o.value)}">${esc(o.text)}</button>`).join('');
+  });
+}
+document.querySelectorAll('#cmForm .cm-chip-group').forEach((group) => group.addEventListener('click', (e) => {
+  const chip = e.target.closest('.cm-style-chip'); if (!chip) return;
+  $(group.dataset.for).value = chip.dataset.value; renderStyleChips();
+}));
 
 function renderGenres() {
   const d = state.data;
@@ -177,7 +193,7 @@ function renderGenres() {
       ? `<strong>${won(g.promoKrw)}</strong> <s>${won(g.regularKrw)}</s>`
       : `<strong>${won(promo ? g.promoKrw : g.regularKrw)}</strong>`;
     return `<label class="cm-genre${state.genre === key ? ' active' : ''}"><input type="radio" name="cmGenre" value="${key}"${state.genre === key ? ' checked' : ''}>
-      <b>${esc(g.label)}</b><span class="cm-genre-price">${price}</span><small>${esc(GENRE_DESC[key])}</small><small>기본 ${g.baseDays}일</small></label>`;
+      <span class="cm-genre-icon" aria-hidden="true">${GENRE_ICON[key] || '🎮'}</span><b>${esc(g.label)}</b><span class="cm-genre-price">${price}</span><small>${esc(GENRE_DESC[key])}</small><small>기본 ${g.baseDays}일</small></label>`;
   }).join('');
 }
 
@@ -187,6 +203,7 @@ function renderForm() {
   const g = d.genres[state.genre];
   $('cmSubmit').disabled = !g || state.busy;
   document.querySelectorAll('#cmForm [data-needs-genre]').forEach((el) => { el.hidden = !g; });
+  document.querySelector('#cmForm .cm-summary').classList.toggle('is-floating', !!g);
   const hint = document.querySelector('#cmForm [data-genre-hint]'); if (hint) hint.hidden = !!g;
   if (!g) {
     ['cmSumProduction', 'cmSumPromo', 'cmSumPrice', 'cmSumDays'].forEach((id) => { $(id).textContent = '-'; });
@@ -278,10 +295,14 @@ $('cmForm').addEventListener('submit', async (e) => {
       consents: { noCopy: true, rules: true, webOnly: true },
     });
     delete form.dataset.requestId;
-    form.reset(); state.units = 0; state.promoUnits = 0;
-    status.innerHTML = r.status === 'funding'
+    form.reset(); state.units = 0; state.promoUnits = 0; clearDraft(false);
+    status.textContent = '';
+    const done = $('cmDone'); done.hidden = false;
+    done.innerHTML = `<p class="cm-done-title">🎉 ${(r.status === 'funding'
       ? `신청 완료(번호 ${esc(r.shortCode)}). 모금이 열렸어요! 방송에서 시청자에게 알려 주세요.`
-      : `신청 완료(번호 ${esc(r.shortCode)}). <strong>${esc(r.target.nickname)}</strong> 님이 SOOP 쪽지로 동의하면 모금이 열려요. 스트리머에게 신청 번호를 알려 주세요.`;
+      : `신청 완료(번호 ${esc(r.shortCode)}). <strong>${esc((r.target && r.target.nickname) || "받을 스트리머")}</strong> 님이 SOOP 쪽지로 동의하면 모금이 열려요. 스트리머에게 신청 번호를 알려 주세요.`)
+      }</p>` + shareBox(r.shortCode, r.status === 'funding' ? '링크나 QR로 들어오면 이 모금이 바로 보여요. 방송 화면에 QR을 띄워 보세요.' : '스트리머가 동의하면 이 링크로 모금이 열려요. 미리 저장해 두세요.');
+    done.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     await load();
   } catch (err) {
     if (/로그인|unauthenticated/i.test(String(err && (err.code || err.message)))) { window.openShopLoginModal?.(); }
@@ -289,6 +310,81 @@ $('cmForm').addEventListener('submit', async (e) => {
   } finally {
     state.busy = false; $('cmSubmit').disabled = false;
   }
+});
+
+// ---------- 현재 설정 저장(2026-11-27) ----------
+// 이 기기 브라우저(localStorage)에만 저장한다. 서버로 보내지 않고, 필수 동의·본인 아바타 체크는 저장하지 않는다.
+// 신청을 마치거나 [지우기]를 누르면 삭제된다.
+const DRAFT_KEY = 'gameSeriesShop.commissionDraft.v1';
+let draftChecked = false;
+function draftStatus(html) { const el = $('cmDraftStatus'); el.hidden = !html; el.innerHTML = html || ''; }
+function readDraft() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return null; } }
+$('cmSaveDraft').addEventListener('click', () => {
+  const draft = {
+    v: 1, savedAt: Date.now(), genre: state.genre, units: state.units, promoUnits: state.promoUnits,
+    multi: $('cmMulti').checked, players: $('cmPlayers').value, donation: $('cmDonation').checked,
+    style: { art: $('cmArt').value, mood: $('cmMood').value, topic: $('cmTopic').value },
+    targetNick: $('cmTargetNick').value, targetId: $('cmTargetId').value,
+    title: $('cmTitle').value, pitch: $('cmPitch').value, desc: $('cmDesc').value,
+  };
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { draftStatus('이 브라우저에서는 저장할 수 없어요.'); return; }
+  draftStatus(`이 기기에 저장했어요(${new Date(draft.savedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}). 다음에 열면 그대로 불러와요. <button type="button" data-draft-clear>지우기</button>`);
+});
+function clearDraft(show = true) {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  draftStatus(show ? '저장한 설정을 지웠어요.' : '');
+}
+$('cmDraftStatus').addEventListener('click', (e) => { if (e.target.closest('[data-draft-clear]')) clearDraft(); });
+function applyDraft() {
+  const d = readDraft(); const data = state.data;
+  if (!d || d.v !== 1 || !data) return;
+  // 주소에 장르를 지정해 들어왔으면 그 장르를 따른다(저장한 장르와 다르면 장르 관련 값은 쓰지 않음).
+  const genre = initialGenre && GENRE_ORDER.includes(initialGenre) ? initialGenre : d.genre;
+  const sameGenre = genre === d.genre && !!data.genres[genre];
+  if (data.genres[genre]) {
+    state.genre = genre;
+    renderGenres(); renderStyles(); $('cmArt').dataset.genre = state.genre;
+  }
+  if (sameGenre) {
+    state.units = Math.max(0, Number(d.units) || 0);
+    const st = d.style || {};
+    [['cmArt', st.art], ['cmMood', st.mood], ['cmTopic', st.topic]].forEach(([id, v]) => {
+      if (v && [...$(id).options].some((o) => o.value === v)) $(id).value = v;
+    });
+    renderStyleChips();
+  }
+  state.promoUnits = Math.min(data.promoOption.maxUnits, Math.max(0, Number(d.promoUnits) || 0));
+  $('cmMulti').checked = d.multi === true; $('cmDonation').checked = d.donation === true;
+  if (['2', '3', '4'].includes(String(d.players))) $('cmPlayers').value = String(d.players);
+  const text = (id, v) => { if (typeof v === 'string') $(id).value = v.slice(0, Number($(id).maxLength) > 0 ? $(id).maxLength : 3000); };
+  text('cmTargetNick', d.targetNick); text('cmTargetId', d.targetId);
+  text('cmTitle', d.title); text('cmPitch', d.pitch); text('cmDesc', d.desc);
+  draftStatus('저장해 둔 설정을 불러왔어요. <button type="button" data-draft-clear>지우기</button>');
+}
+
+// ---------- 모금 링크·QR 공유(2026-11-27) ----------
+// 신청 번호로 바로 그 모금 카드가 열리는 주소. QR은 화면에서 만들고(서버 호출 없음) 이미지로 저장할 수 있다.
+function fundingUrl(code) { return new URL(`commission.html?c=${encodeURIComponent(code)}`, location.href).href; }
+function shareBox(code, note = '') {
+  const url = fundingUrl(code);
+  const qr = qrcode(0, 'M'); qr.addData(url, 'Byte'); qr.make();
+  const svg = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true, alt: '모금 페이지 QR 코드' });
+  const png = qr.createDataURL(8, 4);
+  return `<div class="cm-share">
+    <div class="cm-share-qr">${svg}</div>
+    <div class="cm-share-body">
+      <strong>시청자에게 모금 알리기</strong>
+      ${note ? `<p class="cm-note">${note}</p>` : ''}
+      <div class="cm-share-link"><input type="text" readonly value="${esc(url)}" aria-label="모금 링크"><button type="button" class="cm-ghost" data-copy="${esc(url)}">링크 복사</button></div>
+      <a class="cm-ghost cm-share-save" href="${png}" download="모금-${esc(code)}-QR.gif">QR 이미지 저장</a>
+    </div>
+  </div>`;
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = '복사했어요'; }
+  catch { const input = b.parentElement.querySelector('input'); input.select(); b.textContent = '선택됨 · 복사하세요'; }
+  setTimeout(() => { b.textContent = '링크 복사'; }, 2000);
 });
 
 // ---------- 모금 목록 ----------
@@ -311,7 +407,8 @@ function card(item, { mine = false } = {}) {
     if (myCash) actions += `<button type="button" class="cm-ghost" data-act="cancelDonation" data-id="${item.id}">내 후원 ${cashText(myCash)} 취소</button>`;
   } else if (myCash) actions += `<p class="cm-mini">내 후원 ${cashText(myCash)}</p>`;
   if (mine && ['awaiting_streamer', 'funding', 'queued'].includes(item.status)) actions += `<button type="button" class="cm-ghost" data-act="cancelRequest" data-id="${item.id}">신청 취소(전액 반환)</button>`;
-  return `<article class="cm-card" data-card="${item.id}">
+  if (mine && ['awaiting_streamer', 'funding'].includes(item.status) && item.shortCode) actions += `<details class="cm-share-toggle"><summary>모금 링크·QR 보기</summary>${shareBox(item.shortCode)}</details>`;
+  return `<article class="cm-card" data-card="${item.id}" data-code="${esc(item.shortCode || '')}">
     <div class="cm-card-top"><span class="cm-status-badge s-${item.status}">${STATUS[item.status] || item.status}</span><span class="cm-tags">${tags.map((t) => `<i>${esc(t)}</i>`).join('')}</span></div>
     <h3>${esc(item.title)}</h3>
     <p class="cm-target">🎙️ ${esc(item.target.nickname)} <small>(${esc(item.target.soopId)})</small></p>
@@ -327,6 +424,20 @@ function card(item, { mine = false } = {}) {
 function renderFunding() {
   const items = state.data.items;
   $('cmFundingList').innerHTML = items.length ? items.map((x) => card(x)).join('') : '<p class="cm-empty">아직 열린 모금이 없어요. 첫 신청의 주인공이 되어 보세요!</p>';
+  focusSharedCard();
+}
+// ?c=<신청 번호>로 들어오면 모금 중 탭에서 그 카드를 맨 앞으로 보이고 강조한다(처음 한 번만).
+const sharedCode = new URLSearchParams(location.search).get('c');
+let sharedFocused = false;
+function focusSharedCard() {
+  if (!sharedCode) return;
+  const first = !sharedFocused; sharedFocused = true;
+  if (first) showTab('funding');
+  const list = $('cmFundingList');
+  const el = [...list.querySelectorAll('.cm-card')].find((c) => c.dataset.code === sharedCode);
+  if (!el) { list.insertAdjacentHTML('afterbegin', '<p class="cm-empty cm-shared-missing">이 모금은 아직 열리지 않았거나 이미 끝났어요. 아래 다른 모금을 둘러보세요.</p>'); return; }
+  list.prepend(el); el.classList.add('cm-card-shared');
+  if (first) requestAnimationFrame(() => el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
 }
 function renderMine() {
   const d = state.data;

@@ -104,3 +104,90 @@
 .cm-promo-sample:hover{border-color:#db2777}
 .cm-promo-sample b{display:block;margin-bottom:2px}
 .cm-promo-sample small{color:#9ca3af}
+
+/* 신청하기 탭 디자인 개선(2026-11-27): 단계 배지·장르 아이콘·스타일 칩·견적 고정·글씨 대비·현재 설정 저장 */
+.cm-form { gap: 14px; }
+.cm-form h2.cm-step { display: flex; align-items: center; gap: 10px; margin: 26px 0 2px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 19px; }
+.cm-form h2.cm-step:first-of-type { margin-top: 10px; }
+.cm-step i { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--coral); color: #fff; font-style: normal; font-size: 15px; font-weight: 800; }
+.cm-note, .cm-form .cm-note { font-size: 14px; color: #55526a; }
+.cm-genre small, .cm-option-row small, .cm-check small { font-size: 13px; color: #5d5a6e; }
+.cm-genre { padding: 16px 14px 14px; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.cm-genre:hover { border-color: #f3a9bd; }
+.cm-genre.active { border-color: var(--coral); background: #fff6f8; box-shadow: 0 0 0 3px #ffd6e1; }
+.cm-genre.active::after { content: '✓'; position: absolute; top: 10px; right: 12px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--coral); color: #fff; font-size: 14px; font-weight: 800; }
+.cm-genre:focus-within { outline: 3px solid #a8c4ff; outline-offset: 2px; }
+.cm-genre-icon { font-size: 26px; line-height: 1; }
+.cm-genre b { font-size: 16px; }
+.cm-styles { display: grid; gap: 14px; }
+.cm-chip-field { display: grid; gap: 8px; }
+.cm-chip-field > span { font-size: 14px; font-weight: 700; }
+.cm-hidden-select { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; opacity: 0; pointer-events: none; }
+.cm-chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-style-chip { min-height: 44px; padding: 8px 16px; border: 1.5px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font: inherit; font-size: 15px; cursor: pointer; }
+.cm-style-chip:hover { border-color: #f3a9bd; }
+.cm-style-chip.active { border-color: var(--coral); background: #fff0f4; color: #b0284f; font-weight: 700; }
+.cm-summary { position: sticky; bottom: 10px; z-index: 5; box-shadow: 0 10px 30px #28253e55; }
+.cm-summary span { opacity: .82; }
+.cm-summary small { font-size: 12px; opacity: .82; }
+.cm-submit-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.cm-submit-row .cm-primary { flex: 1 1 220px; min-height: 50px; font-size: 16px; }
+.cm-submit-row .cm-ghost { flex: 0 0 auto; min-height: 50px; padding: 10px 18px; font-weight: 700; font-size: 15px; }
+.cm-draft-status { margin: 0; font-size: 14px; color: #2f6b45; }
+.cm-draft-status button { margin-left: 6px; min-height: 32px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.cm-promo-samples summary { min-height: 40px; display: flex; align-items: center; }
+@media (max-width: 640px) {
+  .cm-form h2.cm-step { font-size: 18px; }
+  .cm-genres { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cm-summary { grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px 12px; bottom: 6px; }
+  .cm-summary strong { font-size: 15px; }
+  .cm-summary span { font-size: 12px; }
+  .cm-summary small { display: none; }
+  .cm-option-row { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-genre { transition: none; } }
+
+/* 모금 링크·QR 공유(2026-11-27) */
+.cm-share { display: flex; gap: 14px; align-items: center; margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); }
+.cm-share-qr { flex: 0 0 132px; width: 132px; height: 132px; }
+.cm-share-qr svg { width: 100%; height: 100%; display: block; }
+.cm-share-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
+.cm-share-body strong { font-size: 15px; }
+.cm-share-link { display: flex; gap: 6px; }
+.cm-share-link input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 16px; color: var(--ink); background: #faf8f5; }
+.cm-share-link .cm-ghost, .cm-share-save { min-height: 44px; font-weight: 700; white-space: nowrap; }
+.cm-share-save { justify-self: start; display: inline-flex; align-items: center; text-decoration: none; font-size: 14px; }
+.cm-share-toggle summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: #b0284f; font-weight: 700; }
+.cm-card-shared { border-color: var(--coral); box-shadow: 0 0 0 3px #ffd6e1, var(--shadow); }
+.cm-shared-missing { padding: 14px; }
+@media (max-width: 640px) {
+  .cm-share { flex-direction: column; align-items: stretch; }
+  .cm-share-qr { align-self: center; flex-basis: auto; width: 160px; height: 160px; }
+}
+
+/* 디자인 점검 보정(2026-11-27): 배지 대비 4.5↑, 스트리머 직접 입력·약관 링크 글씨 12px↑·누름 영역 44px */
+.cm-step i { background: #c2335b; }
+.cm-genre.active::after { background: #c2335b; }
+#cmPanelApply .svs-link { min-height: 44px; padding: 8px 4px; font-size: 13px; }
+.cm-check a[href^="terms"] { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
+/* 페이지 전체 대비 보정(2026-11-27 점검): 이 페이지(.cm-main) 안에서만 */
+.cm-main { --muted: #5f5c70; }
+.cm-main .eyebrow { font-size: 12px; color: #5f5c70; }
+.cm-hero h1 em { color: #d6336c; }
+.cm-chip a { color: #5b4fd1; }
+.cm-portfolio-sub, .cm-portfolio-body small { color: #4b5563; }
+.cm-badge.paused { color: #4b5563; }
+/* 가상 데이터 점검 보정(2026-11-27): 좁은 카드 안 공유 상자 넘침, 신청 완료 안내 위치, 장르 선택 전 견적 고정 해제 */
+.cm-card { min-width: 0; }
+.cm-actions, .cm-actions > * { min-width: 0; }
+.cm-card .cm-share { flex-direction: column; align-items: stretch; }
+.cm-card .cm-share-qr { align-self: center; }
+.cm-summary:not(.is-floating) { position: static; box-shadow: none; }
+.cm-done { max-width: 720px; margin: 0 0 18px; padding: 18px; border: 2px solid #c2335b; border-radius: 18px; background: #fff6f8; }
+.cm-done[hidden] { display: none; }
+.cm-done-title { margin: 0; font-size: 15px; line-height: 1.7; color: var(--ink); }
+.cm-card .cm-share-link { flex-wrap: wrap; }
+.cm-card .cm-share-link .cm-ghost, .cm-card .cm-share-save { flex: 1 1 100%; justify-content: center; }
+.cm-share-body, .cm-share-link { min-width: 0; }
+.cm-tags i { font-size: 12px; }
+.cm-target small { font-size: 12px; }
