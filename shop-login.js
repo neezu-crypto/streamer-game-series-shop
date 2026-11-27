@@ -3,7 +3,7 @@ import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { setupBugReport } from './bug-report.js?v=20261121-bug1';
-import { createSeriesLogin } from './series-login.js?v=20261127-kit1';
+import { createSeriesLogin } from './series-login.js?v=20261128-kit2';
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',

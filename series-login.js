@@ -37,6 +37,8 @@ const CSS = `
 .sk-login .sk-status{min-height:1.4em;margin-top:10px;font-size:14px;color:#b0284f;line-height:1.6;overflow-wrap:anywhere}
 .sk-login .sk-status.ok{color:#22804a}
 .sk-login [hidden]{display:none!important}
+.sk-login [data-sk=copy]{width:100%;margin-top:8px}
+.sk-login .sk-note{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;border-radius:12px;background:#28253e;color:#fff;font-weight:700;text-decoration:none}
 .sk-login button:disabled{opacity:.55;cursor:wait}
 `;
 
@@ -47,6 +49,8 @@ export function createSeriesLogin({
   verifySearchFunction = 'streamerFanPageVerifySearch', soopSearchScript = './soop-verify-search.js?v=20261118-svs1',
   title = '계정 로그인', intro = 'Google·카카오 계정이나 스트리머 인증으로 로그인해요. 시리즈 전체에서 같은 계정을 써요.',
   onChange = () => {},
+  reloadAfterSwitch = false, // 다른 계정으로 전환하면 새로고침(로그인 시점에 상태를 한 번만 계산하는 서비스용)
+  reloadAfterVerify = false, // 스트리머 인증 완료(같은 UID)에도 새로고침
 } = {}) {
   if (!auth || !functions) throw new Error('createSeriesLogin: auth·functions가 필요해요.');
   const call = (name) => httpsCallable(functions, name);
@@ -78,6 +82,12 @@ export function createSeriesLogin({
       <button type="button" class="sk-sub" data-sk="check">인증 상태 확인</button>
       <button type="button" class="sk-sub" data-sk="renew">새 코드 발급 (이전 코드 무효화)</button>
     </form>
+    <div data-sk="confirm" hidden>
+      <p data-sk="confirmText"></p>
+      <div class="sk-login-choices"><button type="button" class="sk-submit" data-sk="yes">그 계정으로 이어서 하기</button><button type="button" class="sk-sub" data-sk="no">취소</button></div>
+    </div>
+    <button type="button" class="sk-sub" data-sk="copy" hidden>인증 코드 복사</button>
+    <a class="sk-note" data-sk="note" href="https://note.sooplive.com/app/index.php?page=write&amp;id_list=skftodwocks2" target="_blank" rel="noopener noreferrer" hidden>SOOP 쪽지 보내기 ↗</a>
     <div class="sk-status" data-sk="status" role="status" aria-live="polite"></div>
   </div></dialog>`);
   dlg.querySelector('#skLoginTitle').textContent = title;
@@ -87,7 +97,22 @@ export function createSeriesLogin({
   const status = (text, ok = false) => { $('status').textContent = text || ''; $('status').classList.toggle('ok', ok); };
   const busy = (on) => dlg.querySelectorAll('button:not([data-sk=close])').forEach((b) => { b.disabled = on; });
 
+  // 이미 다른 계정에 연결된 로그인 수단이면 전환 전에 창 안에서 묻는다(브라우저 confirm은 팝업 직후 억제될 수 있음).
+  let confirmResolve = null;
+  function confirmSwitch(text) {
+    $('choices').hidden = true; $('form').hidden = true; $('confirm').hidden = false; $('copy').hidden = true; $('note').hidden = true;
+    $('confirmText').textContent = text; status('');
+    if (!dlg.open) dlg.showModal();
+    return new Promise((resolve) => { confirmResolve = resolve; });
+  }
+  function answerConfirm(yes) {
+    const r = confirmResolve; confirmResolve = null; $('confirm').hidden = true; $('choices').hidden = false;
+    if (r) r(yes);
+  }
+  const SWITCH_NOTE = '\n(이 기기에서 로그인 없이 쌓인 기록은 옮겨지지 않아요)';
+
   function showStreamerForm(on) {
+    $('confirm').hidden = true; $('copy').hidden = true; $('note').hidden = true;
     $('choices').hidden = on; $('form').hidden = !on;
     $('form').classList.remove('svs-pending');
     dlg.querySelector('#skLoginNick').value = ''; dlg.querySelector('#skLoginSoopId').value = '';
@@ -99,12 +124,13 @@ export function createSeriesLogin({
     if (!dlg.open) dlg.showModal();
   }
   function close() { if (dlg.open) dlg.close(); }
-  dlg.addEventListener('close', () => { busy(false); });
+  dlg.addEventListener('close', () => { busy(false); if (confirmResolve) answerConfirm(false); });
 
   // 로그인 성공: 창을 닫고, 서비스에 알리고, 미뤄 둔 동작을 이어서 실행한다.
-  async function done() {
+  async function done({ switched = false, verified = false } = {}) {
     verifiedCache = { uid: '', value: false };
     close();
+    if ((switched && reloadAfterSwitch) || (verified && reloadAfterVerify)) { window.location.reload(); return; }
     try { await onChange(auth.currentUser); } catch (e) { console.error('로그인 후 처리 실패:', e); }
     const next = pending; pending = null;
     if (next) { try { await next(); } catch (e) { console.error('로그인 후 이어서 하던 동작 실패:', e); } }
@@ -138,7 +164,13 @@ export function createSeriesLogin({
         try { await linkWithPopup(auth.currentUser, provider); }
         catch (error) {
           if (error?.code !== 'auth/credential-already-in-use' && error?.code !== 'auth/email-already-in-use') throw error;
+          busy(false);
+          if (!(await confirmSwitch('이미 연결된 Google 계정이에요. 그 계정으로 이어서 할까요?' + SWITCH_NOTE))) { status(''); return; }
+          busy(true);
           await signInWithPopup(auth, new GoogleAuthProvider()); // 이미 다른 계정에 연결된 Google → 그 계정으로 전환
+          await linkGoogleAccount();
+          await done({ switched: true });
+          return;
         }
       } else await signInWithPopup(auth, provider);
       await linkGoogleAccount();
@@ -159,7 +191,13 @@ export function createSeriesLogin({
       success: async (kakaoAuth) => {
         try {
           const result = await linkKakaoAccount({ kakaoAccessToken: kakaoAuth.access_token });
-          if (result.data?.action === 'switch') await signInWithCustomToken(auth, result.data.customToken);
+          if (result.data?.action === 'switch') {
+            busy(false);
+            if (!(await confirmSwitch('이미 연결된 카카오 계정이에요. 그 계정으로 이어서 할까요?' + SWITCH_NOTE))) { status(''); return; }
+            await signInWithCustomToken(auth, result.data.customToken);
+            await done({ switched: true });
+            return;
+          }
           await done();
         } catch (error) {
           busy(false); console.error('카카오 로그인 실패:', error);
@@ -177,15 +215,23 @@ export function createSeriesLogin({
       if (!auth.currentUser) await signInAnonymously(auth);
       const result = await requestStreamerVerification({ ...data, source });
       const p = result.data || {};
-      if (p.action === 'switch' && p.customToken) { await signInWithCustomToken(auth, p.customToken); await done(); return; }
-      if (p.action === 'already-verified' || p.action === 'auto-approved') { await done(); return; }
+      if (p.action === 'switch' && p.customToken) { await signInWithCustomToken(auth, p.customToken); await done({ switched: true }); return; }
+      if (p.action === 'already-verified' || p.action === 'auto-approved') { await done({ verified: true }); return; }
       const expiresAt = Number(p.verificationCodeExpiresAt) || 0;
       const liveCode = p.verificationCode && expiresAt > Date.now() ? p.verificationCode : '';
-      if (liveCode) {
+      $('copy').hidden = !liveCode; $('note').hidden = !liveCode;
+      $('copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(liveCode); $('copy').textContent = '복사했어요'; }
+        catch { $('copy').textContent = '코드를 직접 선택해 복사해 주세요'; }
+        setTimeout(() => { $('copy').textContent = '인증 코드 복사'; }, 2000);
+      };
+      const who = p.isSwitch ? '기존 인증 스트리머의 SOOP 아이디로' : 'SOOP 쪽지로';
+      if (liveCode && (p.noteEligible === true || (!p.isSwitch && p.noteEligible !== false))) {
         const minutes = Math.max(1, Math.round((expiresAt - Date.now()) / 60000));
-        status(`인증 신청이 접수됐어요. 인증 코드: ${liveCode} (${minutes}분 안에 SOOP 쪽지로 보내 주세요) 보낸 뒤 [인증 상태 확인]을 눌러 주세요.`, true);
-      } else if (p.noteEligible === false) {
-        status('인증 신청이 접수됐어요. 관리자 확인 후 [인증 상태 확인]을 눌러 주세요.', true);
+        status(`${p.isSwitch ? '계정 전환' : '인증'} 신청이 접수됐어요. 인증 코드: ${liveCode} (${minutes}분 안에 ${who} 보내 주세요) 보낸 뒤 [인증 상태 확인]을 눌러 주세요.`, true);
+      } else if (p.noteEligible === false || p.isSwitch) {
+        $('copy').hidden = true; $('note').hidden = true;
+        status(`${p.isSwitch ? '계정 전환' : '인증'} 신청이 접수됐어요. 관리자 확인 후 [인증 상태 확인]을 눌러 주세요.`, true);
       } else {
         status(data.checkOnly
           ? '아직 인증 확인 전이에요. 코드가 만료됐다면 [새 코드 발급]을 눌러 주세요.'
@@ -198,6 +244,8 @@ export function createSeriesLogin({
     } finally { busy(false); }
   }
 
+  $('yes').addEventListener('click', () => answerConfirm(true));
+  $('no').addEventListener('click', () => answerConfirm(false));
   $('close').addEventListener('click', () => { pending = null; close(); });
   dlg.addEventListener('cancel', () => { pending = null; });
   dlg.addEventListener('click', (e) => { if (e.target === dlg) { pending = null; close(); } });
