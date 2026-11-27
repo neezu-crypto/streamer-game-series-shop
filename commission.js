@@ -110,7 +110,8 @@ function renderHead() {
   $('cmRoundClosed').textContent = `${d.round}차 공개 모금은 신청 ${d.roundSlots}건을 모두 받았어요. 다음 모집은 제작 상황을 보고 가격을 다시 정해 열어요. 지금 열린 모금에는 계속 후원할 수 있어요.`;
   $('cmForm').hidden = !roundOpen;
   $('cmPromoLeft').hidden = !roundOpen;
-  $('cmPromoLeft').textContent = d.promoLeft > 0 ? `오픈 특가 남은 자리 ${d.promoLeft}` : '오픈 특가 마감 · 정가 적용';
+  $('cmPromoLeft').hidden = !(d.promoLeft > 0); // 오픈 특가 폐지(2026-11-27): 자리가 없으면 표시하지 않음
+  $('cmPromoLeft').textContent = `오픈 특가 남은 자리 ${d.promoLeft}`;
   $('cmPromoLeft').classList.toggle('cm-chip-hot', d.promoLeft > 0);
   const waitDays = Math.max(0, Math.ceil((d.nextStartAt - d.now) / DAY));
   $('cmQueueInfo').textContent = waitDays > 0 ? `지금 목표를 채우면 약 ${waitDays}일 뒤 제작 시작` : '지금 목표를 채우면 바로 제작 시작';
