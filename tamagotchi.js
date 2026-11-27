@@ -651,7 +651,7 @@ function renderGiftBanner() {
 
 function resumeIntent() {
   const intent = loadIntent();
-  if (!intent || state.busy || $('shopLoginModal').open) return;
+  if (!intent || state.busy || document.querySelector('dialog.sk-login')?.open) return;
   const server = serverSpecies(intent.speciesId);
   if (!server) return;
   const flow = currentState(server);

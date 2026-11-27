@@ -75,11 +75,12 @@ function quote(genre, units, donation, promo, multi = false, players = 0, promoU
 const promoAvailable = () => !!(state.data && state.data.promoLeft > 0);
 
 // ---------- 로그인 ----------
-function requireLogin() {
+// then: 로그인 성공 뒤 이어서 할 동작(시리즈 공통 로그인 창이 로그인 직후 실행).
+function requireLogin(then) {
   const me = state.data && state.data.me;
   if (auth.currentUser && !auth.currentUser.isAnonymous) return true;
   if (me && me.isStreamer) return true;
-  if (typeof window.openShopLoginModal === 'function') window.openShopLoginModal();
+  if (typeof window.openShopLoginModal === 'function') window.openShopLoginModal(then ? { then } : {});
   return false;
 }
 
@@ -275,7 +276,7 @@ $('cmForm').addEventListener('submit', async (e) => {
   if (state.busy) return;
   const status = $('cmFormStatus');
   const me = state.data && state.data.me;
-  if (!requireLogin()) { status.textContent = '로그인하면 이어서 신청할 수 있어요. 입력한 내용은 그대로 남아 있어요.'; return; }
+  if (!requireLogin(async () => { await load(); $('cmForm').requestSubmit(); })) { status.textContent = '로그인하면 이어서 신청할 수 있어요. 입력한 내용은 그대로 남아 있어요.'; return; }
   const title = $('cmTitle').value.trim(); const pitch = $('cmPitch').value.trim(); const description = $('cmDesc').value.trim();
   if (!state.data.genres[state.genre]) { status.textContent = '장르를 먼저 골라 주세요.'; return; }
   if (!title || !pitch || !description) { status.textContent = '제목·한 줄 소개·내용을 모두 적어 주세요.'; return; }
@@ -452,7 +453,7 @@ document.addEventListener('click', async (e) => {
   if (!btn || state.busy) return;
   const cardEl = btn.closest('.cm-card');
   const msg = cardEl.querySelector('.cm-card-status');
-  if (!requireLogin()) { msg.textContent = '로그인하면 이어서 진행할 수 있어요.'; return; }
+  if (!requireLogin(async () => { await load(); document.querySelector(`[data-act="${btn.dataset.act}"][data-id="${btn.dataset.id}"]`)?.click(); })) { msg.textContent = '로그인하면 이어서 진행할 수 있어요.'; return; }
   const act = btn.dataset.act; const id = btn.dataset.id;
   const payload = { action: act, id };
   if (act === 'donate') {
