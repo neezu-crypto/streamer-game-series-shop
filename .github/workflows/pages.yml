@@ -28,8 +28,8 @@ jobs:
       - name: Assemble site files
         run: |
           mkdir -p _site/assets/tamagotchi _site/catalog
-          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html maintenance-admin-gate.js tamagotchi.html tamagotchi.js tamagotchi-logic.mjs tamagotchi-pet.js tamagotchi-tools.js tamagotchi-walk.js tamagotchi-sound.js tamagotchi-scene.js tamagotchi-gestures.mjs tamagotchi.css tamagotchi-world.html tamagotchi-world.js tamagotchi-world.css tamagotchi-train.js tamagotchi-ui-sound.js tamagotchi-gem-shop.js tamagotchi-gem-shop-ui.js tamagotchi-hospital.js tamagotchi-empty.js tamagotchi-photo.js app-check.js soop-verify-search.js bug-report.js commission.html commission.js commission.css qrcode-generator.mjs series-login.js _site/
-          cp catalog/stickers.json catalog/tamagotchi.json catalog/tamagotchi-world.json catalog/tamagotchi-photo.json _site/catalog/
+          cp index.html app.js shop-login.js style.css game-series-emotes.js game-series-emotes.css customer-center.html wallet.js wallet.css terms.html privacy.html maintenance-admin-gate.js tamagotchi.html tamagotchi.js tamagotchi-logic.mjs tamagotchi-pet.js tamagotchi-tools.js tamagotchi-walk.js tamagotchi-sound.js tamagotchi-scene.js tamagotchi-gestures.mjs tamagotchi.css tamagotchi-world.html tamagotchi-world.js tamagotchi-world.css tamagotchi-train.js tamagotchi-ui-sound.js tamagotchi-gem-shop.js tamagotchi-gem-shop-ui.js tamagotchi-hospital.js tamagotchi-empty.js tamagotchi-photo.js tamagotchi-park.html tamagotchi-park.js tamagotchi-park.css app-check.js soop-verify-search.js bug-report.js commission.html commission.js commission.css qrcode-generator.mjs series-login.js _site/
+          cp catalog/stickers.json catalog/tamagotchi.json catalog/tamagotchi-world.json catalog/tamagotchi-photo.json catalog/tamagotchi-park.json _site/catalog/
           cp assets/sticker-pack-01.png assets/admin-star-balloon-qr.png _site/assets/
           cp -R assets/portfolio _site/assets/
           cp assets/tamagotchi/*.svg assets/tamagotchi/*.webp _site/assets/tamagotchi/
@@ -42,6 +42,9 @@ jobs:
           cp assets/tamagotchi/photo/*.webp _site/assets/tamagotchi/photo/ 2>/dev/null || true
           mkdir -p _site/assets/tamagotchi/wear
           cp assets/tamagotchi/wear/*.png _site/assets/tamagotchi/wear/
+          mkdir -p _site/assets/tamagotchi/park _site/vendor
+          cp assets/tamagotchi/park/*.webp _site/assets/tamagotchi/park/
+          cp vendor/pixi-8.23.0.min.mjs vendor/pixi-LICENSE.txt _site/vendor/
           mkdir -p _site/assets/sounds
           cp assets/sounds/*.mp3 _site/assets/sounds/
           mkdir -p _site/assets/tamagotchi/sfx

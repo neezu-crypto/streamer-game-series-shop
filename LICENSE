@@ -7,3 +7,7 @@ Copyright (c) 2026 STREAMER SERIES (neezu-crypto). All rights reserved.
 No permission is granted to use, copy, modify, merge, publish, distribute, sublicense, or sell
 any part of this repository, or to use it to build a substantially similar service
 (including via AI tools), without prior written permission from the copyright holder.
+
+---
+제3자 소프트웨어 고지
+- PixiJS 8.23.0 (vendor/pixi-8.23.0.min.mjs) — MIT License, Copyright (c) 2013-2023 Mathew Groves, Chad Engler. 전문: vendor/pixi-LICENSE.txt

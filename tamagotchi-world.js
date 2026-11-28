@@ -276,7 +276,12 @@ function renderPage() {
 function placeById(id) { return visiblePlaces().find((p) => p.id === id) || null; }
 function openPlace(id, { fromHash = false } = {}) {
   const place = placeById(id); if (!place) return;
-  if (place.kind === 'link') { location.href = place.href; return; }
+  if (place.kind === 'link') {
+    // 공원처럼 팬페이지를 알아야 하는 장소는 주소의 ?s=(들어온 팬페이지)를 이어 준다
+    const u = new URL(place.href, location.href); const sid = new URLSearchParams(location.search).get('s');
+    if (sid && /^[a-z0-9_-]{1,64}$/i.test(sid)) u.searchParams.set('s', sid.toLowerCase());
+    location.href = u.href; return;
+  }
   if (place.district && place.district !== state.district && districtById(state.world, place.district)) { state.district = place.district; syncDistrictUrl(); renderMap(); }
   if (!fromHash && location.hash !== `#${id}`) { history.pushState({ twPlace: id }, '', `#${id}`); }
   void showPanel(place);

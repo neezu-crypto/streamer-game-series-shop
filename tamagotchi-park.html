@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <script type="module" src="./maintenance-admin-gate.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef1fa">
+  <meta name="description" content="다마고치 공원: 펫과 함께 산책해요.">
+  <title>다마고치 공원 — 게임 시리즈 상점</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="tamagotchi-park.css?v=20261128-park2">
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script type="module" src="shop-login.js?v=20261128-kit4"></script>
+  <script type="module" src="tamagotchi-park.js?v=20261128-park2"></script>
+</head>
+<body class="tp-page">
+  <div id="tpStage" class="tp-stage" aria-label="공원 지도. 땅을 눌러 펫을 걷게 해요."></div>
+  <header class="tp-top">
+    <a class="tp-back" href="tamagotchi-world.html">← 마을로</a>
+    <strong class="tp-title">🌳 공원</strong>
+    <button id="shopLoginButton" class="tp-login" type="button" hidden>로그인</button>
+  </header>
+  <div id="tpLoading" class="tp-loading">공원으로 걸어가는 중…</div>
+  <nav id="tpEmotes" class="tp-emotes" aria-label="감정표현"></nav>
+  <div id="toast" class="tp-toast" role="status" aria-live="polite"></div>
+</body>
+</html>

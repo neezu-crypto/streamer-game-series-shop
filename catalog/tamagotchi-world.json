@@ -199,6 +199,17 @@
       "sprite": "assets/tamagotchi/world/bld-photo.webp",
       "lot": 0,
       "district": "east"
+    },
+    {
+      "id": "park",
+      "name": "공원",
+      "emoji": "🌳",
+      "desc": "다른 펫들과 함께 산책해요",
+      "kind": "link",
+      "href": "tamagotchi-park.html",
+      "sprite": "assets/tamagotchi/world/bld-park.webp",
+      "lot": 1,
+      "district": "east"
     }
   ]
 }
