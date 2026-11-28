@@ -4,6 +4,7 @@
 // - 서버 호출은 펫 목록·입장·간식 줍기뿐. 위치(목표점)·감정표현·따라가기는 내 세션 노드에 직접 쓴다(최소 1초 간격).
 // - 다른 펫은 받은 목표점까지 각자 화면에서 걸어가게 그린다. 따라가는 펫은 위치를 보내지 않고 앞 펫 기준으로 계산한다.
 import { Application, Assets, Container, Graphics, Sprite, Text } from './vendor/pixi-8.23.0.min.mjs';
+import { WEAR_ITEMS } from './tamagotchi-pet.js?v=20261128-park4';
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { ensureAppCheck } from './app-check.js?v=20261114-ac1';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
@@ -12,7 +13,7 @@ import {
   getDatabase, ref, onChildAdded, onChildChanged, onChildRemoved, onValue, update, onDisconnect, remove, get, serverTimestamp, goOffline, goOnline,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 
-const V = '?v=20261128-park3';
+const V = '?v=20261128-park4';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -81,6 +82,7 @@ async function main() {
   const tex = {};
   const urls = { ground: cat.ground, ...cat.sprites };
   for (const c of COLORS) urls[`pet-${c}`] = `assets/tamagotchi/mongsil-${c}.svg`;
+  for (const id of Object.keys(WEAR_ITEMS)) urls[`wear-${id}`] = `assets/tamagotchi/wear/${id}.png`;
   await Promise.all(Object.entries(urls).map(async ([k, u]) => { tex[k] = await Assets.load(u); }));
 
   const world = new Container(); app.stage.addChild(world);
@@ -104,7 +106,20 @@ async function main() {
   function makePet(session, m, mine) {
     const p = { session, mine, x: m.x, y: m.y, tx: m.x, ty: m.y, face: 1, t: Math.random() * 9, moving: false, bush: null, emo: '', emoT: 0, emoSeen: m.e || '', follow: m.f || '', name: m.name || '', page: m.page || '', look: m.look || {} };
     const key = `pet-${COLORS.includes(p.look.c) ? p.look.c : 'cream'}`;
-    p.sprite = new Sprite(tex[key]); p.sprite.anchor.set(0.5, 1 - 6 / PET_H); p.texW = tex[key].width; p.texH = tex[key].height;
+    // 펫 = 꾸미기 뒤(망토) + 몸 + 꾸미기 앞(머리·얼굴·목). 좌표는 몽실이 viewBox(80 20 1250 1100) 그대로 쓰고 한 번에 줄인다.
+    p.sprite = new Container();
+    const art = new Container(); const k = PET_W / 1250; art.scale.set(k); art.position.set(-PET_W / 2 - 80 * k, -PET_H + 6 - 20 * k);
+    const wearSprite = (id) => {
+      const it = WEAR_ITEMS[id]; const w = new Sprite(tex[`wear-${id}`]); w.anchor.set(0.5);
+      const f = Math.min(it.w / w.texture.width, it.h / w.texture.height); w.scale.set(f); // 이미지 비율 유지(meet)
+      w.position.set(it.x + it.w / 2, it.y + it.h / 2); w.rotation = ((it.rot || 0) * Math.PI) / 180; return w;
+    };
+    const wear = p.look.w && typeof p.look.w === 'object' ? p.look.w : {};
+    const ok = (slot) => { const id = wear[slot]; return WEAR_ITEMS[id] && WEAR_ITEMS[id].slot === slot ? id : ''; };
+    if (ok('back')) art.addChild(wearSprite(ok('back')));
+    const body = new Sprite(tex[key]); body.position.set(80, 20); body.width = 1250; body.height = 1100; art.addChild(body);
+    for (const slot of ['neck', 'face', 'head']) if (ok(slot)) art.addChild(wearSprite(ok(slot)));
+    p.sprite.addChild(art);
     p.shadow = new Graphics().ellipse(6, 0, 28, 9).fill({ color: 0x3c4678, alpha: 0.25 });
     if (mine) { p.mark = new Graphics().ellipse(0, 0, 36, 12).fill({ color: 0xffd65a, alpha: 0.55 }); under.addChild(p.mark); }
     under.addChild(p.shadow); layer.addChild(p.sprite);
@@ -267,7 +282,7 @@ async function main() {
       const bob = reduced ? 0 : (p.moving ? Math.abs(Math.sin(p.t * 11)) * 7 : Math.sin(p.t * 2) * 1.5);
       const sq = (!reduced && p.moving) ? 1 + Math.sin(p.t * 22) * 0.04 : 1;
       p.sprite.position.set(p.x, p.y - bob); p.sprite.zIndex = p.y;
-      p.sprite.scale.set(p.face * (PET_W / p.texW) / sq, (PET_H / p.texH) * sq);
+      p.sprite.scale.set(p.face / sq, sq);
       p.shadow.position.set(p.x, p.y); if (p.mark) p.mark.position.set(p.x, p.y);
       if (p.emoT > 0) p.emoT -= dt;
       p.emoText.text = p.emoT > 0 ? p.emo : ''; p.emoText.alpha = Math.min(1, Math.max(0, p.emoT) * 2);
@@ -318,6 +333,20 @@ async function main() {
   });
   window.addEventListener('pagehide', () => { if (S.joined) void leave(); });
 
+  // 로컬 시연(?demo=1, localhost만): 서버 없이 꾸민 펫들을 띄워 그림을 확인한다. 공개 사이트에서는 동작하지 않는다.
+  if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && new URLSearchParams(location.search).has('demo')) {
+    const looks = [
+      { c: 'pink', w: { head: 'hat', face: 'glasses' } }, { c: 'mint', w: { head: 'ribbon', neck: 'necklace' } },
+      { c: 'cream', w: { back: 'cape', head: 'hat' } }, { c: 'lavender', w: { face: 'glasses', back: 'cape', neck: 'necklace' } }, { c: 'cream', w: {} },
+    ];
+    looks.forEach((look, i) => {
+      const p = makePet(`demo${i}`, { x: 1000 + i * 110, y: 760 + (i % 2) * 50, look, name: `시연${i}` }, i === 0);
+      if (i === 0) me = p;
+    });
+    S.room = 'r1'; hideOverlay(); toast('로컬 시연 모드');
+    window.__parkDemo = { pets, me };
+    return;
+  }
   let started = false;
   onAuthStateChanged(auth, () => { if (!started) { started = true; void enter(); } else if (!S.joined) void enter(); });
 }
