@@ -13,7 +13,7 @@ import {
   getDatabase, ref, onChildAdded, onChildChanged, onChildRemoved, onValue, update, onDisconnect, remove, get, serverTimestamp, goOffline, goOnline,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 
-const V = '?v=20261128-park6';
+const V = '?v=20261128-park7';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -37,6 +37,7 @@ const EMOTES = [['❤️', 'heart'], ['🎵', 'note'], ['❓', 'q'], ['❗', 'ex
 const EMO_OF = Object.fromEntries(EMOTES.map(([g, c]) => [c, g]).concat([['eat', '😋'], ['pick', '🐟']]));
 const PET_W = 96, PET_H = PET_W * 1100 / 1250, SPEED = 190, SEND_GAP = 1100, IDLE_MS = 5 * 60 * 1000;
 const COLORS = ['pink', 'mint', 'cream', 'lavender'];
+const HEAD_WEAR_SCALE = 1.35;
 
 let toastTimer = 0;
 function toast(msg, ms = 2200) {
@@ -111,8 +112,10 @@ async function main() {
     const art = new Container(); const k = PET_W / 1250; art.scale.set(k); art.position.set(-PET_W / 2 - 80 * k, -PET_H + 6 - 20 * k);
     const wearSprite = (id) => {
       const it = WEAR_ITEMS[id]; const w = new Sprite(tex[`wear-${id}`]); w.anchor.set(0.5);
-      const f = Math.min(it.w / w.texture.width, it.h / w.texture.height); w.scale.set(f); // 이미지 비율 유지(meet)
-      w.position.set(it.x + it.w / 2, it.y + it.h / 2); w.rotation = ((it.rot || 0) * Math.PI) / 180; return w;
+      // 공원 펫은 96px로 작아서 머리 꾸미기만 키운다(아래쪽을 머리에 붙인 채 위로 커짐). 돌봄 화면 좌표표는 그대로.
+      const big = it.slot === 'head' ? HEAD_WEAR_SCALE : 1;
+      const f = Math.min(it.w / w.texture.width, it.h / w.texture.height) * big; w.scale.set(f); // 이미지 비율 유지(meet)
+      w.position.set(it.x + it.w / 2, it.y + it.h / 2 - (it.h * (big - 1)) / 2); w.rotation = ((it.rot || 0) * Math.PI) / 180; return w;
     };
     const wear = p.look.w && typeof p.look.w === 'object' ? p.look.w : {};
     const ok = (slot) => { const id = wear[slot]; return WEAR_ITEMS[id] && WEAR_ITEMS[id].slot === slot ? id : ''; };
