@@ -13,7 +13,7 @@ import {
   getDatabase, ref, onChildAdded, onChildChanged, onChildRemoved, onValue, update, onDisconnect, remove, get, serverTimestamp, goOffline, goOnline,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 
-const V = '?v=20261128-park5';
+const V = '?v=20261128-park6';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -225,7 +225,8 @@ async function main() {
       // 내가 빠짐: 교대 또는 끊김
       const bumped = (await get(ref(rtdb, `tamagotchiPark/bumped/${S.session}`)).catch(() => null))?.val();
       leaveLocal();
-      if (bumped) overlay('스트리머가 직접 산책하러 왔어요', '이 펫은 지금 스트리머와 함께 걸어요. 다음에 또 데려와 주세요.', [['마을로', 'tamagotchi-world.html']]);
+      if (bumped && bumped.why === 'guest') overlay('펫과 함께 온 친구에게 자리를 양보했어요', '공원이 가득 차면 펫을 데려온 친구가 먼저 들어와요. 조금 뒤 다시 와 주세요.', [['다시 들어가기', () => void enter()], ['마을로', 'tamagotchi-world.html']]);
+      else if (bumped) overlay('스트리머가 직접 산책하러 왔어요', '이 펫은 지금 스트리머와 함께 걸어요. 다음에 또 데려와 주세요.', [['마을로', 'tamagotchi-world.html']]);
       else overlay('공원과 연결이 끊겼어요', '', [['다시 들어가기', () => void enter()], ['마을로', 'tamagotchi-world.html']]);
     }));
     S.subs.push(onValue(ref(rtdb, `tamagotchiPark/taken/${S.room}`), (snap) => { S.takenSlot = Number(snap.val()) || -1; }));
