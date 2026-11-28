@@ -79,7 +79,27 @@ export function mountGemShop(host, { getServer, petColor = 'cream', call, onAppl
       if (armed !== 'snack') { armed = 'snack'; render(); return; }
       void act({ action: 'snack' }, '냠냠! 간식을 줬어요. 유대감 +3 ✦').then((ok) => { if (ok) { preview.play?.('먹기'); onSnack(); } });
     });
-    card.append(btn); grid.append(card);
+    card.append(btn);
+    // 간식 가방(공원에서 주운 것·사 둔 것). 꺼내 먹이기는 보석 없이, 하루 횟수는 같이 쓴다.
+    if (sn.bagMax) {
+      card.append(el('small', '', `🎒 가방 ${sn.bag || 0}/${sn.bagMax}개`));
+      const fb = el('button', 'tg-button', armed === 'bag' ? '한 번 더 누르면 줘요' : '🎒 가방에서 꺼내 주기'); fb.type = 'button';
+      fb.disabled = !!busy || !(sn.bag > 0) || !(sn.leftToday > 0);
+      fb.addEventListener('click', () => {
+        if (!hasAccount()) { openLogin(); return; }
+        if (armed !== 'bag') { armed = 'bag'; render(); return; }
+        void act({ action: 'snack', fromBag: true }, '냠냠! 가방 간식을 줬어요. 유대감 +3 ✦').then((ok) => { if (ok) { preview.play?.('먹기'); onSnack(); } });
+      });
+      const sb = el('button', 'tg-button', armed === 'stock' ? '한 번 더 누르면 사 둬요' : `💎${sn.price} 가방에 사 두기`); sb.type = 'button';
+      sb.disabled = !!busy || (sn.bag || 0) >= sn.bagMax || gems < (Number(sn.price) || 0);
+      sb.addEventListener('click', () => {
+        if (!hasAccount()) { openLogin(); return; }
+        if (armed !== 'stock') { armed = 'stock'; render(); return; }
+        void act({ action: 'snackStock' }, '간식을 가방에 넣어 뒀어요.');
+      });
+      card.append(fb, sb);
+    }
+    grid.append(card);
     if (!manage && !state.textContent) state.textContent = viewNote;
   }
   render();

@@ -12,7 +12,7 @@ import {
   getDatabase, ref, onChildAdded, onChildChanged, onChildRemoved, onValue, update, onDisconnect, remove, get, serverTimestamp, goOffline, goOnline,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 
-const V = '?v=20261128-park2';
+const V = '?v=20261128-park3';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -310,9 +310,11 @@ async function main() {
   });
 
   // 탭을 숨기면 그리기·연결을 멈추고, 돌아오면 다시 잇는다(세션이 지워졌으면 그때 끊김 안내)
+  // 잠깐 다른 탭에 다녀오는 건(1분 안) 같은 세션을 그대로 이어 쓴다. 그보다 길면 연결을 끊어 자리를 비운다.
+  let offTimer = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { app.ticker.stop(); goOffline(rtdb); }
-    else { goOnline(rtdb); app.ticker.start(); S.lastInput = Date.now(); }
+    if (document.hidden) { app.ticker.stop(); offTimer = setTimeout(() => { offTimer = 0; goOffline(rtdb); }, 60000); }
+    else { if (offTimer) { clearTimeout(offTimer); offTimer = 0; } else goOnline(rtdb); app.ticker.start(); S.lastInput = Date.now(); }
   });
   window.addEventListener('pagehide', () => { if (S.joined) void leave(); });
 
