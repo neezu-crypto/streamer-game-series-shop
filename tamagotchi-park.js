@@ -13,7 +13,7 @@ import {
   getDatabase, ref, onChildAdded, onChildChanged, onChildRemoved, onValue, update, onDisconnect, remove, get, serverTimestamp, goOffline, goOnline,
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js';
 
-const V = '?v=20261128-park4';
+const V = '?v=20261128-park5';
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAZcjQPHphENs-Bb7IfdL2qTtOMhJrRP54',
   authDomain: 'soop-stock-market.firebaseapp.com',
@@ -233,14 +233,15 @@ async function main() {
   async function joinWith(streamerId, petId) {
     overlay('공원으로 걸어가는 중…');
     let out;
-    try { out = (await parkCall({ action: 'join', streamerId, petId })).data; }
+    try { out = (await parkCall(petId ? { action: 'join', streamerId, petId } : { action: 'join', streamerId, guest: true })).data; }
     catch (e) { overlay('공원에 들어가지 못했어요', errMsg(e), [['다시 시도', () => void enter()], ['마을로', 'tamagotchi-world.html']]); return; }
     S.room = out.room; S.session = out.session; S.serverOffset = out.serverNow - Date.now(); S.picked = !!out.pickedToday; S.slotMs = out.snackSlotMs || S.slotMs;
     S.joined = true; S.lastSend = Date.now(); S.lastInput = Date.now();
     onDisconnect(ref(rtdb, `tamagotchiPark/rooms/${S.room}/${S.session}`)).remove();
     subscribe(); hideOverlay();
+    if (out.guest) S.picked = true; // 손님 펫은 간식을 못 줍는다(흐리게 보이기만)
     if (out.bumped) toast('팬들이 데려온 펫과 교대했어요');
-    toast(`공원 ${S.room.slice(1)}번 · 땅을 누르면 걸어가요`);
+    toast(out.guest ? `손님 몽실이와 공원 ${S.room.slice(1)}번 · 땅을 누르면 걸어가요` : `공원 ${S.room.slice(1)}번 · 땅을 누르면 걸어가요`);
   }
   async function enter() {
     const user = auth.currentUser;
@@ -253,7 +254,12 @@ async function main() {
     let info;
     try { info = (await parkCall({ action: 'pets', streamerId })).data; }
     catch (e) { overlay('공원에 들어가지 못했어요', errMsg(e), [['다시 시도', () => void enter()], ['마을로', 'tamagotchi-world.html']]); return; }
-    if (!info.pets.length) { overlay('이 팬페이지에는 아직 펫이 없어요', '분양소에서 펫을 맞이하면 함께 산책할 수 있어요.', [['분양소 가기', 'tamagotchi.html'], ['마을로', 'tamagotchi-world.html']]); return; }
+    const sid = info.streamer ? info.streamer.id : streamerId;
+    if (!info.pets.length) {
+      overlay(info.streamer ? '이 팬페이지에는 아직 펫이 없어요' : '함께 걸을 펫이 없어요', '손님 몽실이와 공원을 구경할 수 있어요. 간식 줍기는 분양받은 펫과 함께일 때만 돼요.',
+        [['손님으로 산책하기', () => void joinWith(sid, '')], ['분양소 가기', 'tamagotchi.html'], ['마을로', 'tamagotchi-world.html']]);
+      return;
+    }
     if (info.pets.length === 1) { await joinWith(info.streamer.id, info.pets[0].petId); return; }
     overlay(`${info.streamer.nickname} 팬페이지의 펫`, '함께 산책할 펫을 골라 주세요.',
       info.pets.map((p) => [p.nickname || '펫', () => void joinWith(info.streamer.id, p.petId)]));
